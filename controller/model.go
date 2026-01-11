@@ -16,6 +16,32 @@ import (
 	relaymodel "github.com/yeying-community/router/relay/model"
 )
 
+// coarse provider matcher to avoid misclassification when channels share the same API style
+func modelBelongsToProvider(provider string, model string) bool {
+	p := strings.ToLower(provider)
+	m := strings.ToLower(model)
+	switch p {
+	case "openai", "openai-compatible", "openai-sb":
+		return strings.HasPrefix(m, "gpt-") ||
+			strings.HasPrefix(m, "o1") ||
+			strings.HasPrefix(m, "o3") ||
+			strings.HasPrefix(m, "chatgpt") ||
+			strings.HasPrefix(m, "text-embedding") ||
+			strings.HasPrefix(m, "whisper") ||
+			strings.HasPrefix(m, "dall-") ||
+			strings.HasPrefix(m, "tts-")
+	case "anthropic":
+		return strings.HasPrefix(m, "claude-")
+	case "deepseek":
+		return strings.HasPrefix(m, "deepseek-")
+	case "gemini", "vertexai", "gemini-openai-compatible":
+		return strings.HasPrefix(m, "gemini")
+	default:
+		// fallback: if provider name appears inside model string
+		return strings.Contains(m, p)
+	}
+}
+
 // https://platform.openai.com/docs/api-reference/models/list
 
 type OpenAIModelPermission struct {
@@ -116,10 +142,53 @@ func init() {
 }
 
 func DashboardListModels(c *gin.Context) {
+	// optional filter: provider (channel) name, case-insensitive
+	provider := strings.ToLower(strings.TrimSpace(c.Query("provider")))
+
+	// backward compatibility: keep original map response, and add metadata list for UI friendliness
+	metaList := make([]gin.H, 0, len(channelId2Models))
+	for id, models := range channelId2Models {
+		name := ""
+		if id >= 0 && id < len(channeltype.ChannelTypeNames) {
+			name = channeltype.ChannelTypeNames[id]
+		}
+		metaList = append(metaList, gin.H{
+			"id":     id,
+			"name":   name,
+			"models": models,
+		})
+		// if provider is specified and matches, short‑circuit with filtered payload
+		if provider != "" && strings.ToLower(name) == provider {
+			c.JSON(http.StatusOK, gin.H{
+				"success":  true,
+				"message":  "",
+				"provider": name,
+				"id":       id,
+				"data":     models,
+				"meta": gin.H{
+					"id":     id,
+					"name":   name,
+					"models": models,
+				},
+			})
+			return
+		}
+	}
+
+	if provider != "" {
+		// provider specified but not found
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": fmt.Sprintf("provider '%s' not found", provider),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data":    channelId2Models,
+		"meta":    metaList,
 	})
 }
 
@@ -205,10 +274,52 @@ func GetUserAvailableModels(c *gin.Context) {
 		})
 		return
 	}
+
+	// optional filter by provider (channel) name, case-insensitive
+	urlValues := c.Request.URL.Query()
+	_, providerSpecified := urlValues["provider"]
+	provider := strings.ToLower(strings.TrimSpace(urlValues.Get("provider")))
+	if !providerSpecified {
+		// backward compatibility: keep original payload
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+			"data":    models,
+		})
+		return
+	}
+
+	filtered := make([]string, 0)
+	for _, m := range models {
+		ch, err := model.GetTopChannelByModel(userGroup, m)
+		if err != nil {
+			continue
+		}
+		name := ""
+		if ch.Type >= 0 && ch.Type < len(channeltype.ChannelTypeNames) {
+			name = channeltype.ChannelTypeNames[ch.Type]
+		}
+		if strings.ToLower(name) == provider && modelBelongsToProvider(provider, m) {
+			filtered = append(filtered, m)
+			continue
+		}
+		// in case channel type被配置为通用openai但实际是其他供应商，允许通过模型名归类
+		if modelBelongsToProvider(provider, m) {
+			filtered = append(filtered, m)
+		}
+	}
+	if len(filtered) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": fmt.Sprintf("provider '%s' not found or has no available models", provider),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data":    models,
+		"success":  true,
+		"message":  "",
+		"provider": provider,
+		"data":     filtered,
 	})
-	return
 }

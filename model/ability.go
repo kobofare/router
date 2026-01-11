@@ -95,6 +95,31 @@ func UpdateAbilityStatus(channelId int, status bool) error {
 	return DB.Model(&Ability{}).Where("channel_id = ?", channelId).Select("enabled").Update("enabled", status).Error
 }
 
+// GetTopChannelByModel returns the highest-priority enabled channel for a given group+model.
+// Order: priority desc, then channel_id asc (stable for UI usage).
+func GetTopChannelByModel(group string, model string) (*Channel, error) {
+	groupCol := "`group`"
+	trueVal := "1"
+	if common.UsingPostgreSQL {
+		groupCol = `"group"`
+		trueVal = "true"
+	}
+
+	ability := Ability{}
+	err := DB.Where(groupCol+" = ? and model = ? and enabled = "+trueVal, group, model).
+		Order("priority desc, channel_id asc").
+		First(&ability).Error
+	if err != nil {
+		return nil, err
+	}
+	channel := Channel{Id: ability.ChannelId}
+	err = DB.Omit("key").First(&channel, "id = ?", ability.ChannelId).Error
+	if err != nil {
+		return nil, err
+	}
+	return &channel, nil
+}
+
 func GetGroupModels(ctx context.Context, group string) ([]string, error) {
 	groupCol := "`group`"
 	trueVal := "1"
