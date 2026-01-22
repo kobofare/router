@@ -3,6 +3,9 @@
 ## 目的
 给后续的 Codex/同事一个“免探查仓库”的运行说明，快速理解如何启动、如何公网访问、以及如何连 PG。
 
+## API 开发必读
+凡涉及 **API 新增/修改/迁移**，请先阅读项目根目录 `API_reference.md`，按公司 Interface 规范完成分层（public/admin/internal）与兼容性要求，并同步更新文档。
+
 ---
 
 ## CodexDev 目录（仓库内）

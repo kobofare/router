@@ -147,10 +147,31 @@ Authorization: Bearer <JWT>
 - `GET    /api/v1/admin/channel/test/:id`
 - `GET    /api/v1/admin/channel/update_balance`
 - `GET    /api/v1/admin/channel/update_balance/:id`
+- `POST   /api/v1/admin/channel/preview/models`（OpenAI 兼容渠道模型预览）
 - `POST   /api/v1/admin/channel`
 - `PUT    /api/v1/admin/channel`
 - `DELETE /api/v1/admin/channel/disabled`
 - `DELETE /api/v1/admin/channel/:id`
+
+#### /api/v1/admin/channel/preview/models
+用于创建/编辑渠道时预览模型列表（仅 OpenAI 兼容类）。
+- 请求体：
+```json
+{
+  "type": 50,
+  "key": "sk-***",
+  "base_url": "https://api.openai.com",
+  "config": {}
+}
+```
+- 响应体：
+```json
+{
+  "success": true,
+  "message": "",
+  "data": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+}
+```
 
 ### 3) 兑换码管理
 - `GET    /api/v1/admin/redemption`

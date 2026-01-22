@@ -64,6 +64,10 @@ const buildModelOptions = (models) => {
   return { options, ids };
 };
 
+const OPENAI_COMPATIBLE_TYPES = new Set([50, 51]);
+
+const isOpenAICompatibleType = (type) => OPENAI_COMPATIBLE_TYPES.has(type);
+
 function type2secretPrompt(type, t) {
   switch (type) {
     case 15:
@@ -111,6 +115,7 @@ const EditChannel = () => {
   const [basicModels, setBasicModels] = useState([]);
   const [fullModels, setFullModels] = useState([]);
   const [customModel, setCustomModel] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [config, setConfig] = useState({
     region: '',
     sk: '',
@@ -193,6 +198,42 @@ const EditChannel = () => {
       showError(error?.message || error);
     }
   }, []);
+
+  const fetchPreviewModels = async () => {
+    if (!isOpenAICompatibleType(inputs.type)) return;
+    if (!inputs.key || inputs.key.trim() === '') {
+      showInfo('请先填写 Key');
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const res = await API.post(`/api/v1/admin/channel/preview/models`, {
+        type: inputs.type,
+        key: inputs.key,
+        base_url: inputs.base_url,
+        config,
+      });
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || '获取模型失败');
+        return;
+      }
+      const modelIds = Array.isArray(data)
+        ? data.filter((model) => model)
+        : [];
+      if (modelIds.length === 0) {
+        showError('未返回可用模型');
+        return;
+      }
+      const uniqueModels = Array.from(new Set(modelIds));
+      setInputs((prev) => ({ ...prev, models: uniqueModels }));
+      showSuccess(t('channel.messages.operation_success'));
+    } catch (error) {
+      showError(error?.message || error);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const fetchGroups = useCallback(async () => {
     try {
@@ -347,6 +388,125 @@ const EditChannel = () => {
                 onChange={handleInputChange}
               />
             </Form.Field>
+            {inputs.type === 3 && (
+              <Form.Field>
+                <Form.Input
+                  label='AZURE_OPENAI_ENDPOINT'
+                  name='base_url'
+                  placeholder='请输入 AZURE_OPENAI_ENDPOINT，例如：https://docs-test-001.openai.azure.com'
+                  onChange={handleInputChange}
+                  value={inputs.base_url}
+                  autoComplete='new-password'
+                />
+              </Form.Field>
+            )}
+            {inputs.type === 8 && (
+              <Form.Field>
+                <Form.Input
+                  required
+                  label={t('channel.edit.proxy_url')}
+                  name='base_url'
+                  placeholder={t('channel.edit.proxy_url_placeholder')}
+                  onChange={handleInputChange}
+                  value={inputs.base_url}
+                  autoComplete='new-password'
+                />
+              </Form.Field>
+            )}
+            {inputs.type === 50 && (
+              <Form.Field>
+                <Form.Input
+                  required
+                  label={t('channel.edit.base_url')}
+                  name='base_url'
+                  placeholder={t('channel.edit.base_url_placeholder')}
+                  onChange={handleInputChange}
+                  value={inputs.base_url}
+                  autoComplete='new-password'
+                />
+              </Form.Field>
+            )}
+            {inputs.type === 22 && (
+              <Form.Field>
+                <Form.Input
+                  label='私有部署地址'
+                  name='base_url'
+                  placeholder='请输入私有部署地址，格式为：https://fastgpt.run/api/openapi'
+                  onChange={handleInputChange}
+                  value={inputs.base_url}
+                  autoComplete='new-password'
+                />
+              </Form.Field>
+            )}
+            {inputs.type !== 3 &&
+              inputs.type !== 33 &&
+              inputs.type !== 8 &&
+              inputs.type !== 50 &&
+              inputs.type !== 22 && (
+                <Form.Field>
+                  <Form.Input
+                    label={t('channel.edit.proxy_url')}
+                    name='base_url'
+                    placeholder={t('channel.edit.proxy_url_placeholder')}
+                    onChange={handleInputChange}
+                    value={inputs.base_url}
+                    autoComplete='new-password'
+                  />
+                </Form.Field>
+              )}
+
+            {inputs.type !== 33 &&
+              inputs.type !== 42 &&
+              (batch ? (
+                <Form.Field>
+                  <Form.TextArea
+                    label={t('channel.edit.key')}
+                    name='key'
+                    required
+                    placeholder={t('channel.edit.batch_placeholder')}
+                    onChange={handleInputChange}
+                    value={inputs.key}
+                    style={{
+                      minHeight: 150,
+                      fontFamily: 'JetBrains Mono, Consolas',
+                    }}
+                    autoComplete='new-password'
+                  />
+                </Form.Field>
+              ) : (
+                <Form.Field>
+                  <Form.Input
+                    label={t('channel.edit.key')}
+                    name='key'
+                    required
+                    placeholder={type2secretPrompt(inputs.type, t)}
+                    onChange={handleInputChange}
+                    value={inputs.key}
+                    autoComplete='new-password'
+                  />
+                </Form.Field>
+              ))}
+            {isOpenAICompatibleType(inputs.type) &&
+              inputs.type !== 33 &&
+              inputs.type !== 42 && (
+                <Button
+                  type={'button'}
+                  loading={previewLoading}
+                  disabled={previewLoading || !inputs.key}
+                  onClick={fetchPreviewModels}
+                >
+                  获取模型
+                </Button>
+              )}
+            {inputs.type !== 33 && !isEdit && (
+              <Form.Checkbox
+                checked={batch}
+                label={t('channel.edit.batch')}
+                name='batch'
+                onChange={() => setBatch(!batch)}
+              />
+            )}
+
             <Form.Field>
               <Form.Input
                 label={t('channel.edit.name')}
@@ -394,16 +554,6 @@ const EditChannel = () => {
                 </Message>
                 <Form.Field>
                   <Form.Input
-                    label='AZURE_OPENAI_ENDPOINT'
-                    name='base_url'
-                    placeholder='请输入 AZURE_OPENAI_ENDPOINT，例如：https://docs-test-001.openai.azure.com'
-                    onChange={handleInputChange}
-                    value={inputs.base_url}
-                    autoComplete='new-password'
-                  />
-                </Form.Field>
-                <Form.Field>
-                  <Form.Input
                     label='默认 API 版本'
                     name='other'
                     placeholder='请输入默认 API 版本，例如：2024-03-01-preview，该配置可以被实际的请求查询参数所覆盖'
@@ -413,34 +563,6 @@ const EditChannel = () => {
                   />
                 </Form.Field>
               </>
-            )}
-
-            {/* Custom base URL field */}
-            {inputs.type === 8 && (
-              <Form.Field>
-                <Form.Input
-                    required
-                    label={t('channel.edit.proxy_url')}
-                    name='base_url'
-                    placeholder={t('channel.edit.proxy_url_placeholder')}
-                    onChange={handleInputChange}
-                    value={inputs.base_url}
-                    autoComplete='new-password'
-                />
-              </Form.Field>
-            )}
-            {inputs.type === 50 && (
-                <Form.Field>
-                  <Form.Input
-                      required
-                  label={t('channel.edit.base_url')}
-                  name='base_url'
-                  placeholder={t('channel.edit.base_url_placeholder')}
-                  onChange={handleInputChange}
-                  value={inputs.base_url}
-                  autoComplete='new-password'
-                />
-              </Form.Field>
             )}
 
             {inputs.type === 18 && (
@@ -709,37 +831,6 @@ const EditChannel = () => {
                 autoComplete=''
               />
             )}
-            {inputs.type !== 33 &&
-              inputs.type !== 42 &&
-              (batch ? (
-                <Form.Field>
-                  <Form.TextArea
-                    label={t('channel.edit.key')}
-                    name='key'
-                    required
-                    placeholder={t('channel.edit.batch_placeholder')}
-                    onChange={handleInputChange}
-                    value={inputs.key}
-                    style={{
-                      minHeight: 150,
-                      fontFamily: 'JetBrains Mono, Consolas',
-                    }}
-                    autoComplete='new-password'
-                  />
-                </Form.Field>
-              ) : (
-                <Form.Field>
-                  <Form.Input
-                    label={t('channel.edit.key')}
-                    name='key'
-                    required
-                    placeholder={type2secretPrompt(inputs.type, t)}
-                    onChange={handleInputChange}
-                    value={inputs.key}
-                    autoComplete='new-password'
-                  />
-                </Form.Field>
-              ))}
             {inputs.type === 37 && (
               <Form.Field>
                 <Form.Input
@@ -752,44 +843,6 @@ const EditChannel = () => {
                   onChange={handleConfigChange}
                   value={config.user_id}
                   autoComplete=''
-                />
-              </Form.Field>
-            )}
-            {inputs.type !== 33 && !isEdit && (
-              <Form.Checkbox
-                checked={batch}
-                label={t('channel.edit.batch')}
-                name='batch'
-                onChange={() => setBatch(!batch)}
-              />
-            )}
-            {inputs.type !== 3 &&
-              inputs.type !== 33 &&
-              inputs.type !== 8 &&
-                inputs.type !== 50 &&
-              inputs.type !== 22 && (
-                <Form.Field>
-                  <Form.Input
-                      label={t('channel.edit.proxy_url')}
-                    name='base_url'
-                      placeholder={t('channel.edit.proxy_url_placeholder')}
-                    onChange={handleInputChange}
-                    value={inputs.base_url}
-                    autoComplete='new-password'
-                  />
-                </Form.Field>
-              )}
-            {inputs.type === 22 && (
-              <Form.Field>
-                <Form.Input
-                  label='私有部署地址'
-                  name='base_url'
-                  placeholder={
-                    '请输入私有部署地址，格式为：https://fastgpt.run/api/openapi'
-                  }
-                  onChange={handleInputChange}
-                  value={inputs.base_url}
-                  autoComplete='new-password'
                 />
               </Form.Field>
             )}
