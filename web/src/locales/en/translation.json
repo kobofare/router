@@ -442,6 +442,7 @@
       "providers": "Model Providers",
       "no_providers": "No models available",
       "granularity_options": {
+        "hour": "Hour",
         "day": "Day",
         "week": "Week",
         "month": "Month",

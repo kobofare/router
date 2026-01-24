@@ -54,6 +54,7 @@ const chartConfig = {
 };
 
 const spanLimits = {
+  hour: 720,
   day: 365,
   week: 52,
   month: 36,
@@ -172,11 +173,11 @@ const Dashboard = () => {
   const [providers, setProviders] = useState({});
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectionReady, setSelectionReady] = useState(false);
-  const [granularity, setGranularity] = useState('week');
-  const [span, setSpan] = useState(1);
+  const [granularity, setGranularity] = useState('day');
+  const [span, setSpan] = useState(7);
   const [spanAuto, setSpanAuto] = useState(true);
   const [endAuto, setEndAuto] = useState(true);
-  const initialRange = useMemo(() => getDefaultRange('week', 1), []);
+  const initialRange = useMemo(() => getDefaultRange('day', 7), []);
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
 
@@ -351,6 +352,7 @@ const Dashboard = () => {
   };
 
   const granularityOptions = [
+    { key: 'hour', text: t('dashboard.filters.granularity_options.hour'), value: 'hour' },
     { key: 'day', text: t('dashboard.filters.granularity_options.day'), value: 'day' },
     { key: 'week', text: t('dashboard.filters.granularity_options.week'), value: 'week' },
     { key: 'month', text: t('dashboard.filters.granularity_options.month'), value: 'month' },
@@ -510,6 +512,14 @@ const Dashboard = () => {
                 />
               </Form.Field>
               <Form.Field>
+                <label>{t('dashboard.filters.start')}</label>
+                <Input
+                  type='date'
+                  value={startDate}
+                  onChange={handleStartChange}
+                />
+              </Form.Field>
+              <Form.Field>
                 <label>{t('dashboard.filters.span')}</label>
                 <Input
                   type='number'
@@ -518,14 +528,6 @@ const Dashboard = () => {
                   value={span}
                   onChange={handleSpanChange}
                   className={spanAuto ? 'dashboard-muted' : ''}
-                />
-              </Form.Field>
-              <Form.Field>
-                <label>{t('dashboard.filters.start')}</label>
-                <Input
-                  type='date'
-                  value={startDate}
-                  onChange={handleStartChange}
                 />
               </Form.Field>
               <Form.Field>

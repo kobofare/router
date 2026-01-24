@@ -323,7 +323,7 @@ func GetUser(c *gin.Context) {
 // @Produce json
 // @Param start_timestamp query int false "Start timestamp (unix)"
 // @Param end_timestamp query int false "End timestamp (unix)"
-// @Param granularity query string false "day|week|month|year"
+// @Param granularity query string false "hour|day|week|month|year"
 // @Param models query string false "Comma-separated model list"
 // @Param include_meta query int false "Include meta info (1)"
 // @Success 200 {object} docs.UserDashboardResponse
@@ -333,7 +333,7 @@ func GetUserDashboard(c *gin.Context) {
 	id := c.GetInt(ctxkey.Id)
 	granularity := strings.ToLower(strings.TrimSpace(c.DefaultQuery("granularity", "day")))
 	switch granularity {
-	case "day", "week", "month", "year":
+	case "hour", "day", "week", "month", "year":
 	default:
 		granularity = "day"
 	}

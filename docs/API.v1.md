@@ -89,7 +89,7 @@ Authorization: Bearer <JWT>
 **Query 参数（可选）**
 - `start_timestamp`：起始时间（Unix 秒）
 - `end_timestamp`：结束时间（Unix 秒）
-- `granularity`：`day | week | month | year`
+- `granularity`：`hour | day | week | month | year`
 - `models`：逗号分隔的模型列表（仅统计所选模型）
 - `include_meta=1`：返回 `meta.providers`、`meta.granularity`、`meta.start`、`meta.end`
 

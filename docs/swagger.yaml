@@ -3947,7 +3947,7 @@ paths:
         in: query
         name: end_timestamp
         type: integer
-      - description: day|week|month|year
+      - description: hour|day|week|month|year
         in: query
         name: granularity
         type: string

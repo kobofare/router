@@ -3946,7 +3946,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "day|week|month|year",
+                        "description": "hour|day|week|month|year",
                         "name": "granularity",
                         "in": "query"
                     },

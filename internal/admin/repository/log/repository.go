@@ -208,6 +208,14 @@ func DeleteOld(targetTimestamp int64) (int64, error) {
 
 func selectGroupByGranularity(granularity string) string {
 	switch granularity {
+	case "hour":
+		if common.UsingPostgreSQL {
+			return "TO_CHAR(date_trunc('hour', to_timestamp(created_at)), 'YYYY-MM-DD HH24') as day"
+		}
+		if common.UsingSQLite {
+			return "strftime('%Y-%m-%d %H', datetime(created_at, 'unixepoch')) as day"
+		}
+		return "DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m-%d %H') as day"
 	case "week":
 		if common.UsingPostgreSQL {
 			return "TO_CHAR(date_trunc('week', to_timestamp(created_at)), 'IYYY-\"W\"IW') as day"
