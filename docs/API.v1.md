@@ -3,6 +3,9 @@
 本文件只描述 **JWT** 使用方式下的 `/api/v1/*` 接口（public/admin/internal 分层）。  
 旧接口与兼容接口（如 `/api/*`、`/v1/*`）不在本文档范围。
 
+> Swagger/OpenAPI  
+> 本文档对应的 OpenAPI 文件为 `docs/openapi.json`，由 swag 注释生成：`scripts/gen-openapi.sh`。
+
 ## 认证方式（JWT）
 ### 请求头
 ```

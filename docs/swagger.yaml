@@ -1,0 +1,2713 @@
+basePath: /api/v1
+definitions:
+  controller.PasswordResetRequest:
+    properties:
+      email:
+        type: string
+      token:
+        type: string
+    type: object
+  docs.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: integer
+    type: object
+  docs.OpenAIError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      param:
+        type: string
+      type:
+        type: string
+    type: object
+  docs.OpenAIErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/docs.OpenAIError'
+    type: object
+  docs.StandardResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: integer
+    type: object
+  user.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Router public/admin API (JWT/UCAN) under /api/v1.
+  title: Router API
+  version: v1
+paths:
+  /api/v1/admin/channel:
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List channels (admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Channel payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create channel (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Channel update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update channel (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/{id}:
+    delete:
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete channel (admin)
+      tags:
+      - admin
+    get:
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get channel by ID (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/disabled:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete disabled channels (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search channels (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/test:
+    get:
+      parameters:
+      - description: Scope (all|enabled|disabled)
+        in: query
+        name: scope
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test all channels (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/test/{id}:
+    get:
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Model name
+        in: query
+        name: model
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test channel (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/update_balance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update all channels balance (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/update_balance/{id}:
+    get:
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update channel balance (admin)
+      tags:
+      - admin
+  /api/v1/admin/group:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List groups (admin)
+      tags:
+      - admin
+  /api/v1/admin/log:
+    delete:
+      parameters:
+      - description: Target timestamp (unix)
+        in: query
+        name: target_timestamp
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete history logs (admin)
+      tags:
+      - admin
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      - description: Log type
+        in: query
+        name: type
+        type: integer
+      - description: Start timestamp (unix)
+        in: query
+        name: start_timestamp
+        type: integer
+      - description: End timestamp (unix)
+        in: query
+        name: end_timestamp
+        type: integer
+      - description: Username
+        in: query
+        name: username
+        type: string
+      - description: Token name
+        in: query
+        name: token_name
+        type: string
+      - description: Model name
+        in: query
+        name: model_name
+        type: string
+      - description: Channel ID
+        in: query
+        name: channel
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List logs (admin)
+      tags:
+      - admin
+  /api/v1/admin/log/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search logs (admin)
+      tags:
+      - admin
+  /api/v1/admin/log/stat:
+    get:
+      parameters:
+      - description: Log type
+        in: query
+        name: type
+        type: integer
+      - description: Start timestamp (unix)
+        in: query
+        name: start_timestamp
+        type: integer
+      - description: End timestamp (unix)
+        in: query
+        name: end_timestamp
+        type: integer
+      - description: Token name
+        in: query
+        name: token_name
+        type: string
+      - description: Username
+        in: query
+        name: username
+        type: string
+      - description: Model name
+        in: query
+        name: model_name
+        type: string
+      - description: Channel ID
+        in: query
+        name: channel
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Log stats (admin)
+      tags:
+      - admin
+  /api/v1/admin/option:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get options (root)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Option payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update option (root)
+      tags:
+      - admin
+  /api/v1/admin/redemption:
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List redemptions (admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Redemption payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create redemption codes (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Redemption update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      - description: Update status only if set
+        in: query
+        name: status_only
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update redemption (admin)
+      tags:
+      - admin
+  /api/v1/admin/redemption/{id}:
+    delete:
+      parameters:
+      - description: Redemption ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete redemption (admin)
+      tags:
+      - admin
+    get:
+      parameters:
+      - description: Redemption ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get redemption by ID (admin)
+      tags:
+      - admin
+  /api/v1/admin/redemption/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search redemptions (admin)
+      tags:
+      - admin
+  /api/v1/admin/user:
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      - description: Order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users (admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user (admin)
+      tags:
+      - admin
+  /api/v1/admin/user/{id}:
+    delete:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user (admin)
+      tags:
+      - admin
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user detail (admin)
+      tags:
+      - admin
+  /api/v1/admin/user/manage:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Manage user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage user (admin)
+      tags:
+      - admin
+  /api/v1/admin/user/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search users (admin)
+      tags:
+      - admin
+  /api/v1/public/about:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Get about content
+      tags:
+      - public
+  /api/v1/public/assistants:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/assistants/{id}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/assistants/{id}/files:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/assistants/{id}/files/{fileId}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/audio/speech:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/audio/transcriptions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/audio/translations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/auth/challenge:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Challenge payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Wallet challenge (web3)
+      tags:
+      - public
+  /api/v1/public/auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout (web3)
+      tags:
+      - public
+  /api/v1/public/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Refresh token (web3)
+      tags:
+      - public
+  /api/v1/public/auth/verify:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Verify payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Wallet verify (web3)
+      tags:
+      - public
+  /api/v1/public/channel/models:
+    get:
+      parameters:
+      - description: Provider name
+        in: query
+        name: provider
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List channel models for UI
+      tags:
+      - public
+  /api/v1/public/chat/completions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/common/auth/challenge:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Challenge payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Wallet challenge (proto)
+      tags:
+      - public
+  /api/v1/public/common/auth/refreshToken:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Refresh token (proto)
+      tags:
+      - public
+  /api/v1/public/common/auth/verify:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Verify payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Wallet verify (proto)
+      tags:
+      - public
+  /api/v1/public/completions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/edits:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/embeddings:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/engines/{model}/embeddings:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/files:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/files/{id}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/files/{id}/content:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/fine_tuning/jobs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/fine_tuning/jobs/{id}:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/fine_tuning/jobs/{id}/cancel:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/fine_tuning/jobs/{id}/events:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/home_page_content:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Get home page content
+      tags:
+      - public
+  /api/v1/public/images/edits:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/images/generations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/images/variations:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/log/self:
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      - description: Log type
+        in: query
+        name: type
+        type: integer
+      - description: Start timestamp (unix)
+        in: query
+        name: start_timestamp
+        type: integer
+      - description: End timestamp (unix)
+        in: query
+        name: end_timestamp
+        type: integer
+      - description: Token name
+        in: query
+        name: token_name
+        type: string
+      - description: Model name
+        in: query
+        name: model_name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List user logs
+      tags:
+      - public
+  /api/v1/public/log/self/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search user logs
+      tags:
+      - public
+  /api/v1/public/log/self/stat:
+    get:
+      parameters:
+      - description: Log type
+        in: query
+        name: type
+        type: integer
+      - description: Start timestamp (unix)
+        in: query
+        name: start_timestamp
+        type: integer
+      - description: End timestamp (unix)
+        in: query
+        name: end_timestamp
+        type: integer
+      - description: Token name
+        in: query
+        name: token_name
+        type: string
+      - description: Model name
+        in: query
+        name: model_name
+        type: string
+      - description: Channel ID
+        in: query
+        name: channel
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Log stats for current user
+      tags:
+      - public
+  /api/v1/public/models:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List available OpenAI-compatible models
+      tags:
+      - public
+  /api/v1/public/models-all:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all models (non OpenAI-compatible)
+      tags:
+      - public
+  /api/v1/public/models/{model}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    get:
+      parameters:
+      - description: Model ID
+        in: path
+        name: model
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retrieve model detail (OpenAI compatible)
+      tags:
+      - public
+  /api/v1/public/moderations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: OpenAI-compatible request
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible relay
+      tags:
+      - public
+  /api/v1/public/notice:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Get system notice
+      tags:
+      - public
+  /api/v1/public/oauth/wallet/bind:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Wallet bind payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Bind wallet to current user
+      tags:
+      - public
+  /api/v1/public/oauth/wallet/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Wallet login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Wallet login (returns JWT)
+      tags:
+      - public
+  /api/v1/public/oauth/wallet/nonce:
+    get:
+      parameters:
+      - description: Wallet address
+        in: query
+        name: address
+        required: true
+        type: string
+      - description: Chain ID
+        in: query
+        name: chain_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Get wallet nonce
+      tags:
+      - public
+  /api/v1/public/profile:
+    get:
+      description: Accepts wallet JWT or UCAN token in Authorization header.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get public profile
+      tags:
+      - public
+  /api/v1/public/reset_password:
+    get:
+      parameters:
+      - description: Email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Send password reset email
+      tags:
+      - public
+  /api/v1/public/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Get service status
+      tags:
+      - public
+  /api/v1/public/threads:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/messages:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/messages/{messageId}:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/messages/{messageId}/files:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/messages/{messageId}/files/{filesId}:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs/{runsId}:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs/{runsId}/cancel:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs/{runsId}/steps:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs/{runsId}/steps/{stepId}:
+    get:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/threads/{id}/runs/{runsId}/submit_tool_outputs:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/docs.OpenAIErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: OpenAI-compatible endpoint not implemented
+      tags:
+      - public
+  /api/v1/public/token:
+    get:
+      parameters:
+      - description: Page index
+        in: query
+        name: p
+        type: integer
+      - description: Order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tokens
+      tags:
+      - public
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Token payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create token
+      tags:
+      - public
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Token update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      - description: Update status only if set
+        in: query
+        name: status_only
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update token
+      tags:
+      - public
+  /api/v1/public/token/{id}:
+    delete:
+      parameters:
+      - description: Token ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete token
+      tags:
+      - public
+    get:
+      parameters:
+      - description: Token ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get token by ID
+      tags:
+      - public
+  /api/v1/public/token/search:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search tokens
+      tags:
+      - public
+  /api/v1/public/user/aff:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get affiliate code
+      tags:
+      - public
+  /api/v1/public/user/available_models:
+    get:
+      parameters:
+      - description: Provider name
+        in: query
+        name: provider
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List available models for current user
+      tags:
+      - public
+  /api/v1/public/user/dashboard:
+    get:
+      parameters:
+      - description: Start timestamp (unix)
+        in: query
+        name: start_timestamp
+        type: integer
+      - description: End timestamp (unix)
+        in: query
+        name: end_timestamp
+        type: integer
+      - description: day|week|month|year
+        in: query
+        name: granularity
+        type: string
+      - description: Comma-separated model list
+        in: query
+        name: models
+        type: string
+      - description: Include meta info (1)
+        in: query
+        name: include_meta
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: User dashboard stats
+      tags:
+      - public
+  /api/v1/public/user/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Password login (session/cookie)
+      tags:
+      - public
+  /api/v1/public/user/logout:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Logout (session/cookie)
+      tags:
+      - public
+  /api/v1/public/user/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Register payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Register user (password)
+      tags:
+      - public
+  /api/v1/public/user/reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.PasswordResetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      summary: Reset password with email + token
+      tags:
+      - public
+  /api/v1/public/user/self:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete current user
+      tags:
+      - public
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - public
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Profile update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user
+      tags:
+      - public
+  /api/v1/public/user/token:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Generate access token for current user
+      tags:
+      - public
+  /api/v1/public/user/topup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Top up payload
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: User top up
+      tags:
+      - public
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

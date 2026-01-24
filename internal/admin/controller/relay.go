@@ -42,6 +42,26 @@ func relayHelper(c *gin.Context, relayMode int) *model.ErrorWithStatusCode {
 	return err
 }
 
+// Relay godoc
+// @Summary OpenAI-compatible relay
+// @Tags public
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body map[string]interface{} true "OpenAI-compatible request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} docs.OpenAIErrorResponse
+// @Failure 401 {object} docs.OpenAIErrorResponse
+// @Router /api/v1/public/completions [post]
+// @Router /api/v1/public/chat/completions [post]
+// @Router /api/v1/public/edits [post]
+// @Router /api/v1/public/images/generations [post]
+// @Router /api/v1/public/embeddings [post]
+// @Router /api/v1/public/engines/{model}/embeddings [post]
+// @Router /api/v1/public/audio/transcriptions [post]
+// @Router /api/v1/public/audio/translations [post]
+// @Router /api/v1/public/audio/speech [post]
+// @Router /api/v1/public/moderations [post]
 func Relay(c *gin.Context) {
 	ctx := c.Request.Context()
 	relayMode := relaymode.GetByPath(c.Request.URL.Path)
@@ -131,6 +151,51 @@ func processChannelRelayError(ctx context.Context, userId int, channelId int, ch
 	}
 }
 
+// RelayNotImplemented godoc
+// @Summary OpenAI-compatible endpoint not implemented
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Success 501 {object} docs.OpenAIErrorResponse
+// @Router /api/v1/public/images/edits [post]
+// @Router /api/v1/public/images/variations [post]
+// @Router /api/v1/public/files [get]
+// @Router /api/v1/public/files [post]
+// @Router /api/v1/public/files/{id} [delete]
+// @Router /api/v1/public/files/{id} [get]
+// @Router /api/v1/public/files/{id}/content [get]
+// @Router /api/v1/public/fine_tuning/jobs [post]
+// @Router /api/v1/public/fine_tuning/jobs [get]
+// @Router /api/v1/public/fine_tuning/jobs/{id} [get]
+// @Router /api/v1/public/fine_tuning/jobs/{id}/cancel [post]
+// @Router /api/v1/public/fine_tuning/jobs/{id}/events [get]
+// @Router /api/v1/public/models/{model} [delete]
+// @Router /api/v1/public/assistants [post]
+// @Router /api/v1/public/assistants [get]
+// @Router /api/v1/public/assistants/{id} [get]
+// @Router /api/v1/public/assistants/{id} [post]
+// @Router /api/v1/public/assistants/{id} [delete]
+// @Router /api/v1/public/assistants/{id}/files [post]
+// @Router /api/v1/public/assistants/{id}/files [get]
+// @Router /api/v1/public/assistants/{id}/files/{fileId} [get]
+// @Router /api/v1/public/assistants/{id}/files/{fileId} [delete]
+// @Router /api/v1/public/threads [post]
+// @Router /api/v1/public/threads/{id} [get]
+// @Router /api/v1/public/threads/{id} [post]
+// @Router /api/v1/public/threads/{id} [delete]
+// @Router /api/v1/public/threads/{id}/messages [post]
+// @Router /api/v1/public/threads/{id}/messages/{messageId} [get]
+// @Router /api/v1/public/threads/{id}/messages/{messageId} [post]
+// @Router /api/v1/public/threads/{id}/messages/{messageId}/files/{filesId} [get]
+// @Router /api/v1/public/threads/{id}/messages/{messageId}/files [get]
+// @Router /api/v1/public/threads/{id}/runs [post]
+// @Router /api/v1/public/threads/{id}/runs [get]
+// @Router /api/v1/public/threads/{id}/runs/{runsId} [get]
+// @Router /api/v1/public/threads/{id}/runs/{runsId} [post]
+// @Router /api/v1/public/threads/{id}/runs/{runsId}/submit_tool_outputs [post]
+// @Router /api/v1/public/threads/{id}/runs/{runsId}/cancel [post]
+// @Router /api/v1/public/threads/{id}/runs/{runsId}/steps/{stepId} [get]
+// @Router /api/v1/public/threads/{id}/runs/{runsId}/steps [get]
 func RelayNotImplemented(c *gin.Context) {
 	err := model.Error{
 		Message: "API not implemented",

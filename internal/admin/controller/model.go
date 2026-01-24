@@ -141,6 +141,15 @@ func init() {
 	}
 }
 
+// DashboardListModels godoc
+// @Summary List channel models for UI
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Param provider query string false "Provider name"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/public/channel/models [get]
 func DashboardListModels(c *gin.Context) {
 	// optional filter: provider (channel) name, case-insensitive
 	provider := strings.ToLower(strings.TrimSpace(c.Query("provider")))
@@ -192,6 +201,14 @@ func DashboardListModels(c *gin.Context) {
 	})
 }
 
+// ListAllModels godoc
+// @Summary List all models (non OpenAI-compatible)
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/public/models-all [get]
 func ListAllModels(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"object": "list",
@@ -199,6 +216,14 @@ func ListAllModels(c *gin.Context) {
 	})
 }
 
+// ListModels godoc
+// @Summary List available OpenAI-compatible models
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} docs.OpenAIErrorResponse
+// @Router /api/v1/public/models [get]
 func ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 	var availableModels []string
@@ -238,6 +263,15 @@ func ListModels(c *gin.Context) {
 	})
 }
 
+// RetrieveModel godoc
+// @Summary Retrieve model detail (OpenAI compatible)
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Param model path string true "Model ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} docs.OpenAIErrorResponse
+// @Router /api/v1/public/models/{model} [get]
 func RetrieveModel(c *gin.Context) {
 	modelId := c.Param("model")
 	if model, ok := modelsMap[modelId]; ok {
@@ -255,6 +289,15 @@ func RetrieveModel(c *gin.Context) {
 	}
 }
 
+// GetUserAvailableModels godoc
+// @Summary List available models for current user
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Param provider query string false "Provider name"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/public/user/available_models [get]
 func GetUserAvailableModels(c *gin.Context) {
 	ctx := c.Request.Context()
 	id := c.GetInt(ctxkey.Id)
