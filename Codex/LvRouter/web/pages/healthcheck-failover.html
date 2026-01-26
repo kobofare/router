@@ -18,11 +18,18 @@
   <main>
     <section id="graph-panel">
       <h2>一句话</h2>
-      <p>健康状态维护与回退/降级（待调研）。</p>
+      <p>错误触发禁用、指标熔断、定时测试三条通道共同维护健康。</p>
       <h2>关键入口</h2>
-      <p>待补充。</p>
-      <h2>备注</h2>
-      <p>补充时需写明路径 + 函数 + 行号范围。</p>
+      <ul>
+        <li>`internal/admin/controller/relay.go:130-137`</li>
+        <li>`internal/admin/monitor/manage.go:11-43`</li>
+        <li>`internal/admin/controller/channel/test.go:230-323`</li>
+      </ul>
+      <h2>证据入口</h2>
+      <ul>
+        <li><a href="../../md/evidence/R006_错误触发禁用与指标熔断.md">R006 错误/指标禁用</a></li>
+        <li><a href="../../md/evidence/R007_定时通道测试自动禁用启用.md">R007 定时测试</a></li>
+      </ul>
     </section>
   </main>
 </body>

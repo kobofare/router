@@ -4,44 +4,44 @@
       "id": "big_picture",
       "label": "全局总览",
       "slug": "big-picture",
-      "summary": "系统边界与术语（待调研）",
-      "entry": "待补充",
+      "summary": "入口/模块/术语全景（已定位主入口与核心模块）",
+      "entry": "cmd/router/main.go:1-6 → internal/app/app.go:28-119 (Run)",
       "md": "../md/01_big_picture.md",
-      "tags": ["MECE", "总览"]
+      "tags": ["MECE", "总览", "入口"]
     },
     {
       "id": "request_flow",
       "label": "请求流程",
       "slug": "request-flow",
-      "summary": "入站到返回的全链路（待调研）",
-      "entry": "待补充",
+      "summary": "TokenAuth → Distribute → Relay → Adaptor → 响应",
+      "entry": "internal/transport/http/router/relay.go:20-22; api.go:113-115",
       "md": "../md/02_request_flow.md",
-      "tags": ["流程", "入站"]
+      "tags": ["流程", "入站", "转发"]
     },
     {
       "id": "routing_rules",
       "label": "路由规则",
       "slug": "routing-rules",
-      "summary": "选择顺序与回退策略（待调研）",
-      "entry": "待补充",
+      "summary": "分组+模型选渠、优先级随机、失败重试降级",
+      "entry": "middleware/distributor.go:20-111; model/cache.go:228-255; admin/controller/relay.go:70-97",
       "md": "../md/03_routing_rules.md",
-      "tags": ["选择", "回退"]
+      "tags": ["选择", "回退", "重试"]
     },
     {
       "id": "provider_forward",
       "label": "上游转发",
       "slug": "provider-forward",
-      "summary": "协议/headers/timeout/retry（待调研）",
-      "entry": "待补充",
+      "summary": "Adaptor 转换请求并使用 HTTPClient 发送",
+      "entry": "relay/controller/text.go:25-86; relay/adaptor/common.go:22-52",
       "md": "../md/04_provider_forward.md",
-      "tags": ["转发", "协议"]
+      "tags": ["转发", "协议", "超时"]
     },
     {
       "id": "key_acl_quota",
       "label": "Key/权限/额度",
       "slug": "key-acl-quota",
-      "summary": "key 校验/ACL/限额（待调研）",
-      "entry": "待补充",
+      "summary": "JWT/UCAN/sk 选择顺序 + subnet/models 限制 + 预扣/后扣",
+      "entry": "middleware/auth.go:155-352; relay/controller/helper.go:68-160",
       "md": "../md/05_key_acl_quota.md",
       "tags": ["key", "ACL", "Quota"]
     },
@@ -49,17 +49,17 @@
       "id": "health_failover",
       "label": "健康探测/回退",
       "slug": "healthcheck-failover",
-      "summary": "健康状态维护与降级（待调研）",
-      "entry": "待补充",
+      "summary": "错误触发禁用 + 指标熔断 + 定时测试",
+      "entry": "admin/controller/relay.go:130-137; admin/monitor/manage.go:11-43; channel/test.go:230-323",
       "md": "../md/06_healthcheck_failover.md",
-      "tags": ["健康", "回退"]
+      "tags": ["健康", "熔断", "回退"]
     },
     {
       "id": "config_surface",
       "label": "配置面",
       "slug": "config-surface",
-      "summary": "配置文件/环境变量/热更新（待调研）",
-      "entry": "待补充",
+      "summary": "RetryTimes/RelayTimeout/Metric/CORS/测试频率等",
+      "entry": "common/config/config.go:104-180; middleware/cors.go:13-62",
       "md": "../md/07_config_surface.md",
       "tags": ["配置", "环境变量"]
     }

@@ -18,11 +18,19 @@
   <main>
     <section id="graph-panel">
       <h2>一句话</h2>
-      <p>key 校验、ACL 与额度判定（待调研）。</p>
+      <p>TokenAuth 处理 JWT/UCAN/sk，模型/网段做 ACL 限制，额度在转发前后扣减。</p>
       <h2>关键入口</h2>
-      <p>待补充。</p>
-      <h2>备注</h2>
-      <p>补充时需写明路径 + 函数 + 行号范围。</p>
+      <ul>
+        <li>`internal/transport/http/middleware/auth.go:155-352`</li>
+        <li>`internal/admin/repository/token/repository.go:53-67`</li>
+        <li>`internal/relay/controller/helper.go:68-160`</li>
+      </ul>
+      <h2>证据入口</h2>
+      <ul>
+        <li><a href="../../md/evidence/R008_令牌选择优先级_JWT_UCAN_SK.md">R008 令牌选择顺序</a></li>
+        <li><a href="../../md/evidence/R009_令牌模型与网段权限限制.md">R009 ACL 限制</a></li>
+        <li><a href="../../md/evidence/R011_默认Key选择_最早可用Token.md">R011 默认 key 选择</a></li>
+      </ul>
     </section>
   </main>
 </body>

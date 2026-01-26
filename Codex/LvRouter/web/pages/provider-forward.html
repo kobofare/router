@@ -18,11 +18,15 @@
   <main>
     <section id="graph-panel">
       <h2>一句话</h2>
-      <p>协议/headers/timeout/retry 等转发细节（待调研）。</p>
+      <p>Adaptor 负责协议转换与请求发送，HTTPClient 提供超时与代理能力。</p>
       <h2>关键入口</h2>
-      <p>待补充。</p>
-      <h2>备注</h2>
-      <p>补充时需写明路径 + 函数 + 行号范围。</p>
+      <ul>
+        <li>`internal/relay/controller/text.go:25-86`</li>
+        <li>`internal/relay/adaptor/common.go:22-52`</li>
+        <li>`common/client/init.go:35-55`</li>
+      </ul>
+      <h2>说明</h2>
+      <p>上游 key 由选渠阶段写入 Authorization（见 MD）。</p>
     </section>
   </main>
 </body>

@@ -18,11 +18,17 @@
   <main>
     <section id="graph-panel">
       <h2>一句话</h2>
-      <p>从入站到返回的全链路流程（待调研）。</p>
+      <p>请求经 TokenAuth 鉴权、Distribute 选渠后进入 Relay，再由 adaptor 转发到上游。</p>
       <h2>关键入口</h2>
-      <p>待补充。</p>
-      <h2>备注</h2>
-      <p>补充时需写明路径 + 函数 + 行号范围。</p>
+      <ul>
+        <li>`internal/transport/http/router/relay.go:20-22` (TokenAuth + Distribute)</li>
+        <li>`internal/transport/http/middleware/auth.go:155-352` (TokenAuth)</li>
+        <li>`internal/transport/http/middleware/distributor.go:20-111` (Distribute)</li>
+        <li>`internal/admin/controller/relay.go:51-97` (Relay)</li>
+        <li>`internal/relay/controller/text.go:25-86` (RelayTextHelper)</li>
+      </ul>
+      <h2>流程节点提示</h2>
+      <p>详细顺序与“默认 key/双 key 规则”见 MD。</p>
     </section>
   </main>
 </body>

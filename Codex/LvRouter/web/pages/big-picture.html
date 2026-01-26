@@ -18,11 +18,20 @@
   <main>
     <section id="graph-panel">
       <h2>一句话</h2>
-      <p>系统边界与术语的总览（待调研）。</p>
+      <p>Router 以 TokenAuth → Distribute → Relay 为主线，完成鉴权、选渠、上游转发与健康管控。</p>
       <h2>关键入口</h2>
-      <p>待补充。</p>
-      <h2>备注</h2>
-      <p>补充时需写明路径 + 函数 + 行号范围。</p>
+      <ul>
+        <li>`cmd/router/main.go:1-6` (main)</li>
+        <li>`internal/app/app.go:28-119` (Run)</li>
+        <li>`internal/transport/http/router/main.go:18-47` (SetRouter)</li>
+      </ul>
+      <h2>模块索引</h2>
+      <ul>
+        <li>鉴权/令牌：`internal/transport/http/middleware/auth.go:155-352`</li>
+        <li>选渠/路由：`internal/transport/http/middleware/distributor.go:20-111`</li>
+        <li>转发执行：`internal/admin/controller/relay.go:51-97`</li>
+        <li>健康监控：`internal/admin/monitor/manage.go:11-56`</li>
+      </ul>
     </section>
   </main>
 </body>
