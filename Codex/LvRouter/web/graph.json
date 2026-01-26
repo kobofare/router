@@ -1,0 +1,75 @@
+{
+  "nodes": [
+    {
+      "id": "big_picture",
+      "label": "全局总览",
+      "slug": "big-picture",
+      "summary": "系统边界与术语（待调研）",
+      "entry": "待补充",
+      "md": "../md/01_big_picture.md",
+      "tags": ["MECE", "总览"]
+    },
+    {
+      "id": "request_flow",
+      "label": "请求流程",
+      "slug": "request-flow",
+      "summary": "入站到返回的全链路（待调研）",
+      "entry": "待补充",
+      "md": "../md/02_request_flow.md",
+      "tags": ["流程", "入站"]
+    },
+    {
+      "id": "routing_rules",
+      "label": "路由规则",
+      "slug": "routing-rules",
+      "summary": "选择顺序与回退策略（待调研）",
+      "entry": "待补充",
+      "md": "../md/03_routing_rules.md",
+      "tags": ["选择", "回退"]
+    },
+    {
+      "id": "provider_forward",
+      "label": "上游转发",
+      "slug": "provider-forward",
+      "summary": "协议/headers/timeout/retry（待调研）",
+      "entry": "待补充",
+      "md": "../md/04_provider_forward.md",
+      "tags": ["转发", "协议"]
+    },
+    {
+      "id": "key_acl_quota",
+      "label": "Key/权限/额度",
+      "slug": "key-acl-quota",
+      "summary": "key 校验/ACL/限额（待调研）",
+      "entry": "待补充",
+      "md": "../md/05_key_acl_quota.md",
+      "tags": ["key", "ACL", "Quota"]
+    },
+    {
+      "id": "health_failover",
+      "label": "健康探测/回退",
+      "slug": "healthcheck-failover",
+      "summary": "健康状态维护与降级（待调研）",
+      "entry": "待补充",
+      "md": "../md/06_healthcheck_failover.md",
+      "tags": ["健康", "回退"]
+    },
+    {
+      "id": "config_surface",
+      "label": "配置面",
+      "slug": "config-surface",
+      "summary": "配置文件/环境变量/热更新（待调研）",
+      "entry": "待补充",
+      "md": "../md/07_config_surface.md",
+      "tags": ["配置", "环境变量"]
+    }
+  ],
+  "edges": [
+    { "from": "big_picture", "to": "request_flow", "label": "概览→流程" },
+    { "from": "request_flow", "to": "routing_rules", "label": "流程→路由" },
+    { "from": "routing_rules", "to": "provider_forward", "label": "路由→转发" },
+    { "from": "routing_rules", "to": "key_acl_quota", "label": "路由→权限" },
+    { "from": "routing_rules", "to": "health_failover", "label": "路由→健康" },
+    { "from": "request_flow", "to": "config_surface", "label": "流程→配置" }
+  ]
+}
