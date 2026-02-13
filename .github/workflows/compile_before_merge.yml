@@ -34,9 +34,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build backend
-        run: make build
-
       - name: Install frontend dependencies
         working-directory: web
         run: npm install
@@ -44,3 +41,8 @@ jobs:
       - name: Build frontend
         working-directory: web
         run: npm run build
+
+      - name: Build backend
+        run: |
+          mkdir -p build
+          go build -o build/router ./cmd/router
