@@ -1,31 +1,19 @@
-# Router 本次启动与公网接入全记录（指挥官视角）
+# Router 从零到公网可用的完整交付手册（指挥官视角）
 
-我以“部署总指挥 + 教练”的方式整理这份文档：你能一键复制执行，也能理解背后的原理与风险点。目标只有三条：
+我按“部署总指挥 + 教练”的方式编排：你能直接复制粘贴执行，也能理解每一步为什么这么做。目标只有三条：
 - 不影响同机其他服务
 - 强制连接同一套 PostgreSQL（禁止 SQLite）
 - 公网 `https://router.yeying.pub/` 可访问
 
 ---
 
-**Overview**
-
-本次实际落地结果（与现状一致）：
-- REPO_ROOT：`/root/code/router`
-- `.env`：写入 `SQL_DSN=postgres://...`
-- 本地端口：`13011`
-- systemd：`/etc/systemd/system/router.service`
-- Nginx：`/etc/nginx/conf.d/router.conf` 反代到 `127.0.0.1:13011`
-- 验证：日志出现 `openPostgreSQL` + `/api/status` 返回 `success:true`
-
----
-
-**Mermaid**
+**Architecture**
 
 ```mermaid
 flowchart LR
     User[Client / Browser] -->|HTTPS 443| Nginx[Nginx: router.yeying.pub]
     Nginx -->|proxy_pass 127.0.0.1:13011| Router[Router Service]
-    Router -->|SQL_DSN| PG[(PostgreSQL @ 51.75.133.235:5432)]
+    Router -->|SQL_DSN| PG[(PostgreSQL)]
 
     subgraph Host[Server Host]
         Nginx
@@ -35,36 +23,138 @@ flowchart LR
 
 ---
 
-**Commands**
+**Prereqs**
 
-这一段是“可直接复制粘贴执行”的最小操作链。你照做就能起，且不会踩到 SQLite。
+你从“全新机器 + 全新仓库”开始时，先保证基础工具齐全。
 
 ```bash
-# 0) 进入项目根目录
+# 基础工具与依赖
+apt-get update
+apt-get install -y git curl build-essential
+apt-get install -y postgresql-client
+
+# Go / Node / npm 需符合版本要求
+# Go 1.22+，Node 18+，npm
+
+go version
+node -v
+npm -v
+```
+
+如果你需要部署公网 HTTPS：
+```bash
+apt-get install -y nginx certbot python3-certbot-nginx
+nginx -v
+```
+
+---
+
+**Step 0: 非侵入式调研**
+
+不打扰其他服务的前提下，先扫清冲突与现存服务。
+
+```bash
+# 端口与服务占用
+ss -lntp
+systemctl list-units --type=service --no-pager
+ps aux
+
+docker ps
+```
+
+指挥官提示：
+- 目标端口建议从 `13011` 起步，避免与 80/443/3011 冲突。
+- 若 13011 被占用，顺延到 13012/13013，并保持 Nginx 反代一致。
+
+---
+
+**Step 1: 克隆仓库**
+
+从 GitHub 拉取最新源码：
+
+```bash
+cd /root/code
+
+git clone https://github.com/yeying-community/router.git
+cd /root/code/router
+```
+
+如果目录已存在，直接进入：
+```bash
+cd /root/code/router
+```
+
+---
+
+**Step 2: 写入 .env（核心）**
+
+`.env` 是强制走 PG 的唯一锚点，必须写对、必须位于 `WorkingDirectory` 下。
+
+```bash
 cd /root/code/router
 
-# 1) 写入 .env（密码请替换为真实值）
 cat > .env <<'EOF_ENV'
 SQL_DSN=postgres://router:***@51.75.133.235:5432/router?sslmode=disable
 EOF_ENV
+
 chmod 600 .env
+```
 
-# 2) 安装 PG 客户端，用于验证 DSN
-apt-get update && apt-get install -y postgresql-client
+参数解释：
+- `postgres://user:pass@host:port/db?sslmode=disable`
+- `sslmode=disable` 代表不启用 TLS，若你强制 TLS 则改成 `require` 或 `verify-full`
+- `.env` 权限必须 600，避免敏感信息泄露
 
-# 3) 验证 DSN 可连通（必须看到返回行）
+---
+
+**Step 3: 验证 PG 可连通（必须做）**
+
+```bash
+cd /root/code/router
 set -a; source .env; set +a
 psql "$SQL_DSN" -Atqc "select current_user, current_database(), inet_server_port();"
+```
 
-# 4) 构建前端（仓库无 package-lock，因此用 npm install）
+你必须看到类似输出：
+```
+router|router|5432
+```
+
+这一步是硬门槛：不通过就不要启动服务。
+
+---
+
+**Step 4: 构建前端（必须有 web/dist）**
+
+```bash
+cd /root/code/router
+
 npm install --prefix web
 npm run build --prefix web
+```
 
-# 5) 构建后端
+解释：
+- 本仓库没有 `package-lock.json`，因此 `npm ci` 会失败
+- `web/dist` 是 Go embed 所需资源，没有它编译必失败
+
+---
+
+**Step 5: 构建后端**
+
+```bash
+cd /root/code/router
+
 mkdir -p build
 GOFLAGS="" go build -o build/router ./cmd/router
+```
 
-# 6) systemd 服务（本次采用 13011，避免端口冲突）
+---
+
+**Step 6: systemd 服务（守护运行）**
+
+推荐 systemd，方便统一日志与进程守护。这里采用端口 `13011`。
+
+```bash
 cat > /etc/systemd/system/router.service <<'EOF_SERVICE'
 [Unit]
 Description=Router Local Service
@@ -85,123 +175,125 @@ EOF_SERVICE
 systemctl daemon-reload
 systemctl restart router
 systemctl status router --no-pager
-
-# 7) 若修改了 Nginx 配置，执行 reload
-nginx -t && systemctl reload nginx
 ```
 
----
-
-**Why**
-
-关键决策解释（理解原则，才不会踩坑）：
-- `WorkingDirectory=/root/code/router`：这是 .env 自动加载的关键点，目录不对就会回落 SQLite。
-- 端口 `13011`：避开 80/443/3011 等公共服务端口，最大化不干扰其他服务。
-- 先 `psql`：提前确认 DSN 可连通，比起服后再排错更安全、更快。
-- systemd：确保进程被守护并可用 `journalctl -u router` 统一查看日志。
+指挥官提示：
+- `WorkingDirectory` 必须是仓库根，否则 `.env` 不加载
+- `--port` 必须和 Nginx 反代端口一致
 
 ---
 
-**Build**
+**Step 7: Nginx 反代（公网可访问）**
 
-理解这两个关键点，构建就不会出错：
-- 前端构建产物是 `web/dist`，Go 通过 `embed` 打包，如果没有 `web/dist` 会直接编译失败。
-- 本仓库没有 `package-lock.json`，所以 `npm ci` 会报错，必须用 `npm install`。
+保证 `router.yeying.pub` 反代到 127.0.0.1:13011。
 
----
-
-**Service**
-
-systemd 关键字段说明：
-- `WorkingDirectory=/root/code/router`：保证 `.env` 自动加载
-- `ExecStart=/root/code/router/build/router --port 13011 --log-dir ./logs`：明确端口与日志位置
-- `Restart=on-failure`：异常退出自动拉起
-
-查看当前服务配置与状态：
 ```bash
-cat /etc/systemd/system/router.service
-systemctl status router --no-pager
-```
+cat > /etc/nginx/conf.d/router.conf <<'EOF_NGX'
+server {
+    server_name router.yeying.pub;
 
----
+    client_max_body_size 1000M;
+    client_body_timeout 300s;
+    client_body_buffer_size 128k;
 
-**Nginx**
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "no-referrer-when-downgrade";
 
-公网能否访问，取决于 Nginx 是否正确反代到服务端口。当前有效配置片段如下：
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:13011;
+    location / {
+        proxy_pass http://127.0.0.1:13011;
 
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
 
-    proxy_request_buffering off;
-    proxy_read_timeout 300s;
-    proxy_connect_timeout 300s;
-    proxy_send_timeout 300s;
+        proxy_request_buffering off;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
 
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/router.yeying.pub/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/router.yeying.pub/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
 }
+
+server {
+    if ($host = router.yeying.pub) {
+        return 301 https://$host$request_uri;
+    }
+
+    server_name router.yeying.pub;
+    listen 80;
+    return 404;
+}
+EOF_NGX
+
+nginx -t && systemctl reload nginx
 ```
 
-修改完成后执行：
+如证书不存在，先签发：
 ```bash
-nginx -t && systemctl reload nginx
+certbot --nginx -d router.yeying.pub
 ```
 
 ---
 
-**Verify**
-
-只认这两条硬验证：
+**Step 8: 验证（硬标准）**
 
 ```bash
-# 1) DB 类型必须是 PostgreSQL
+# 1) 日志必须出现 openPostgreSQL
 journalctl -u router --since 'today' --no-pager | rg "openPostgreSQL|openSQLite|openMySQL" -S
 
-# 2) 健康检查必须 success:true
+# 2) 本地健康检查
 curl -s http://127.0.0.1:13011/api/status
-```
 
-建议补充检查：
-```bash
-# 端口监听
-ss -lntp | rg ":13011"
-
-# 公网可达性
+# 3) 公网可达性
 curl -I https://router.yeying.pub
 ```
+
+只要出现 `openSQLite`，立即停下排查 `.env` 与 `WorkingDirectory`。
 
 ---
 
 **Troubleshoot**
 
-出现 `openSQLite` 或 `root/123456` 痕迹，立即停下并回查：
-- `.env` 是否在 `WorkingDirectory` 下
-- `router.service` 的 `WorkingDirectory` 是否写错
-- `SQL_DSN` 是否遗漏或拼错
-
-出现 502 或公网不可达：
-- `router.service` 的端口与 `router.conf` 的 `proxy_pass` 是否一致
-- `ss -lntp` 是否有监听
-- `nginx -t` 是否通过
-
-出现 `embed.go: ... web/dist` 报错：
-- 先执行 `npm run build --prefix web`，再重新 `go build`
+常见问题与对策：
+- `openSQLite` 或默认账户 `root/123456`：说明没加载 `.env`，检查 `WorkingDirectory` 与 `.env` 位置。
+- `embed.go: pattern web/dist/*: no matching files found`：先 `npm run build --prefix web` 再 `go build`。
+- `502 Bad Gateway`：Nginx 反代端口与 Router 监听端口不一致。
+- `nginx: bind() to 0.0.0.0:443 failed`：端口被占用，检查已有 Nginx 或其他服务。
 
 ---
 
-**Safety**
+**Security**
 
-安全纪律（请严格执行）：
-- `.env` 禁止提交 Git，权限保持 `600`
-- 文档与截图不要泄漏明文密码
-- 任何端口调整必须同时修改 Router 与 Nginx
+安全红线：
+- `.env` 不进 Git，权限保持 `600`
+- 文档与截图不输出明文密码
+- 端口变更必须同步修改 Router 与 Nginx
+
+---
+
+**SSH 端口转发**
+
+如果你只是想在本地浏览器访问：
+
+```bash
+ssh -L 13011:127.0.0.1:13011 root@<服务器IP或域名>
+
+curl -s http://127.0.0.1:13011/api/status
+```
 
 ---
 
