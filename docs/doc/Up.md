@@ -95,6 +95,7 @@ cd /root/code/router
 
 cat > .env <<'EOF_ENV'
 SQL_DSN=postgres://router:***@51.75.133.235:5432/router?sslmode=disable
+UCAN_AUD=did:web:router.yeying.pub
 EOF_ENV
 
 chmod 600 .env
@@ -103,6 +104,7 @@ chmod 600 .env
 参数解释：
 - `postgres://user:pass@host:port/db?sslmode=disable`
 - `sslmode=disable` 代表不启用 TLS，若你强制 TLS 则改成 `require` 或 `verify-full`
+- `UCAN_AUD=did:web:router.yeying.pub`：当端口不是默认 3011 时必须显式设置，避免 `UCAN audience mismatch`
 - `.env` 权限必须 600，避免敏感信息泄露
 
 ---
