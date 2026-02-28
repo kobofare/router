@@ -8,6 +8,7 @@ bin_src="$root_dir/build/router"
 env_template="$root_dir/.env.template"
 starter_src="$root_dir/scripts/starter.sh"
 remote_name="${PACKAGE_REMOTE:-origin}"
+auto_build="${AUTO_BUILD:-true}"
 tag_arg="${1:-}"
 
 usage() {
@@ -33,20 +34,8 @@ increment_patch_tag() {
   echo "v${major}.${minor}.$((patch + 1))"
 }
 
-resolve_web_build_dir() {
-  if [[ -d "$root_dir/web/build" ]]; then
-    echo "$root_dir/web/build"
-    return 0
-  fi
-  if [[ -d "$root_dir/web/dist" ]]; then
-    echo "$root_dir/web/dist"
-    return 0
-  fi
-  return 1
-}
-
 verify_artifacts() {
-  local web_build_dir="$1"
+  local web_build_dir="$root_dir/web/dist"
   if [[ ! -x "$bin_src" ]]; then
     echo "Missing binary: $bin_src" >&2
     echo "Build first: mkdir -p build && go build -o build/router ./cmd/router" >&2
@@ -65,6 +54,34 @@ verify_artifacts() {
     echo "Missing starter script: $starter_src" >&2
     exit 1
   fi
+}
+
+build_artifacts() {
+  if [[ "$auto_build" != "true" ]]; then
+    return 0
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "Missing npm command in PATH" >&2
+    exit 1
+  fi
+  if [[ ! -x "$root_dir/web/node_modules/.bin/vite" ]]; then
+    echo "Missing frontend builder (vite), installing dependencies..."
+    (cd "$root_dir" && npm install --prefix web)
+  fi
+  if [[ ! -x "$root_dir/web/node_modules/.bin/vite" ]]; then
+    echo "vite not found after dependency installation" >&2
+    exit 1
+  fi
+  echo "Building frontend static assets..."
+  (cd "$root_dir" && npm run build --prefix web)
+  if [[ ! -d "$root_dir/web/dist" ]]; then
+    echo "Missing frontend build for embed: $root_dir/web/dist" >&2
+    echo "Ensure frontend build outputs web/dist." >&2
+    exit 1
+  fi
+  echo "Building backend binary..."
+  mkdir -p "$root_dir/build"
+  (cd "$root_dir" && go build -o build/router ./cmd/router)
 }
 
 original_ref="$(git -C "$root_dir" symbolic-ref --quiet --short HEAD || true)"
@@ -98,6 +115,8 @@ if [[ -n "$tag_arg" ]]; then
     git -C "$root_dir" checkout -q "$target_tag"
     switched_ref=1
   fi
+
+  build_artifacts
 else
   if ! git -C "$root_dir" rev-parse -q --verify refs/heads/main >/dev/null; then
     echo "Missing local branch: main" >&2
@@ -132,6 +151,14 @@ else
     exit 1
   fi
 
+  current_head="$(git -C "$root_dir" rev-parse HEAD)"
+  if [[ "$current_head" != "$main_hash_full" ]]; then
+    git -C "$root_dir" checkout -q "$main_hash_full"
+    switched_ref=1
+  fi
+
+  build_artifacts
+
   git -C "$root_dir" tag "$target_tag" "$main_hash_full"
   if ! git -C "$root_dir" push "$remote_name" "$target_tag"; then
     git -C "$root_dir" tag -d "$target_tag" >/dev/null 2>&1 || true
@@ -139,8 +166,8 @@ else
     exit 1
   fi
 
-  current_head="$(git -C "$root_dir" rev-parse HEAD)"
-  if [[ "$current_head" != "$main_hash_full" ]]; then
+  current_ref="$(git -C "$root_dir" symbolic-ref --quiet --short HEAD || true)"
+  if [[ "$current_ref" != "$target_tag" ]]; then
     git -C "$root_dir" checkout -q "$target_tag"
     switched_ref=1
   fi
@@ -151,14 +178,14 @@ pkg_name="${project_name}-${target_tag}-${target_hash}"
 stage_dir="$out_dir/$pkg_name"
 archive_path="$out_dir/${pkg_name}.tar.gz"
 
-web_build_dir="$(resolve_web_build_dir || true)"
-if [[ -z "$web_build_dir" ]]; then
-  echo "Missing frontend build: $root_dir/web/build or $root_dir/web/dist" >&2
+web_build_dir="$root_dir/web/dist"
+if [[ ! -d "$web_build_dir" ]]; then
+  echo "Missing frontend build: $root_dir/web/dist" >&2
   echo "Build first: npm run build --prefix web" >&2
   exit 1
 fi
 
-verify_artifacts "$web_build_dir"
+verify_artifacts
 
 mkdir -p "$out_dir"
 rm -rf "$stage_dir"
