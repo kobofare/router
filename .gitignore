@@ -4,7 +4,7 @@ upload
 *.exe
 *.db
 build
-output
+output/
 *.db-journal
 logs
 data
