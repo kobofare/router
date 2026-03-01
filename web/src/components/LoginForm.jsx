@@ -21,7 +21,7 @@ const LoginForm = () => {
   const navigate = useNavigate();
   const logo = getLogo();
   const loginBannerText =
-    '帮助您更好的管理、分发和路由各大模型厂商接口';
+    '帮助您更好的管理、分发、路由和使用各大模型厂商接口服务';
   const storedStatus = (() => {
     const raw = localStorage.getItem('status');
     if (!raw) {
@@ -93,13 +93,10 @@ const LoginForm = () => {
       if (success) {
         userDispatch({ type: 'login', payload: data });
         localStorage.setItem('user', JSON.stringify(data));
+        navigate('/token');
+        showSuccess(t('messages.success.login'));
         if (username === 'root' && password === '123456') {
-          navigate('/user/edit');
-          showSuccess(t('messages.success.login'));
           showWarning(t('messages.error.root_password'));
-        } else {
-          navigate('/token');
-          showSuccess(t('messages.success.login'));
         }
       } else {
         showError(message);
