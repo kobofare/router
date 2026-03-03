@@ -164,7 +164,14 @@
         "gemini": "Gemini",
         "claude": "Claude",
         "deepseek": "DeepSeek",
-        "qwen": "Qwen"
+        "qwen": "Qwen",
+        "xai": "xAI Grok",
+        "mistral": "Mistral",
+        "cohere": "Cohere",
+        "zhipu": "Zhipu GLM",
+        "hunyuan": "Tencent Hunyuan",
+        "volcengine": "Volcengine Doubao",
+        "minimax": "MiniMax"
       },
       "name": "Name",
       "name_placeholder": "Please enter name",

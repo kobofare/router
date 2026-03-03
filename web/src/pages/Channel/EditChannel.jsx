@@ -83,14 +83,42 @@ const normalizeModelProviderSelection = (provider) => {
     case 'claude':
     case 'anthropic':
       return 'anthropic';
+    case 'xai':
+    case 'grok':
+      return 'xai';
+    case 'mistral':
+      return 'mistral';
+    case 'cohere':
+    case 'command-r':
+    case 'commandr':
+      return 'cohere';
     case 'deepseek':
       return 'deepseek';
     case 'qwen':
     case 'qwq':
     case 'qvq':
       return 'qwen';
+    case 'zhipu':
+    case 'glm':
+    case 'bigmodel':
+      return 'zhipu';
+    case 'hunyuan':
+    case 'tencent':
+      return 'hunyuan';
+    case 'volc':
+    case 'volcengine':
+    case 'doubao':
+    case 'ark':
+      return 'volcengine';
+    case 'minimax':
+    case 'abab':
+      return 'minimax';
     default:
       if (trimmed === '千问') return 'qwen';
+      if (trimmed === '智谱') return 'zhipu';
+      if (trimmed === '腾讯' || trimmed === '混元') return 'hunyuan';
+      if (trimmed === '火山' || trimmed === '豆包' || trimmed === '字节')
+        return 'volcengine';
       return lower;
   }
 };
@@ -110,12 +138,20 @@ const resolveModelProvider = (modelName) => {
     case lower.startsWith('gpt-'):
     case lower.startsWith('o1'):
     case lower.startsWith('o3'):
+    case lower.startsWith('o4'):
     case lower.startsWith('chatgpt-'):
       return 'openai';
     case lower.startsWith('claude-'):
       return 'anthropic';
     case lower.startsWith('gemini-'):
       return 'google';
+    case lower.startsWith('grok-'):
+      return 'xai';
+    case lower.startsWith('mistral-'):
+      return 'mistral';
+    case lower.startsWith('command-r'):
+    case lower.startsWith('cohere-'):
+      return 'cohere';
     case lower.startsWith('deepseek-'):
       return 'deepseek';
     case lower.startsWith('qwen-'):
@@ -125,6 +161,14 @@ const resolveModelProvider = (modelName) => {
     case lower.startsWith('glm-'):
     case lower.startsWith('cogview-'):
       return 'zhipu';
+    case lower.startsWith('hunyuan-'):
+      return 'hunyuan';
+    case lower.startsWith('doubao-'):
+    case lower.startsWith('ark-'):
+      return 'volcengine';
+    case lower.startsWith('abab'):
+    case lower.startsWith('minimax-'):
+      return 'minimax';
     case lower.startsWith('ernie-'):
       return 'baidu';
     default:
@@ -216,6 +260,41 @@ const EditChannel = () => {
       key: 'qwen',
       text: t('channel.edit.model_provider_options.qwen'),
       value: 'qwen',
+    },
+    {
+      key: 'xai',
+      text: t('channel.edit.model_provider_options.xai'),
+      value: 'xai',
+    },
+    {
+      key: 'mistral',
+      text: t('channel.edit.model_provider_options.mistral'),
+      value: 'mistral',
+    },
+    {
+      key: 'cohere',
+      text: t('channel.edit.model_provider_options.cohere'),
+      value: 'cohere',
+    },
+    {
+      key: 'zhipu',
+      text: t('channel.edit.model_provider_options.zhipu'),
+      value: 'zhipu',
+    },
+    {
+      key: 'hunyuan',
+      text: t('channel.edit.model_provider_options.hunyuan'),
+      value: 'hunyuan',
+    },
+    {
+      key: 'volcengine',
+      text: t('channel.edit.model_provider_options.volcengine'),
+      value: 'volcengine',
+    },
+    {
+      key: 'minimax',
+      text: t('channel.edit.model_provider_options.minimax'),
+      value: 'minimax',
     },
   ];
   const handleInputChange = (e, { name, value }) => {

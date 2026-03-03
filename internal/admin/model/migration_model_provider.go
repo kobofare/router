@@ -24,12 +24,86 @@ type modelProviderCatalogMigrationItem struct {
 	UpdatedAt int64    `json:"updated_at,omitempty"`
 }
 
-var defaultProviderBaseURLs = map[string]string{
-	"openai":    "https://api.openai.com",
-	"google":    "https://generativelanguage.googleapis.com/v1beta/openai",
-	"anthropic": "https://api.anthropic.com",
-	"deepseek":  "https://api.deepseek.com",
-	"qwen":      "https://dashscope.aliyuncs.com/compatible-mode",
+type modelProviderSeed struct {
+	Provider string
+	Name     string
+	BaseURL  string
+	Models   []string
+}
+
+var mainstreamProviderSeeds = []modelProviderSeed{
+	{
+		Provider: "anthropic",
+		Name:     "Anthropic Claude",
+		BaseURL:  "https://api.anthropic.com",
+		Models:   []string{"claude-opus-4-1", "claude-sonnet-4-5", "claude-3-7-sonnet-latest"},
+	},
+	{
+		Provider: "cohere",
+		Name:     "Cohere",
+		BaseURL:  "https://api.cohere.com/compatibility/v1",
+		Models:   []string{"command-r-plus", "command-r"},
+	},
+	{
+		Provider: "deepseek",
+		Name:     "DeepSeek",
+		BaseURL:  "https://api.deepseek.com",
+		Models:   []string{"deepseek-chat", "deepseek-reasoner"},
+	},
+	{
+		Provider: "google",
+		Name:     "Google Gemini",
+		BaseURL:  "https://generativelanguage.googleapis.com/v1beta/openai",
+		Models:   []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"},
+	},
+	{
+		Provider: "hunyuan",
+		Name:     "Tencent Hunyuan",
+		BaseURL:  "https://api.hunyuan.cloud.tencent.com/v1",
+		Models:   []string{"hunyuan-large", "hunyuan-turbo", "hunyuan-lite"},
+	},
+	{
+		Provider: "minimax",
+		Name:     "MiniMax",
+		BaseURL:  "https://api.minimax.chat/v1",
+		Models:   []string{"minimax-m1", "abab6.5s-chat"},
+	},
+	{
+		Provider: "mistral",
+		Name:     "Mistral",
+		BaseURL:  "https://api.mistral.ai",
+		Models:   []string{"mistral-large-latest", "mistral-small-latest"},
+	},
+	{
+		Provider: "openai",
+		Name:     "OpenAI",
+		BaseURL:  "https://api.openai.com",
+		Models:   []string{"gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini", "o3", "o4-mini"},
+	},
+	{
+		Provider: "qwen",
+		Name:     "Qwen",
+		BaseURL:  "https://dashscope.aliyuncs.com/compatible-mode",
+		Models:   []string{"qwen-max", "qwen-plus", "qwen-turbo"},
+	},
+	{
+		Provider: "volcengine",
+		Name:     "Volcengine Doubao",
+		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+		Models:   []string{"doubao-1.5-pro-32k", "doubao-1.5-lite-32k"},
+	},
+	{
+		Provider: "xai",
+		Name:     "xAI Grok",
+		BaseURL:  "https://api.x.ai",
+		Models:   []string{"grok-4", "grok-3", "grok-3-mini"},
+	},
+	{
+		Provider: "zhipu",
+		Name:     "Zhipu GLM",
+		BaseURL:  "https://open.bigmodel.cn/api/paas/v4",
+		Models:   []string{"glm-4-plus", "glm-4-air", "glm-4-flash"},
+	},
 }
 
 func runModelProviderMigrations() error {
@@ -169,50 +243,27 @@ func ensureModelProviderCatalogOption() error {
 	return nil
 }
 
-func buildDefaultModelProviderCatalogRaw() (string, error) {
-	seedProviders := []string{"openai", "google", "anthropic", "deepseek", "qwen"}
-	providerSet := make(map[string]map[string]struct{}, len(seedProviders))
-	for _, provider := range seedProviders {
-		providerSet[provider] = make(map[string]struct{})
-	}
-
-	channels := make([]Channel, 0)
-	if err := DB.Select("models").Find(&channels).Error; err != nil {
-		return "", err
-	}
-	for _, channel := range channels {
-		models := strings.Split(channel.Models, ",")
-		for _, modelName := range models {
+func buildMainstreamModelProviderCatalog(now int64) []modelProviderCatalogMigrationItem {
+	items := make([]modelProviderCatalogMigrationItem, 0, len(mainstreamProviderSeeds))
+	for _, seed := range mainstreamProviderSeeds {
+		modelSet := make(map[string]struct{}, len(seed.Models))
+		for _, modelName := range seed.Models {
 			name := strings.TrimSpace(modelName)
 			if name == "" {
 				continue
 			}
-			provider := commonutils.NormalizeModelProvider(commonutils.ResolveModelProvider(name))
-			if provider == "" || provider == "unknown" {
-				continue
-			}
-			if providerSet[provider] == nil {
-				providerSet[provider] = make(map[string]struct{})
-			}
-			providerSet[provider][name] = struct{}{}
+			modelSet[name] = struct{}{}
 		}
-	}
-	items := make([]modelProviderCatalogMigrationItem, 0, len(providerSet))
-	now := helper.GetTimestamp()
-	for provider, modelSet := range providerSet {
 		models := make([]string, 0, len(modelSet))
 		for modelName := range modelSet {
-			if modelName == "" {
-				continue
-			}
 			models = append(models, modelName)
 		}
 		sort.Strings(models)
 		items = append(items, modelProviderCatalogMigrationItem{
-			Provider:  provider,
-			Name:      provider,
+			Provider:  seed.Provider,
+			Name:      seed.Name,
 			Models:    models,
-			BaseURL:   defaultProviderBaseURLs[provider],
+			BaseURL:   seed.BaseURL,
 			Source:    "default",
 			UpdatedAt: now,
 		})
@@ -220,6 +271,11 @@ func buildDefaultModelProviderCatalogRaw() (string, error) {
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Provider < items[j].Provider
 	})
+	return items
+}
+
+func buildDefaultModelProviderCatalogRaw() (string, error) {
+	items := buildMainstreamModelProviderCatalog(helper.GetTimestamp())
 	raw, err := json.Marshal(items)
 	return string(raw), err
 }
@@ -317,13 +373,89 @@ func normalizeModelProviderCatalogRaw(raw string) (string, error) {
 		indexByProvider[provider] = len(normalized)
 		normalized = append(normalized, entry)
 	}
-	sort.Slice(normalized, func(i, j int) bool {
-		return normalized[i].Provider < normalized[j].Provider
-	})
+	normalized = reconcileWithMainstreamDefaults(normalized)
 
 	normalizedRaw, err := json.Marshal(normalized)
 	if err != nil {
 		return "", err
 	}
 	return string(normalizedRaw), nil
+}
+
+func reconcileWithMainstreamDefaults(items []modelProviderCatalogMigrationItem) []modelProviderCatalogMigrationItem {
+	seeded := buildMainstreamModelProviderCatalog(helper.GetTimestamp())
+	seedByProvider := make(map[string]modelProviderCatalogMigrationItem, len(seeded))
+	for _, item := range seeded {
+		seedByProvider[item.Provider] = item
+	}
+
+	result := make(map[string]modelProviderCatalogMigrationItem, len(items)+len(seeded))
+	for _, item := range seeded {
+		result[item.Provider] = item
+	}
+
+	for _, item := range items {
+		provider := commonutils.NormalizeModelProvider(item.Provider)
+		if provider == "" {
+			continue
+		}
+		item.Provider = provider
+		if seededItem, ok := seedByProvider[provider]; ok {
+			merged := seededItem
+			if strings.TrimSpace(item.Name) != "" && item.Name != provider {
+				merged.Name = strings.TrimSpace(item.Name)
+			}
+			if strings.TrimSpace(item.BaseURL) != "" {
+				merged.BaseURL = strings.TrimSpace(item.BaseURL)
+			}
+			if strings.TrimSpace(item.APIKey) != "" {
+				merged.APIKey = strings.TrimSpace(item.APIKey)
+			}
+			if item.UpdatedAt > 0 {
+				merged.UpdatedAt = item.UpdatedAt
+			}
+			if item.Source != "default" {
+				if len(item.Models) > 0 {
+					merged.Models = item.Models
+				}
+				merged.Source = item.Source
+			}
+			result[provider] = merged
+			continue
+		}
+
+		// Drop legacy default providers outside the curated mainstream set.
+		if item.Source == "default" {
+			continue
+		}
+		result[provider] = item
+	}
+
+	mergedItems := make([]modelProviderCatalogMigrationItem, 0, len(result))
+	for _, item := range result {
+		modelSet := make(map[string]struct{}, len(item.Models))
+		for _, modelName := range item.Models {
+			name := strings.TrimSpace(modelName)
+			if name == "" {
+				continue
+			}
+			modelSet[name] = struct{}{}
+		}
+		item.Models = make([]string, 0, len(modelSet))
+		for modelName := range modelSet {
+			item.Models = append(item.Models, modelName)
+		}
+		sort.Strings(item.Models)
+		if item.Name == "" {
+			item.Name = item.Provider
+		}
+		if item.Source == "" {
+			item.Source = "manual"
+		}
+		mergedItems = append(mergedItems, item)
+	}
+	sort.Slice(mergedItems, func(i, j int) bool {
+		return mergedItems[i].Provider < mergedItems[j].Provider
+	})
+	return mergedItems
 }

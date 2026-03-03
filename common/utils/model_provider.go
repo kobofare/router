@@ -16,10 +16,24 @@ func NormalizeModelProvider(provider string) string {
 		return "google"
 	case "claude", "anthropic":
 		return "anthropic"
+	case "xai", "grok":
+		return "xai"
+	case "mistral":
+		return "mistral"
+	case "cohere", "command-r", "commandr":
+		return "cohere"
 	case "deepseek":
 		return "deepseek"
 	case "qwen", "qwq", "qvq", "千问":
 		return "qwen"
+	case "zhipu", "glm", "智谱", "bigmodel":
+		return "zhipu"
+	case "hunyuan", "tencent", "腾讯", "混元":
+		return "hunyuan"
+	case "volc", "volcengine", "doubao", "ark", "火山", "豆包", "字节":
+		return "volcengine"
+	case "minimax", "abab":
+		return "minimax"
 	default:
 		return lower
 	}
@@ -44,12 +58,20 @@ func ResolveModelProvider(modelName string) string {
 	case strings.HasPrefix(lower, "gpt-"),
 		strings.HasPrefix(lower, "o1"),
 		strings.HasPrefix(lower, "o3"),
+		strings.HasPrefix(lower, "o4"),
 		strings.HasPrefix(lower, "chatgpt-"):
 		return "openai"
 	case strings.HasPrefix(lower, "claude-"):
 		return "anthropic"
 	case strings.HasPrefix(lower, "gemini-"):
 		return "google"
+	case strings.HasPrefix(lower, "grok-"):
+		return "xai"
+	case strings.HasPrefix(lower, "mistral-"):
+		return "mistral"
+	case strings.HasPrefix(lower, "command-r"),
+		strings.HasPrefix(lower, "cohere-"):
+		return "cohere"
 	case strings.HasPrefix(lower, "deepseek-"):
 		return "deepseek"
 	case strings.HasPrefix(lower, "qwen-"),
@@ -59,6 +81,14 @@ func ResolveModelProvider(modelName string) string {
 	case strings.HasPrefix(lower, "glm-"),
 		strings.HasPrefix(lower, "cogview-"):
 		return "zhipu"
+	case strings.HasPrefix(lower, "hunyuan-"):
+		return "hunyuan"
+	case strings.HasPrefix(lower, "doubao-"),
+		strings.HasPrefix(lower, "ark-"):
+		return "volcengine"
+	case strings.HasPrefix(lower, "abab"),
+		strings.HasPrefix(lower, "minimax-"):
+		return "minimax"
 	case strings.HasPrefix(lower, "ernie-"):
 		return "baidu"
 	default:
@@ -86,12 +116,34 @@ func ResolveOwnedByProvider(ownedBy string) string {
 	case strings.Contains(value, "google"),
 		strings.Contains(value, "gemini"):
 		return "google"
+	case strings.Contains(value, "xai"),
+		strings.Contains(value, "grok"):
+		return "xai"
+	case strings.Contains(value, "mistral"):
+		return "mistral"
+	case strings.Contains(value, "cohere"),
+		strings.Contains(value, "command-r"):
+		return "cohere"
 	case strings.Contains(value, "deepseek"):
 		return "deepseek"
 	case strings.Contains(value, "qwen"),
 		strings.Contains(value, "qwq"),
 		strings.Contains(value, "qvq"):
 		return "qwen"
+	case strings.Contains(value, "zhipu"),
+		strings.Contains(value, "bigmodel"),
+		strings.Contains(value, "glm"):
+		return "zhipu"
+	case strings.Contains(value, "hunyuan"),
+		strings.Contains(value, "tencent"):
+		return "hunyuan"
+	case strings.Contains(value, "volc"),
+		strings.Contains(value, "doubao"),
+		strings.Contains(value, "ark"):
+		return "volcengine"
+	case strings.Contains(value, "minimax"),
+		strings.Contains(value, "abab"):
+		return "minimax"
 	default:
 		return value
 	}

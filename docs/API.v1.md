@@ -203,7 +203,7 @@ Authorization: Bearer <JWT>
   "config": {}
 }
 ```
-- `model_provider` 可选，支持 `openai/gpt`、`google/gemini`、`anthropic/claude`、`deepseek`、`qwen/千问` 等别名；设置后服务端会按供应商过滤返回模型。
+- `model_provider` 可选，支持以下主流供应商别名：`openai/gpt`、`google/gemini`、`anthropic/claude`、`xai/grok`、`mistral`、`cohere`、`qwen/千问`、`deepseek`、`zhipu/glm`、`hunyuan/腾讯/混元`、`volcengine/doubao/ark`、`minimax/abab`；设置后服务端会按供应商过滤返回模型。
 - 响应体：
 ```json
 {
@@ -214,10 +214,12 @@ Authorization: Bearer <JWT>
 ```
 
 ### 2.1) 模型供应商管理
-- `GET  /api/v1/admin/model-provider`（读取模型供应商目录，返回“系统默认 + 已保存配置”合并结果）
+- `GET  /api/v1/admin/model-provider`（读取数据库中的模型供应商目录）
 - `PUT  /api/v1/admin/model-provider`（保存模型供应商目录）
-- `GET  /api/v1/admin/model-provider/defaults`（读取系统内置默认模型列表并按供应商聚合）
+- `GET  /api/v1/admin/model-provider/defaults`（读取系统预置的 12 家主流供应商默认目录）
 - `POST /api/v1/admin/model-provider/fetch`（通过供应商 OpenAI 兼容 API 拉取模型并按供应商过滤）
+
+说明：服务启动时 migration 会自动确保 `ModelProviderCatalog` 已写入数据库，并补齐预置的 12 家主流供应商。
 
 #### /api/v1/admin/model-provider
 用于读取/保存供应商模型目录（可手动编辑）。
@@ -247,7 +249,7 @@ Authorization: Bearer <JWT>
   "key": "sk-***"
 }
 ```
-- `provider` 必填，支持 `openai/gpt`、`google/gemini`、`anthropic/claude`、`deepseek`、`qwen/千问` 等别名。
+- `provider` 必填，支持以下主流供应商别名：`openai/gpt`、`google/gemini`、`anthropic/claude`、`xai/grok`、`mistral`、`cohere`、`qwen/千问`、`deepseek`、`zhipu/glm`、`hunyuan/腾讯/混元`、`volcengine/doubao/ark`、`minimax/abab`。
 - `base_url` 可选，若不传则按优先级使用：已保存供应商 Base URL → 官方默认地址。
 - `key` 可选，若不传则使用已保存供应商 `api_key`。
 

@@ -13,9 +13,6 @@ import (
 	"github.com/yeying-community/router/common/helper"
 	commonutils "github.com/yeying-community/router/common/utils"
 	"github.com/yeying-community/router/internal/admin/model"
-	relay "github.com/yeying-community/router/internal/relay"
-	"github.com/yeying-community/router/internal/relay/channeltype"
-	"github.com/yeying-community/router/internal/relay/meta"
 )
 
 const modelProviderCatalogOptionKey = "ModelProviderCatalog"
@@ -40,12 +37,101 @@ type modelProviderFetchRequest struct {
 	BaseURL  string `json:"base_url"`
 }
 
+type modelProviderSeed struct {
+	Provider string
+	Name     string
+	BaseURL  string
+	Models   []string
+}
+
+var mainstreamProviderSeeds = []modelProviderSeed{
+	{
+		Provider: "anthropic",
+		Name:     "Anthropic Claude",
+		BaseURL:  "https://api.anthropic.com",
+		Models:   []string{"claude-opus-4-1", "claude-sonnet-4-5", "claude-3-7-sonnet-latest"},
+	},
+	{
+		Provider: "cohere",
+		Name:     "Cohere",
+		BaseURL:  "https://api.cohere.com/compatibility/v1",
+		Models:   []string{"command-r-plus", "command-r"},
+	},
+	{
+		Provider: "deepseek",
+		Name:     "DeepSeek",
+		BaseURL:  "https://api.deepseek.com",
+		Models:   []string{"deepseek-chat", "deepseek-reasoner"},
+	},
+	{
+		Provider: "google",
+		Name:     "Google Gemini",
+		BaseURL:  "https://generativelanguage.googleapis.com/v1beta/openai",
+		Models:   []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"},
+	},
+	{
+		Provider: "hunyuan",
+		Name:     "Tencent Hunyuan",
+		BaseURL:  "https://api.hunyuan.cloud.tencent.com/v1",
+		Models:   []string{"hunyuan-large", "hunyuan-turbo", "hunyuan-lite"},
+	},
+	{
+		Provider: "minimax",
+		Name:     "MiniMax",
+		BaseURL:  "https://api.minimax.chat/v1",
+		Models:   []string{"minimax-m1", "abab6.5s-chat"},
+	},
+	{
+		Provider: "mistral",
+		Name:     "Mistral",
+		BaseURL:  "https://api.mistral.ai",
+		Models:   []string{"mistral-large-latest", "mistral-small-latest"},
+	},
+	{
+		Provider: "openai",
+		Name:     "OpenAI",
+		BaseURL:  "https://api.openai.com",
+		Models:   []string{"gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini", "o3", "o4-mini"},
+	},
+	{
+		Provider: "qwen",
+		Name:     "Qwen",
+		BaseURL:  "https://dashscope.aliyuncs.com/compatible-mode",
+		Models:   []string{"qwen-max", "qwen-plus", "qwen-turbo"},
+	},
+	{
+		Provider: "volcengine",
+		Name:     "Volcengine Doubao",
+		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+		Models:   []string{"doubao-1.5-pro-32k", "doubao-1.5-lite-32k"},
+	},
+	{
+		Provider: "xai",
+		Name:     "xAI Grok",
+		BaseURL:  "https://api.x.ai",
+		Models:   []string{"grok-4", "grok-3", "grok-3-mini"},
+	},
+	{
+		Provider: "zhipu",
+		Name:     "Zhipu GLM",
+		BaseURL:  "https://open.bigmodel.cn/api/paas/v4",
+		Models:   []string{"glm-4-plus", "glm-4-air", "glm-4-flash"},
+	},
+}
+
 var providerDefaultBaseURLs = map[string]string{
-	"openai":    "https://api.openai.com",
-	"google":    "https://generativelanguage.googleapis.com/v1beta/openai",
-	"anthropic": "https://api.anthropic.com",
-	"deepseek":  "https://api.deepseek.com",
-	"qwen":      "https://dashscope.aliyuncs.com/compatible-mode",
+	"openai":     "https://api.openai.com",
+	"google":     "https://generativelanguage.googleapis.com/v1beta/openai",
+	"anthropic":  "https://api.anthropic.com",
+	"xai":        "https://api.x.ai",
+	"mistral":    "https://api.mistral.ai",
+	"cohere":     "https://api.cohere.com/compatibility/v1",
+	"deepseek":   "https://api.deepseek.com",
+	"qwen":       "https://dashscope.aliyuncs.com/compatible-mode",
+	"zhipu":      "https://open.bigmodel.cn/api/paas/v4",
+	"hunyuan":    "https://api.hunyuan.cloud.tencent.com/v1",
+	"volcengine": "https://ark.cn-beijing.volces.com/api/v3",
+	"minimax":    "https://api.minimax.chat/v1",
 }
 
 func normalizeAndSortModels(models []string) []string {
@@ -170,39 +256,15 @@ func saveModelProviderCatalog(items []modelProviderCatalogItem) ([]modelProvider
 }
 
 func buildDefaultModelProviderCatalog() []modelProviderCatalogItem {
-	providerSet := make(map[string]map[string]struct{})
-	for channelType := 1; channelType < channeltype.Dummy; channelType++ {
-		adaptor := relay.GetAdaptor(channeltype.ToAPIType(channelType))
-		if adaptor == nil {
-			continue
-		}
-		metaObj := &meta.Meta{ChannelType: channelType}
-		adaptor.Init(metaObj)
-		models := adaptor.GetModelList()
-		for _, modelName := range models {
-			provider := commonutils.ResolveModelProvider(modelName)
-			if provider == "" || provider == "unknown" {
-				continue
-			}
-			if providerSet[provider] == nil {
-				providerSet[provider] = make(map[string]struct{})
-			}
-			providerSet[provider][modelName] = struct{}{}
-		}
-	}
-	entries := make([]modelProviderCatalogItem, 0, len(providerSet))
+	entries := make([]modelProviderCatalogItem, 0, len(mainstreamProviderSeeds))
 	now := helper.GetTimestamp()
-	for provider, models := range providerSet {
-		list := make([]string, 0, len(models))
-		for modelName := range models {
-			list = append(list, modelName)
-		}
-		sort.Strings(list)
+	for _, seed := range mainstreamProviderSeeds {
+		list := normalizeAndSortModels(seed.Models)
 		entries = append(entries, modelProviderCatalogItem{
-			Provider:  provider,
-			Name:      provider,
+			Provider:  seed.Provider,
+			Name:      seed.Name,
 			Models:    list,
-			BaseURL:   providerDefaultBaseURLs[provider],
+			BaseURL:   seed.BaseURL,
 			Source:    "default",
 			UpdatedAt: now,
 		})
@@ -230,7 +292,6 @@ func GetModelProviders(c *gin.Context) {
 		})
 		return
 	}
-	items = normalizeModelProviderCatalog(append(buildDefaultModelProviderCatalog(), items...))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -302,7 +363,7 @@ func UpdateModelProviders(c *gin.Context) {
 }
 
 // GetDefaultModelProviders godoc
-// @Summary Get default model providers from built-in model lists (admin)
+// @Summary Get default mainstream model provider catalog (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Produce json

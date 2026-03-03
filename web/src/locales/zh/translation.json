@@ -164,7 +164,14 @@
         "gemini": "Gemini",
         "claude": "Claude",
         "deepseek": "DeepSeek",
-        "qwen": "千问"
+        "qwen": "千问",
+        "xai": "xAI Grok",
+        "mistral": "Mistral",
+        "cohere": "Cohere",
+        "zhipu": "智谱 GLM",
+        "hunyuan": "腾讯混元",
+        "volcengine": "火山方舟 / 豆包",
+        "minimax": "MiniMax"
       },
       "name": "名称",
       "name_placeholder": "请输入名称",

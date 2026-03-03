@@ -18,14 +18,42 @@ const normalizeProvider = (provider) => {
     case 'claude':
     case 'anthropic':
       return 'anthropic';
+    case 'xai':
+    case 'grok':
+      return 'xai';
+    case 'mistral':
+      return 'mistral';
+    case 'cohere':
+    case 'command-r':
+    case 'commandr':
+      return 'cohere';
     case 'deepseek':
       return 'deepseek';
     case 'qwen':
     case 'qwq':
     case 'qvq':
       return 'qwen';
+    case 'zhipu':
+    case 'glm':
+    case 'bigmodel':
+      return 'zhipu';
+    case 'hunyuan':
+    case 'tencent':
+      return 'hunyuan';
+    case 'volc':
+    case 'volcengine':
+    case 'doubao':
+    case 'ark':
+      return 'volcengine';
+    case 'minimax':
+    case 'abab':
+      return 'minimax';
     default:
       if (trimmed === '千问') return 'qwen';
+      if (trimmed === '智谱') return 'zhipu';
+      if (trimmed === '腾讯' || trimmed === '混元') return 'hunyuan';
+      if (trimmed === '火山' || trimmed === '豆包' || trimmed === '字节')
+        return 'volcengine';
       return lower;
   }
 };
@@ -78,8 +106,15 @@ const OFFICIAL_PROVIDER_BASE_URLS = {
   openai: 'https://api.openai.com',
   google: 'https://generativelanguage.googleapis.com/v1beta/openai',
   anthropic: 'https://api.anthropic.com',
+  xai: 'https://api.x.ai',
+  mistral: 'https://api.mistral.ai',
+  cohere: 'https://api.cohere.com/compatibility/v1',
   deepseek: 'https://api.deepseek.com',
   qwen: 'https://dashscope.aliyuncs.com/compatible-mode',
+  zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+  hunyuan: 'https://api.hunyuan.cloud.tencent.com/v1',
+  volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
+  minimax: 'https://api.minimax.chat/v1',
 };
 
 const ModelProvidersManager = () => {
