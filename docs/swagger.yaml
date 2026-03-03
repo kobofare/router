@@ -224,6 +224,12 @@ definitions:
     type: object
   docs.ModelProviderCatalogItem:
     properties:
+      api_key:
+        example: sk-***
+        type: string
+      base_url:
+        example: https://api.openai.com
+        type: string
       models:
         items:
           type: string

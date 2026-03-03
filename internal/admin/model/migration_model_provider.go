@@ -18,8 +18,18 @@ type modelProviderCatalogMigrationItem struct {
 	Provider  string   `json:"provider"`
 	Name      string   `json:"name,omitempty"`
 	Models    []string `json:"models"`
+	BaseURL   string   `json:"base_url,omitempty"`
+	APIKey    string   `json:"api_key,omitempty"`
 	Source    string   `json:"source,omitempty"`
 	UpdatedAt int64    `json:"updated_at,omitempty"`
+}
+
+var defaultProviderBaseURLs = map[string]string{
+	"openai":    "https://api.openai.com",
+	"google":    "https://generativelanguage.googleapis.com/v1beta/openai",
+	"anthropic": "https://api.anthropic.com",
+	"deepseek":  "https://api.deepseek.com",
+	"qwen":      "https://dashscope.aliyuncs.com/compatible-mode",
 }
 
 func runModelProviderMigrations() error {
@@ -202,6 +212,7 @@ func buildDefaultModelProviderCatalogRaw() (string, error) {
 			Provider:  provider,
 			Name:      provider,
 			Models:    models,
+			BaseURL:   defaultProviderBaseURLs[provider],
 			Source:    "default",
 			UpdatedAt: now,
 		})
@@ -241,6 +252,8 @@ func normalizeModelProviderCatalogRaw(raw string) (string, error) {
 		if source == "" {
 			source = "manual"
 		}
+		baseURL := strings.TrimSpace(item.BaseURL)
+		apiKey := strings.TrimSpace(item.APIKey)
 		modelSet := make(map[string]struct{}, len(item.Models))
 		for _, modelName := range item.Models {
 			name := strings.TrimSpace(modelName)
@@ -259,6 +272,8 @@ func normalizeModelProviderCatalogRaw(raw string) (string, error) {
 			Provider:  provider,
 			Name:      name,
 			Models:    models,
+			BaseURL:   baseURL,
+			APIKey:    apiKey,
 			Source:    source,
 			UpdatedAt: item.UpdatedAt,
 		}
@@ -279,6 +294,18 @@ func normalizeModelProviderCatalogRaw(raw string) (string, error) {
 			existing.Models = mergedModels
 			if existing.Name == existing.Provider && entry.Name != entry.Provider {
 				existing.Name = entry.Name
+			}
+			if existing.BaseURL == "" && entry.BaseURL != "" {
+				existing.BaseURL = entry.BaseURL
+			}
+			if entry.BaseURL != "" && entry.Source != "default" {
+				existing.BaseURL = entry.BaseURL
+			}
+			if existing.APIKey == "" && entry.APIKey != "" {
+				existing.APIKey = entry.APIKey
+			}
+			if entry.APIKey != "" && entry.Source != "default" {
+				existing.APIKey = entry.APIKey
 			}
 			if entry.UpdatedAt > existing.UpdatedAt {
 				existing.UpdatedAt = entry.UpdatedAt

@@ -4945,6 +4945,14 @@ const docTemplate = `{
         "docs.ModelProviderCatalogItem": {
             "type": "object",
             "properties": {
+                "api_key": {
+                    "type": "string",
+                    "example": "sk-***"
+                },
+                "base_url": {
+                    "type": "string",
+                    "example": "https://api.openai.com"
+                },
                 "models": {
                     "type": "array",
                     "items": {

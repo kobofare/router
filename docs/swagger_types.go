@@ -354,6 +354,8 @@ type ModelProviderCatalogItem struct {
 	Provider  string   `json:"provider" example:"openai"`
 	Name      string   `json:"name" example:"OpenAI"`
 	Models    []string `json:"models"`
+	BaseURL   string   `json:"base_url,omitempty" example:"https://api.openai.com"`
+	APIKey    string   `json:"api_key,omitempty" example:"sk-***"`
 	Source    string   `json:"source,omitempty" example:"manual"`
 	UpdatedAt int64    `json:"updated_at,omitempty" example:"1710000000"`
 }
@@ -370,7 +372,7 @@ type ModelProviderCatalogResponse struct {
 
 type ModelProviderFetchRequest struct {
 	Provider string `json:"provider" example:"openai"`
-	Key      string `json:"key" example:"sk-***"`
+	Key      string `json:"key,omitempty" example:"sk-***"`
 	BaseURL  string `json:"base_url,omitempty" example:"https://api.openai.com"`
 }
 

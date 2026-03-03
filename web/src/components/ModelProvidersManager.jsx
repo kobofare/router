@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Icon, Input, Label, Segment, Table } from 'semantic-ui-react';
+import { Button, Form, Icon, Label, Segment, Table } from 'semantic-ui-react';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 
 const normalizeProvider = (provider) => {
@@ -55,6 +55,8 @@ const createEmptyRow = () => ({
   provider: '',
   name: '',
   modelsText: '',
+  base_url: '',
+  api_key: '',
   source: 'manual',
   updated_at: 0,
 });
@@ -65,18 +67,12 @@ const toEditableRows = (items) => {
     provider: normalizeProvider(item?.provider || item?.name || ''),
     name: item?.name || '',
     modelsText: modelsToText(item?.models || []),
+    base_url: item?.base_url || '',
+    api_key: item?.api_key || '',
     source: item?.source || 'manual',
     updated_at: item?.updated_at || 0,
   }));
 };
-
-const KNOWN_PROVIDER_OPTIONS = [
-  { key: 'openai', text: 'OpenAI', value: 'openai' },
-  { key: 'google', text: 'Google Gemini', value: 'google' },
-  { key: 'anthropic', text: 'Anthropic Claude', value: 'anthropic' },
-  { key: 'deepseek', text: 'DeepSeek', value: 'deepseek' },
-  { key: 'qwen', text: 'Qwen', value: 'qwen' },
-];
 
 const OFFICIAL_PROVIDER_BASE_URLS = {
   openai: 'https://api.openai.com',
@@ -92,28 +88,11 @@ const ModelProvidersManager = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const [fetchingFromApi, setFetchingFromApi] = useState(false);
-  const [fetchForm, setFetchForm] = useState({
-    provider: '',
-    base_url: '',
-    key: '',
-  });
 
-  const providerOptions = useMemo(() => {
-    const options = [...KNOWN_PROVIDER_OPTIONS];
-    const seen = new Set(options.map((item) => item.value));
-    rows.forEach((row) => {
-      const provider = normalizeProvider(row.provider);
-      if (!provider || seen.has(provider)) return;
-      seen.add(provider);
-      options.push({
-        key: provider,
-        text: provider,
-        value: provider,
-      });
-    });
-    return options;
-  }, [rows]);
+  const [editing, setEditing] = useState(false);
+  const [editIndex, setEditIndex] = useState(-1);
+  const [editRow, setEditRow] = useState(createEmptyRow());
+  const [fetchingFromApi, setFetchingFromApi] = useState(false);
 
   const loadCatalog = useCallback(async () => {
     setLoading(true);
@@ -136,20 +115,30 @@ const ModelProvidersManager = () => {
     loadCatalog().then();
   }, [loadCatalog]);
 
-  const setRowValue = (index, key, value) => {
-    setRows((prev) =>
-      prev.map((row, idx) => {
-        if (idx !== index) return row;
-        return {
-          ...row,
-          [key]: value,
-        };
-      })
-    );
+  const openEditor = (index = -1) => {
+    if (index < 0 || index >= rows.length) {
+      setEditIndex(-1);
+      setEditRow(createEmptyRow());
+      setEditing(true);
+      return;
+    }
+    setEditIndex(index);
+    setEditRow({ ...rows[index] });
+    setEditing(true);
   };
 
-  const addRow = () => {
-    setRows((prev) => [...prev, createEmptyRow()]);
+  const rollbackEditor = () => {
+    setEditing(false);
+    setEditIndex(-1);
+    setEditRow(createEmptyRow());
+    setFetchingFromApi(false);
+  };
+
+  const setEditValue = (key, value) => {
+    setEditRow((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
   const removeRow = (index) => {
@@ -174,13 +163,58 @@ const ModelProvidersManager = () => {
     }
   };
 
+  const applyEditToRows = () => {
+    const provider = normalizeProvider(editRow.provider);
+    if (!provider) {
+      showInfo(t('channel.providers.messages.provider_required'));
+      return;
+    }
+    const duplicatedIndex = rows.findIndex(
+      (row, index) =>
+        index !== editIndex && normalizeProvider(row.provider) === provider
+    );
+    if (duplicatedIndex !== -1) {
+      showInfo(t('channel.providers.messages.provider_exists'));
+      return;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const normalizedRow = {
+      ...editRow,
+      provider,
+      name: (editRow.name || '').trim() || provider,
+      modelsText: modelsToText(textToModels(editRow.modelsText)),
+      base_url:
+        (editRow.base_url || '').trim() ||
+        OFFICIAL_PROVIDER_BASE_URLS[provider] ||
+        '',
+      api_key: (editRow.api_key || '').trim(),
+      source: editRow.source || 'manual',
+      updated_at: now,
+    };
+
+    setRows((prev) => {
+      if (editIndex < 0 || editIndex >= prev.length) {
+        return [...prev, normalizedRow];
+      }
+      return prev.map((row, index) => {
+        if (index !== editIndex) return row;
+        return normalizedRow;
+      });
+    });
+    rollbackEditor();
+  };
+
   const saveCatalog = async () => {
     const providers = [];
     for (const row of rows) {
       const provider = normalizeProvider(row.provider);
       const name = (row.name || '').trim();
       const models = textToModels(row.modelsText);
-      const hasContent = provider || name || models.length > 0;
+      const baseURL = (row.base_url || '').trim();
+      const apiKey = (row.api_key || '').trim();
+      const hasContent =
+        provider || name || models.length > 0 || baseURL !== '' || apiKey !== '';
       if (!hasContent) continue;
       if (!provider) {
         showInfo(t('channel.providers.messages.provider_required'));
@@ -190,6 +224,8 @@ const ModelProvidersManager = () => {
         provider,
         name: name || provider,
         models,
+        base_url: baseURL,
+        api_key: apiKey,
         source: row.source || 'manual',
         updated_at: row.updated_at || 0,
       });
@@ -215,57 +251,41 @@ const ModelProvidersManager = () => {
   };
 
   const fetchModelsFromProviderApi = async () => {
-    const provider = normalizeProvider(fetchForm.provider);
+    const provider = normalizeProvider(editRow.provider);
     if (!provider) {
       showInfo(t('channel.providers.messages.fetch_provider_required'));
       return;
     }
-    if (!fetchForm.key || fetchForm.key.trim() === '') {
+    const baseURL =
+      (editRow.base_url || '').trim() || OFFICIAL_PROVIDER_BASE_URLS[provider] || '';
+    const apiKey = (editRow.api_key || '').trim();
+    if (!apiKey) {
       showInfo(t('channel.providers.messages.fetch_key_required'));
       return;
     }
+
     setFetchingFromApi(true);
     try {
       const res = await API.post('/api/v1/admin/model-provider/fetch', {
         provider,
-        base_url: fetchForm.base_url,
-        key: fetchForm.key,
+        base_url: baseURL,
+        key: apiKey,
       });
       const { success, message, data } = res.data || {};
       if (!success) {
         showError(message || t('channel.providers.messages.fetch_failed'));
         return;
       }
-      const modelText = modelsToText(Array.isArray(data) ? data : []);
-      const now = Math.floor(Date.now() / 1000);
-      setRows((prev) => {
-        const idx = prev.findIndex(
-          (row) => normalizeProvider(row.provider) === provider
-        );
-        if (idx === -1) {
-          return [
-            ...prev,
-            {
-              provider,
-              name: provider,
-              modelsText: modelText,
-              source: 'api',
-              updated_at: now,
-            },
-          ];
-        }
-        return prev.map((row, rowIdx) => {
-          if (rowIdx !== idx) return row;
-          return {
-            ...row,
-            provider,
-            name: row.name || provider,
-            modelsText: modelText,
-            source: 'api',
-            updated_at: now,
-          };
-        });
-      });
+
+      setEditRow((prev) => ({
+        ...prev,
+        provider,
+        name: (prev.name || '').trim() || provider,
+        base_url: baseURL,
+        modelsText: modelsToText(Array.isArray(data) ? data : []),
+        source: 'api',
+        updated_at: Math.floor(Date.now() / 1000),
+      }));
       showSuccess(t('channel.providers.messages.fetch_success'));
     } catch (error) {
       showError(error);
@@ -274,186 +294,215 @@ const ModelProvidersManager = () => {
     }
   };
 
+  const renderRows = () => (
+    <Table celled stackable>
+      <Table.Header>
+        <Table.Row>
+          <Table.HeaderCell width={2}>
+            {t('channel.providers.table.provider')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={2}>
+            {t('channel.providers.table.name')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={2}>
+            {t('channel.providers.table.key')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={6}>
+            {t('channel.providers.table.models')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={1}>
+            {t('channel.providers.table.source')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={2}>
+            {t('channel.providers.table.updated_at')}
+          </Table.HeaderCell>
+          <Table.HeaderCell width={1}>
+            {t('channel.providers.table.actions')}
+          </Table.HeaderCell>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {rows.length === 0 ? (
+          <Table.Row>
+            <Table.Cell colSpan={7} textAlign='center'>
+              {t('channel.providers.table.empty')}
+            </Table.Cell>
+          </Table.Row>
+        ) : (
+          rows.map((row, index) => {
+            const models = textToModels(row.modelsText);
+            const previewModels = models.slice(0, 8);
+            const hasMore = models.length > previewModels.length;
+            return (
+              <Table.Row key={`${row.provider}-${index}`}>
+                <Table.Cell>{row.provider || '-'}</Table.Cell>
+                <Table.Cell>{row.name || row.provider || '-'}</Table.Cell>
+                <Table.Cell textAlign='center'>
+                  <Label color={row.api_key ? 'green' : undefined}>
+                    {row.api_key
+                      ? t('channel.providers.table.key_set')
+                      : t('channel.providers.table.key_not_set')}
+                  </Label>
+                </Table.Cell>
+                <Table.Cell>
+                  <div style={{ marginBottom: '6px' }}>
+                    <Label basic size='tiny'>
+                      {t('channel.providers.table.model_count', {
+                        count: models.length,
+                      })}
+                    </Label>
+                  </div>
+                  <div>
+                    {previewModels.map((model) => (
+                      <Label
+                        key={`${row.provider}-${model}`}
+                        size='tiny'
+                        style={{ marginBottom: '4px' }}
+                      >
+                        {model}
+                      </Label>
+                    ))}
+                    {hasMore ? (
+                      <Label size='tiny' basic style={{ marginBottom: '4px' }}>
+                        +{models.length - previewModels.length}
+                      </Label>
+                    ) : null}
+                  </div>
+                </Table.Cell>
+                <Table.Cell textAlign='center'>
+                  <Label>{row.source || '-'}</Label>
+                </Table.Cell>
+                <Table.Cell textAlign='center'>
+                  {row.updated_at ? timestamp2string(row.updated_at) : '-'}
+                </Table.Cell>
+                <Table.Cell textAlign='center'>
+                  <Button
+                    type='button'
+                    icon
+                    size='tiny'
+                    color='blue'
+                    onClick={() => openEditor(index)}
+                  >
+                    <Icon name='edit' />
+                  </Button>
+                  <Button
+                    type='button'
+                    icon
+                    size='tiny'
+                    color='red'
+                    onClick={() => removeRow(index)}
+                  >
+                    <Icon name='trash' />
+                  </Button>
+                </Table.Cell>
+              </Table.Row>
+            );
+          })
+        )}
+      </Table.Body>
+    </Table>
+  );
+
+  const renderEditor = () => (
+    <Segment>
+      <div style={{ fontWeight: 600, marginBottom: 12 }}>
+        {editIndex >= 0
+          ? t('channel.providers.dialog.title_edit')
+          : t('channel.providers.dialog.title_create')}
+      </div>
+      <Form>
+        <Form.Group widths='equal'>
+          <Form.Input
+            label={t('channel.providers.dialog.provider')}
+            placeholder={t('channel.providers.dialog.provider_placeholder')}
+            value={editRow.provider}
+            onChange={(e, { value }) =>
+              setEditValue('provider', normalizeProvider(value || ''))
+            }
+          />
+          <Form.Input
+            label={t('channel.providers.dialog.name')}
+            placeholder={t('channel.providers.dialog.name_placeholder')}
+            value={editRow.name}
+            onChange={(e, { value }) => setEditValue('name', value || '')}
+          />
+        </Form.Group>
+        <Form.Group widths='equal'>
+          <Form.Input
+            label={t('channel.providers.dialog.base_url')}
+            placeholder={t('channel.providers.dialog.base_url_placeholder')}
+            value={editRow.base_url}
+            onChange={(e, { value }) => setEditValue('base_url', value || '')}
+          />
+          <Form.Input
+            label={t('channel.providers.dialog.key')}
+            placeholder={t('channel.providers.dialog.key_placeholder')}
+            value={editRow.api_key}
+            type='password'
+            autoComplete='new-password'
+            onChange={(e, { value }) => setEditValue('api_key', value || '')}
+          />
+        </Form.Group>
+        <Form.TextArea
+          style={{ minHeight: 180, fontFamily: 'JetBrains Mono, Consolas' }}
+          label={t('channel.providers.dialog.models')}
+          placeholder={t('channel.providers.dialog.models_placeholder')}
+          value={editRow.modelsText}
+          onChange={(e, { value }) => setEditValue('modelsText', value || '')}
+        />
+      </Form>
+
+      <div style={{ marginTop: 12 }}>
+        <Button
+          type='button'
+          color='green'
+          loading={fetchingFromApi}
+          disabled={fetchingFromApi}
+          onClick={fetchModelsFromProviderApi}
+        >
+          {t('channel.providers.buttons.fetch_from_api')}
+        </Button>
+        <Button type='button' onClick={rollbackEditor}>
+          <Icon name='undo' />
+          {t('channel.providers.dialog.cancel')}
+        </Button>
+        <Button type='button' color='blue' onClick={applyEditToRows}>
+          <Icon name='check' />
+          {t('channel.providers.dialog.confirm')}
+        </Button>
+      </div>
+    </Segment>
+  );
+
   return (
     <div>
-      <Segment loading={loading} style={{ marginBottom: '12px' }}>
-        <Form>
-          <Form.Group widths='equal'>
-            <Form.Select
-              label={t('channel.providers.fetch.provider')}
-              options={providerOptions}
-              search
-              clearable
-              value={fetchForm.provider}
-              onChange={(e, { value }) =>
-                setFetchForm((prev) => ({
-                  ...prev,
-                  provider: value || '',
-                  base_url: value
-                    ? OFFICIAL_PROVIDER_BASE_URLS[normalizeProvider(value)] || ''
-                    : '',
-                }))
-              }
-            />
-            <Form.Input
-              label={t('channel.providers.fetch.base_url')}
-              placeholder={t('channel.providers.fetch.base_url_placeholder')}
-              value={fetchForm.base_url}
-              onChange={(e, { value }) =>
-                setFetchForm((prev) => ({
-                  ...prev,
-                  base_url: value || '',
-                }))
-              }
-            />
-          </Form.Group>
-          <Form.Group widths='equal'>
-            <Form.Input
-              label={t('channel.providers.fetch.key')}
-              placeholder={t('channel.providers.fetch.key_placeholder')}
-              type='password'
-              autoComplete='new-password'
-              value={fetchForm.key}
-              onChange={(e, { value }) =>
-                setFetchForm((prev) => ({
-                  ...prev,
-                  key: value || '',
-                }))
-              }
-            />
-          </Form.Group>
-          <Button
-            type='button'
-            color='green'
-            loading={fetchingFromApi}
-            disabled={fetchingFromApi}
-            onClick={fetchModelsFromProviderApi}
-          >
-            {t('channel.providers.buttons.fetch_from_api')}
-          </Button>
-        </Form>
-      </Segment>
-
       <div style={{ marginBottom: '12px' }}>
-        <Button type='button' onClick={loadCatalog} loading={loading}>
+        <Button type='button' onClick={loadCatalog} loading={loading} disabled={editing}>
           {t('channel.providers.buttons.reload')}
         </Button>
         <Button
           type='button'
           onClick={loadDefaults}
           loading={loadingDefaults}
-          disabled={loadingDefaults}
+          disabled={loadingDefaults || editing}
         >
           {t('channel.providers.buttons.load_defaults')}
         </Button>
-        <Button type='button' onClick={addRow}>
+        <Button type='button' onClick={() => openEditor(-1)} disabled={editing}>
           {t('channel.providers.buttons.add_provider')}
         </Button>
         <Button
           type='button'
           color='blue'
           loading={saving}
-          disabled={saving}
+          disabled={saving || editing}
           onClick={saveCatalog}
         >
           {t('channel.providers.buttons.save')}
         </Button>
       </div>
 
-      <Table celled stackable>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell width={2}>
-              {t('channel.providers.table.provider')}
-            </Table.HeaderCell>
-            <Table.HeaderCell width={2}>
-              {t('channel.providers.table.name')}
-            </Table.HeaderCell>
-            <Table.HeaderCell width={8}>
-              {t('channel.providers.table.models')}
-            </Table.HeaderCell>
-            <Table.HeaderCell width={1}>
-              {t('channel.providers.table.source')}
-            </Table.HeaderCell>
-            <Table.HeaderCell width={2}>
-              {t('channel.providers.table.updated_at')}
-            </Table.HeaderCell>
-            <Table.HeaderCell width={1}>
-              {t('channel.providers.table.actions')}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {rows.length === 0 ? (
-            <Table.Row>
-              <Table.Cell colSpan={6} textAlign='center'>
-                {t('channel.providers.table.empty')}
-              </Table.Cell>
-            </Table.Row>
-          ) : (
-            rows.map((row, index) => {
-              const modelCount = textToModels(row.modelsText).length;
-              return (
-                <Table.Row key={`${row.provider}-${index}`}>
-                  <Table.Cell>
-                    <Input
-                      fluid
-                      value={row.provider}
-                      placeholder='openai'
-                      onChange={(e, { value }) =>
-                        setRowValue(index, 'provider', value || '')
-                      }
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Input
-                      fluid
-                      value={row.name}
-                      placeholder={t('channel.providers.table.name_placeholder')}
-                      onChange={(e, { value }) =>
-                        setRowValue(index, 'name', value || '')
-                      }
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Form.TextArea
-                      style={{
-                        minHeight: 110,
-                        fontFamily: 'JetBrains Mono, Consolas',
-                      }}
-                      placeholder={t('channel.providers.table.models_placeholder')}
-                      value={row.modelsText}
-                      onChange={(e, { value }) =>
-                        setRowValue(index, 'modelsText', value || '')
-                      }
-                    />
-                    <Label basic size='tiny'>
-                      {t('channel.providers.table.model_count', { count: modelCount })}
-                    </Label>
-                  </Table.Cell>
-                  <Table.Cell textAlign='center'>
-                    <Label>{row.source || '-'}</Label>
-                  </Table.Cell>
-                  <Table.Cell textAlign='center'>
-                    {row.updated_at ? timestamp2string(row.updated_at) : '-'}
-                  </Table.Cell>
-                  <Table.Cell textAlign='center'>
-                    <Button
-                      type='button'
-                      icon
-                      size='tiny'
-                      color='red'
-                      onClick={() => removeRow(index)}
-                    >
-                      <Icon name='trash' />
-                    </Button>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })
-          )}
-        </Table.Body>
-      </Table>
+      {editing ? renderEditor() : renderRows()}
     </div>
   );
 };

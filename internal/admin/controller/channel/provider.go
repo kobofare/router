@@ -24,6 +24,8 @@ type modelProviderCatalogItem struct {
 	Provider  string   `json:"provider"`
 	Name      string   `json:"name,omitempty"`
 	Models    []string `json:"models"`
+	BaseURL   string   `json:"base_url,omitempty"`
+	APIKey    string   `json:"api_key,omitempty"`
 	Source    string   `json:"source,omitempty"`
 	UpdatedAt int64    `json:"updated_at,omitempty"`
 }
@@ -90,10 +92,14 @@ func normalizeModelProviderCatalog(items []modelProviderCatalogItem) []modelProv
 		if source == "" {
 			source = "manual"
 		}
+		baseURL := strings.TrimSpace(item.BaseURL)
+		apiKey := strings.TrimSpace(item.APIKey)
 		entry := modelProviderCatalogItem{
 			Provider:  provider,
 			Name:      name,
 			Models:    normalizeAndSortModels(item.Models),
+			BaseURL:   baseURL,
+			APIKey:    apiKey,
 			Source:    source,
 			UpdatedAt: item.UpdatedAt,
 		}
@@ -102,6 +108,18 @@ func normalizeModelProviderCatalog(items []modelProviderCatalogItem) []modelProv
 			existing.Models = mergeAndSortModels(existing.Models, entry.Models)
 			if existing.Name == existing.Provider && entry.Name != entry.Provider {
 				existing.Name = entry.Name
+			}
+			if existing.BaseURL == "" && entry.BaseURL != "" {
+				existing.BaseURL = entry.BaseURL
+			}
+			if entry.BaseURL != "" && entry.Source != "default" {
+				existing.BaseURL = entry.BaseURL
+			}
+			if existing.APIKey == "" && entry.APIKey != "" {
+				existing.APIKey = entry.APIKey
+			}
+			if entry.APIKey != "" && entry.Source != "default" {
+				existing.APIKey = entry.APIKey
 			}
 			if entry.UpdatedAt > existing.UpdatedAt {
 				existing.UpdatedAt = entry.UpdatedAt
@@ -184,6 +202,7 @@ func buildDefaultModelProviderCatalog() []modelProviderCatalogItem {
 			Provider:  provider,
 			Name:      provider,
 			Models:    list,
+			BaseURL:   providerDefaultBaseURLs[provider],
 			Source:    "default",
 			UpdatedAt: now,
 		})
@@ -211,6 +230,7 @@ func GetModelProviders(c *gin.Context) {
 		})
 		return
 	}
+	items = normalizeModelProviderCatalog(append(buildDefaultModelProviderCatalog(), items...))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -327,6 +347,24 @@ func FetchModelProviderModels(c *gin.Context) {
 	}
 
 	baseURL := strings.TrimSpace(req.BaseURL)
+	catalogItems, loadErr := loadModelProviderCatalog()
+	if loadErr != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "读取模型供应商配置失败: " + loadErr.Error(),
+		})
+		return
+	}
+	savedProvider := modelProviderCatalogItem{}
+	for _, item := range catalogItems {
+		if commonutils.NormalizeModelProvider(item.Provider) == provider {
+			savedProvider = item
+			break
+		}
+	}
+	if baseURL == "" {
+		baseURL = strings.TrimSpace(savedProvider.BaseURL)
+	}
 	if baseURL == "" {
 		baseURL = providerDefaultBaseURLs[provider]
 	}
@@ -337,8 +375,19 @@ func FetchModelProviderModels(c *gin.Context) {
 		})
 		return
 	}
+	apiKey := strings.TrimSpace(req.Key)
+	if apiKey == "" {
+		apiKey = strings.TrimSpace(savedProvider.APIKey)
+	}
+	if apiKey == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "请先配置该供应商 API Key",
+		})
+		return
+	}
 
-	models, err := fetchOpenAICompatibleModelIDsByBaseURL(req.Key, baseURL, provider)
+	models, err := fetchOpenAICompatibleModelIDsByBaseURL(apiKey, baseURL, provider)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
