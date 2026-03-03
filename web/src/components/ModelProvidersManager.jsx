@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Icon, Label, Segment, Table } from 'semantic-ui-react';
+import { Button, Form, Icon, Label, Modal, Segment, Table } from 'semantic-ui-react';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 
 const normalizeProvider = (provider) => {
@@ -88,6 +88,8 @@ const ModelProvidersManager = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createRow, setCreateRow] = useState(createEmptyRow());
 
   const [editing, setEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(-1);
@@ -115,13 +117,8 @@ const ModelProvidersManager = () => {
     loadCatalog().then();
   }, [loadCatalog]);
 
-  const openEditor = (index = -1) => {
-    if (index < 0 || index >= rows.length) {
-      setEditIndex(-1);
-      setEditRow(createEmptyRow());
-      setEditing(true);
-      return;
-    }
+  const openEditor = (index) => {
+    if (index < 0 || index >= rows.length || creating) return;
     setEditIndex(index);
     setEditRow({ ...rows[index] });
     setEditing(true);
@@ -136,6 +133,25 @@ const ModelProvidersManager = () => {
 
   const setEditValue = (key, value) => {
     setEditRow((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const openCreateModal = () => {
+    if (editing) return;
+    setCreateRow(createEmptyRow());
+    setCreating(true);
+  };
+
+  const closeCreateModal = () => {
+    setCreating(false);
+    setCreateRow(createEmptyRow());
+    setFetchingFromApi(false);
+  };
+
+  const setCreateValue = (key, value) => {
+    setCreateRow((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -205,6 +221,39 @@ const ModelProvidersManager = () => {
     rollbackEditor();
   };
 
+  const applyCreateToRows = () => {
+    const provider = normalizeProvider(createRow.provider);
+    if (!provider) {
+      showInfo(t('channel.providers.messages.provider_required'));
+      return;
+    }
+    const duplicatedIndex = rows.findIndex(
+      (row) => normalizeProvider(row.provider) === provider
+    );
+    if (duplicatedIndex !== -1) {
+      showInfo(t('channel.providers.messages.provider_exists'));
+      return;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const normalizedRow = {
+      ...createRow,
+      provider,
+      name: (createRow.name || '').trim() || provider,
+      modelsText: modelsToText(textToModels(createRow.modelsText)),
+      base_url:
+        (createRow.base_url || '').trim() ||
+        OFFICIAL_PROVIDER_BASE_URLS[provider] ||
+        '',
+      api_key: (createRow.api_key || '').trim(),
+      source: createRow.source || 'manual',
+      updated_at: now,
+    };
+
+    setRows((prev) => [...prev, normalizedRow]);
+    closeCreateModal();
+  };
+
   const saveCatalog = async () => {
     const providers = [];
     for (const row of rows) {
@@ -250,15 +299,15 @@ const ModelProvidersManager = () => {
     }
   };
 
-  const fetchModelsFromProviderApi = async () => {
-    const provider = normalizeProvider(editRow.provider);
+  const fetchModelsFromProviderApi = async (row, onUpdate) => {
+    const provider = normalizeProvider(row.provider);
     if (!provider) {
       showInfo(t('channel.providers.messages.fetch_provider_required'));
       return;
     }
     const baseURL =
-      (editRow.base_url || '').trim() || OFFICIAL_PROVIDER_BASE_URLS[provider] || '';
-    const apiKey = (editRow.api_key || '').trim();
+      (row.base_url || '').trim() || OFFICIAL_PROVIDER_BASE_URLS[provider] || '';
+    const apiKey = (row.api_key || '').trim();
     if (!apiKey) {
       showInfo(t('channel.providers.messages.fetch_key_required'));
       return;
@@ -277,7 +326,7 @@ const ModelProvidersManager = () => {
         return;
       }
 
-      setEditRow((prev) => ({
+      onUpdate((prev) => ({
         ...prev,
         provider,
         name: (prev.name || '').trim() || provider,
@@ -381,6 +430,7 @@ const ModelProvidersManager = () => {
                     icon
                     size='tiny'
                     color='blue'
+                    disabled={creating}
                     onClick={() => openEditor(index)}
                   >
                     <Icon name='edit' />
@@ -390,6 +440,7 @@ const ModelProvidersManager = () => {
                     icon
                     size='tiny'
                     color='red'
+                    disabled={creating}
                     onClick={() => removeRow(index)}
                   >
                     <Icon name='trash' />
@@ -458,7 +509,7 @@ const ModelProvidersManager = () => {
           color='green'
           loading={fetchingFromApi}
           disabled={fetchingFromApi}
-          onClick={fetchModelsFromProviderApi}
+          onClick={() => fetchModelsFromProviderApi(editRow, setEditRow)}
         >
           {t('channel.providers.buttons.fetch_from_api')}
         </Button>
@@ -474,34 +525,113 @@ const ModelProvidersManager = () => {
     </Segment>
   );
 
+  const renderCreateModal = () => (
+    <Modal
+      open={creating}
+      onClose={closeCreateModal}
+      size='small'
+      closeOnDimmerClick={false}
+    >
+      <Modal.Header>{t('channel.providers.dialog.title_create')}</Modal.Header>
+      <Modal.Content>
+        <Form>
+          <Form.Group widths='equal'>
+            <Form.Input
+              label={t('channel.providers.dialog.provider')}
+              placeholder={t('channel.providers.dialog.provider_placeholder')}
+              value={createRow.provider}
+              onChange={(e, { value }) =>
+                setCreateValue('provider', normalizeProvider(value || ''))
+              }
+            />
+            <Form.Input
+              label={t('channel.providers.dialog.name')}
+              placeholder={t('channel.providers.dialog.name_placeholder')}
+              value={createRow.name}
+              onChange={(e, { value }) => setCreateValue('name', value || '')}
+            />
+          </Form.Group>
+          <Form.Group widths='equal'>
+            <Form.Input
+              label={t('channel.providers.dialog.base_url')}
+              placeholder={t('channel.providers.dialog.base_url_placeholder')}
+              value={createRow.base_url}
+              onChange={(e, { value }) => setCreateValue('base_url', value || '')}
+            />
+            <Form.Input
+              label={t('channel.providers.dialog.key')}
+              placeholder={t('channel.providers.dialog.key_placeholder')}
+              value={createRow.api_key}
+              type='password'
+              autoComplete='new-password'
+              onChange={(e, { value }) => setCreateValue('api_key', value || '')}
+            />
+          </Form.Group>
+          <Form.TextArea
+            style={{ minHeight: 180, fontFamily: 'JetBrains Mono, Consolas' }}
+            label={t('channel.providers.dialog.models')}
+            placeholder={t('channel.providers.dialog.models_placeholder')}
+            value={createRow.modelsText}
+            onChange={(e, { value }) => setCreateValue('modelsText', value || '')}
+          />
+        </Form>
+      </Modal.Content>
+      <Modal.Actions>
+        <Button
+          type='button'
+          color='green'
+          loading={fetchingFromApi}
+          disabled={fetchingFromApi}
+          onClick={() => fetchModelsFromProviderApi(createRow, setCreateRow)}
+        >
+          {t('channel.providers.buttons.fetch_from_api')}
+        </Button>
+        <Button type='button' onClick={closeCreateModal}>
+          <Icon name='undo' />
+          {t('channel.providers.dialog.cancel')}
+        </Button>
+        <Button type='button' color='blue' onClick={applyCreateToRows}>
+          <Icon name='check' />
+          {t('channel.providers.dialog.confirm')}
+        </Button>
+      </Modal.Actions>
+    </Modal>
+  );
+
   return (
     <div>
       <div style={{ marginBottom: '12px' }}>
-        <Button type='button' onClick={loadCatalog} loading={loading} disabled={editing}>
+        <Button
+          type='button'
+          onClick={loadCatalog}
+          loading={loading}
+          disabled={editing || creating}
+        >
           {t('channel.providers.buttons.reload')}
         </Button>
         <Button
           type='button'
           onClick={loadDefaults}
           loading={loadingDefaults}
-          disabled={loadingDefaults || editing}
+          disabled={loadingDefaults || editing || creating}
         >
           {t('channel.providers.buttons.load_defaults')}
         </Button>
-        <Button type='button' onClick={() => openEditor(-1)} disabled={editing}>
+        <Button type='button' onClick={openCreateModal} disabled={editing || creating}>
           {t('channel.providers.buttons.add_provider')}
         </Button>
         <Button
           type='button'
           color='blue'
           loading={saving}
-          disabled={saving || editing}
+          disabled={saving || editing || creating}
           onClick={saveCatalog}
         >
           {t('channel.providers.buttons.save')}
         </Button>
       </div>
 
+      {renderCreateModal()}
       {editing ? renderEditor() : renderRows()}
     </div>
   );
