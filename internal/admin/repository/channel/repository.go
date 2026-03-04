@@ -1,9 +1,12 @@
 package channel
 
 import (
+	"strings"
+
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
+	"github.com/yeying-community/router/common/random"
 	"github.com/yeying-community/router/internal/admin/model"
 	"gorm.io/gorm"
 )
@@ -33,22 +36,26 @@ func GetAll(startIdx int, num int, status string) ([]*model.Channel, error) {
 	var err error
 	switch status {
 	case "all":
-		err = model.DB.Order("id desc").Find(&channels).Error
+		err = model.DB.Order("created_time desc").Find(&channels).Error
 	case "disabled":
-		err = model.DB.Order("id desc").Where("status = ? or status = ?", model.ChannelStatusAutoDisabled, model.ChannelStatusManuallyDisabled).Find(&channels).Error
+		err = model.DB.Order("created_time desc").Where("status = ? or status = ?", model.ChannelStatusAutoDisabled, model.ChannelStatusManuallyDisabled).Find(&channels).Error
 	default:
-		err = model.DB.Order("id desc").Limit(num).Offset(startIdx).Omit("key").Find(&channels).Error
+		err = model.DB.Order("created_time desc").Limit(num).Offset(startIdx).Omit("key").Find(&channels).Error
 	}
 	return channels, err
 }
 
 func Search(keyword string) ([]*model.Channel, error) {
 	var channels []*model.Channel
-	err := model.DB.Omit("key").Where("id = ? or name LIKE ?", helper.String2Int(keyword), keyword+"%").Find(&channels).Error
+	trimmed := strings.TrimSpace(keyword)
+	if trimmed == "" {
+		return channels, nil
+	}
+	err := model.DB.Omit("key").Where("id = ? or name LIKE ?", trimmed, trimmed+"%").Find(&channels).Error
 	return channels, err
 }
 
-func GetByID(id int, selectAll bool) (*model.Channel, error) {
+func GetByID(id string, selectAll bool) (*model.Channel, error) {
 	channel := model.Channel{Id: id}
 	var err error
 	if selectAll {
@@ -60,6 +67,15 @@ func GetByID(id int, selectAll bool) (*model.Channel, error) {
 }
 
 func BatchInsert(channels []model.Channel) error {
+	now := helper.GetTimestamp()
+	for i := range channels {
+		if strings.TrimSpace(channels[i].Id) == "" {
+			channels[i].Id = random.GetUUID()
+		}
+		if channels[i].CreatedTime == 0 {
+			channels[i].CreatedTime = now
+		}
+	}
 	err := model.DB.Create(&channels).Error
 	if err != nil {
 		return err
@@ -74,6 +90,12 @@ func BatchInsert(channels []model.Channel) error {
 }
 
 func Insert(channel *model.Channel) error {
+	if strings.TrimSpace(channel.Id) == "" {
+		channel.Id = random.GetUUID()
+	}
+	if channel.CreatedTime == 0 {
+		channel.CreatedTime = helper.GetTimestamp()
+	}
 	err := model.DB.Create(channel).Error
 	if err != nil {
 		return err
@@ -118,7 +140,7 @@ func Delete(channel *model.Channel) error {
 	return channel.DeleteAbilities()
 }
 
-func DeleteByID(id int) error {
+func DeleteByID(id string) error {
 	channel := model.Channel{Id: id}
 	return Delete(&channel)
 }
@@ -128,7 +150,7 @@ func DeleteDisabled() (int64, error) {
 	return result.RowsAffected, result.Error
 }
 
-func UpdateStatusByID(id int, status int) {
+func UpdateStatusByID(id string, status int) {
 	err := model.UpdateAbilityStatus(id, status == model.ChannelStatusEnabled)
 	if err != nil {
 		logger.SysError("failed to update ability status: " + err.Error())
@@ -139,7 +161,7 @@ func UpdateStatusByID(id int, status int) {
 	}
 }
 
-func UpdateUsedQuota(id int, quota int64) {
+func UpdateUsedQuota(id string, quota int64) {
 	if config.BatchUpdateEnabled {
 		model.AddBatchUpdateRecord(model.BatchUpdateTypeChannelUsedQuota, id, quota)
 		return
@@ -147,14 +169,14 @@ func UpdateUsedQuota(id int, quota int64) {
 	UpdateUsedQuotaDirect(id, quota)
 }
 
-func UpdateUsedQuotaDirect(id int, quota int64) {
+func UpdateUsedQuotaDirect(id string, quota int64) {
 	err := model.DB.Model(&model.Channel{}).Where("id = ?", id).Update("used_quota", gorm.Expr("used_quota + ?", quota)).Error
 	if err != nil {
 		logger.SysError("failed to update channel used quota: " + err.Error())
 	}
 }
 
-func UpdateTestModelByID(id int, testModel string) error {
+func UpdateTestModelByID(id string, testModel string) error {
 	return model.DB.Model(&model.Channel{}).Where("id = ?", id).Update("test_model", testModel).Error
 }
 

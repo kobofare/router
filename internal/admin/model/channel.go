@@ -15,7 +15,7 @@ const (
 )
 
 type Channel struct {
-	Id                 int     `json:"id"`
+	Id                 string  `json:"id" gorm:"type:char(36);primaryKey"`
 	Type               int     `json:"type" gorm:"default:0"`
 	Key                string  `json:"key" gorm:"type:text"`
 	Status             int     `json:"status" gorm:"default:1"`
@@ -62,7 +62,7 @@ func SearchChannels(keyword string) ([]*Channel, error) {
 	return mustChannelRepo().SearchChannels(keyword)
 }
 
-func GetChannelById(id int, selectAll bool) (*Channel, error) {
+func GetChannelById(id string, selectAll bool) (*Channel, error) {
 	return mustChannelRepo().GetChannelById(id, selectAll)
 }
 
@@ -91,7 +91,7 @@ func (channel *Channel) GetModelMapping() map[string]string {
 	modelMapping := make(map[string]string)
 	err := json.Unmarshal([]byte(*channel.ModelMapping), &modelMapping)
 	if err != nil {
-		logger.SysError(fmt.Sprintf("failed to unmarshal model mapping for channel %d, error: %s", channel.Id, err.Error()))
+		logger.SysError(fmt.Sprintf("failed to unmarshal model mapping for channel %s, error: %s", channel.Id, err.Error()))
 		return nil
 	}
 	return modelMapping
@@ -129,15 +129,15 @@ func (channel *Channel) LoadConfig() (ChannelConfig, error) {
 	return cfg, nil
 }
 
-func UpdateChannelStatusById(id int, status int) {
+func UpdateChannelStatusById(id string, status int) {
 	mustChannelRepo().UpdateChannelStatusById(id, status)
 }
 
-func UpdateChannelUsedQuota(id int, quota int64) {
+func UpdateChannelUsedQuota(id string, quota int64) {
 	mustChannelRepo().UpdateChannelUsedQuota(id, quota)
 }
 
-func updateChannelUsedQuota(id int, quota int64) {
+func updateChannelUsedQuota(id string, quota int64) {
 	mustChannelRepo().UpdateChannelUsedQuotaDirect(id, quota)
 }
 
@@ -149,6 +149,6 @@ func DeleteDisabledChannel() (int64, error) {
 	return mustChannelRepo().DeleteDisabledChannel()
 }
 
-func UpdateChannelTestModel(id int, testModel string) error {
+func UpdateChannelTestModel(id string, testModel string) error {
 	return mustChannelRepo().UpdateChannelTestModelByID(id, testModel)
 }

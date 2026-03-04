@@ -34,6 +34,7 @@ func CreateRootAccountIfNeed() error {
 			accessToken = config.InitialRootAccessToken
 		}
 		rootUser := User{
+			Id:          random.GetUUID(),
 			Username:    "root",
 			Password:    hashedPassword,
 			Role:        RoleRootUser,
@@ -46,7 +47,7 @@ func CreateRootAccountIfNeed() error {
 		if config.InitialRootToken != "" {
 			logger.SysLog("creating initial root token as requested")
 			token := Token{
-				Id:             1,
+				Id:             random.GetUUID(),
 				UserId:         rootUser.Id,
 				Key:            config.InitialRootToken,
 				Status:         TokenStatusEnabled,

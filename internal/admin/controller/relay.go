@@ -55,8 +55,8 @@ func Relay(c *gin.Context) {
 		requestBody, _ := common.GetRequestBody(c)
 		logger.Debugf(ctx, "request body: %s", string(requestBody))
 	}
-	channelId := c.GetInt(ctxkey.ChannelId)
-	userId := c.GetInt(ctxkey.Id)
+	channelId := c.GetString(ctxkey.ChannelId)
+	userId := c.GetString(ctxkey.Id)
 	bizErr := relayHelper(c, relayMode)
 	if bizErr == nil {
 		monitor.Emit(channelId, true)
@@ -79,7 +79,7 @@ func Relay(c *gin.Context) {
 			logger.Errorf(ctx, "CacheGetRandomSatisfiedChannel failed: %+v", err)
 			break
 		}
-		logger.Infof(ctx, "using channel #%d to retry (remain times %d)", channel.Id, i)
+		logger.Infof(ctx, "using channel #%s to retry (remain times %d)", channel.Id, i)
 		if channel.Id == lastFailedChannelId {
 			continue
 		}
@@ -91,7 +91,7 @@ func Relay(c *gin.Context) {
 		if bizErr == nil {
 			return
 		}
-		channelId := c.GetInt(ctxkey.ChannelId)
+		channelId := c.GetString(ctxkey.ChannelId)
 		lastFailedChannelId = channelId
 		channelName := c.GetString(ctxkey.ChannelName)
 		go processChannelRelayError(ctx, userId, channelId, channelName, *bizErr)
@@ -132,8 +132,8 @@ func shouldRetry(c *gin.Context, statusCode int) bool {
 	return true
 }
 
-func processChannelRelayError(ctx context.Context, userId int, channelId int, channelName string, err model.ErrorWithStatusCode) {
-	logger.Errorf(ctx, "relay error (channel id %d, user id: %d): %s", channelId, userId, err.Message)
+func processChannelRelayError(ctx context.Context, userId string, channelId string, channelName string, err model.ErrorWithStatusCode) {
+	logger.Errorf(ctx, "relay error (channel id %s, user id: %s): %s", channelId, userId, err.Message)
 	// https://platform.openai.com/docs/guides/error-codes/api-errors
 	if monitor.ShouldDisableChannel(&err.Error, err.StatusCode) {
 		monitor.DisableChannel(channelId, channelName, err.Message)

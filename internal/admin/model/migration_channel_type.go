@@ -71,10 +71,6 @@ var defaultChannelTypeSeeds = []channelTypeSeed{
 	{ID: 13, Label: "代理：AIGC2D", Color: "purple"},
 }
 
-func runChannelTypeCatalogMigrations() error {
-	return runChannelTypeCatalogMigrationsWithDB(DB)
-}
-
 func runChannelTypeCatalogMigrationsWithDB(db *gorm.DB) error {
 	if err := db.AutoMigrate(&ChannelTypeCatalog{}); err != nil {
 		return err

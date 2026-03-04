@@ -3,7 +3,6 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,18 +19,15 @@ type ModelRequest struct {
 func Distribute() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		userId := c.GetInt(ctxkey.Id)
+		userId := c.GetString(ctxkey.Id)
 		userGroup, _ := model.CacheGetUserGroup(userId)
 		c.Set(ctxkey.Group, userGroup)
 		var requestModel string
 		var channel *model.Channel
 		channelId, ok := c.Get(ctxkey.SpecificChannelId)
 		if ok {
-			id, err := strconv.Atoi(channelId.(string))
-			if err != nil {
-				abortWithMessage(c, http.StatusBadRequest, "无效的渠道 Id")
-				return
-			}
+			id := fmt.Sprintf("%v", channelId)
+			var err error
 			channel, err = model.GetChannelById(id, true)
 			if err != nil {
 				abortWithMessage(c, http.StatusBadRequest, "无效的渠道 Id")
@@ -48,14 +44,14 @@ func Distribute() func(c *gin.Context) {
 			if err != nil {
 				message := fmt.Sprintf("当前分组 %s 下对于模型 %s 无可用渠道", userGroup, requestModel)
 				if channel != nil {
-					logger.SysError(fmt.Sprintf("渠道不存在：%d", channel.Id))
+					logger.SysError(fmt.Sprintf("渠道不存在：%s", channel.Id))
 					message = "数据库一致性已被破坏，请联系管理员"
 				}
 				abortWithMessage(c, http.StatusServiceUnavailable, message)
 				return
 			}
 		}
-		logger.Debugf(ctx, "user id %d, user group: %s, request model: %s, using channel #%d", userId, userGroup, requestModel, channel.Id)
+		logger.Debugf(ctx, "user id %s, user group: %s, request model: %s, using channel #%s", userId, userGroup, requestModel, channel.Id)
 		SetupContextForSelectedChannel(c, channel, requestModel)
 		c.Next()
 	}

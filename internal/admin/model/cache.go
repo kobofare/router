@@ -56,17 +56,17 @@ func CacheGetTokenByKey(key string) (*Token, error) {
 	return &token, err
 }
 
-func CacheGetUserGroup(id int) (group string, err error) {
+func CacheGetUserGroup(id string) (group string, err error) {
 	if !common.RedisEnabled {
 		return GetUserGroup(id)
 	}
-	group, err = common.RedisGet(fmt.Sprintf("user_group:%d", id))
+	group, err = common.RedisGet(fmt.Sprintf("user_group:%s", id))
 	if err != nil {
 		group, err = GetUserGroup(id)
 		if err != nil {
 			return "", err
 		}
-		err = common.RedisSet(fmt.Sprintf("user_group:%d", id), group, time.Duration(UserId2GroupCacheSeconds)*time.Second)
+		err = common.RedisSet(fmt.Sprintf("user_group:%s", id), group, time.Duration(UserId2GroupCacheSeconds)*time.Second)
 		if err != nil {
 			logger.SysError("Redis set user group error: " + err.Error())
 		}
@@ -74,23 +74,23 @@ func CacheGetUserGroup(id int) (group string, err error) {
 	return group, err
 }
 
-func fetchAndUpdateUserQuota(ctx context.Context, id int) (quota int64, err error) {
+func fetchAndUpdateUserQuota(ctx context.Context, id string) (quota int64, err error) {
 	quota, err = GetUserQuota(id)
 	if err != nil {
 		return 0, err
 	}
-	err = common.RedisSet(fmt.Sprintf("user_quota:%d", id), fmt.Sprintf("%d", quota), time.Duration(UserId2QuotaCacheSeconds)*time.Second)
+	err = common.RedisSet(fmt.Sprintf("user_quota:%s", id), fmt.Sprintf("%d", quota), time.Duration(UserId2QuotaCacheSeconds)*time.Second)
 	if err != nil {
 		logger.Error(ctx, "Redis set user quota error: "+err.Error())
 	}
 	return
 }
 
-func CacheGetUserQuota(ctx context.Context, id int) (quota int64, err error) {
+func CacheGetUserQuota(ctx context.Context, id string) (quota int64, err error) {
 	if !common.RedisEnabled {
 		return GetUserQuota(id)
 	}
-	quotaString, err := common.RedisGet(fmt.Sprintf("user_quota:%d", id))
+	quotaString, err := common.RedisGet(fmt.Sprintf("user_quota:%s", id))
 	if err != nil {
 		return fetchAndUpdateUserQuota(ctx, id)
 	}
@@ -99,13 +99,13 @@ func CacheGetUserQuota(ctx context.Context, id int) (quota int64, err error) {
 		return 0, nil
 	}
 	if quota <= config.PreConsumedQuota { // when user's quota is less than pre-consumed quota, we need to fetch from db
-		logger.Infof(ctx, "user %d's cached quota is too low: %d, refreshing from db", quota, id)
+		logger.Infof(ctx, "user %s's cached quota is too low: %d, refreshing from db", id, quota)
 		return fetchAndUpdateUserQuota(ctx, id)
 	}
 	return quota, nil
 }
 
-func CacheUpdateUserQuota(ctx context.Context, id int) error {
+func CacheUpdateUserQuota(ctx context.Context, id string) error {
 	if !common.RedisEnabled {
 		return nil
 	}
@@ -113,23 +113,23 @@ func CacheUpdateUserQuota(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
-	err = common.RedisSet(fmt.Sprintf("user_quota:%d", id), fmt.Sprintf("%d", quota), time.Duration(UserId2QuotaCacheSeconds)*time.Second)
+	err = common.RedisSet(fmt.Sprintf("user_quota:%s", id), fmt.Sprintf("%d", quota), time.Duration(UserId2QuotaCacheSeconds)*time.Second)
 	return err
 }
 
-func CacheDecreaseUserQuota(id int, quota int64) error {
+func CacheDecreaseUserQuota(id string, quota int64) error {
 	if !common.RedisEnabled {
 		return nil
 	}
-	err := common.RedisDecrease(fmt.Sprintf("user_quota:%d", id), int64(quota))
+	err := common.RedisDecrease(fmt.Sprintf("user_quota:%s", id), int64(quota))
 	return err
 }
 
-func CacheIsUserEnabled(userId int) (bool, error) {
+func CacheIsUserEnabled(userId string) (bool, error) {
 	if !common.RedisEnabled {
 		return IsUserEnabled(userId)
 	}
-	enabled, err := common.RedisGet(fmt.Sprintf("user_enabled:%d", userId))
+	enabled, err := common.RedisGet(fmt.Sprintf("user_enabled:%s", userId))
 	if err == nil {
 		return enabled == "1", nil
 	}
@@ -142,7 +142,7 @@ func CacheIsUserEnabled(userId int) (bool, error) {
 	if userEnabled {
 		enabled = "1"
 	}
-	err = common.RedisSet(fmt.Sprintf("user_enabled:%d", userId), enabled, time.Duration(UserId2StatusCacheSeconds)*time.Second)
+	err = common.RedisSet(fmt.Sprintf("user_enabled:%s", userId), enabled, time.Duration(UserId2StatusCacheSeconds)*time.Second)
 	if err != nil {
 		logger.SysError("Redis set user enabled error: " + err.Error())
 	}
@@ -172,12 +172,8 @@ var group2model2channels map[string]map[string][]*Channel
 var channelSyncLock sync.RWMutex
 
 func InitChannelCache() {
-	newChannelId2channel := make(map[int]*Channel)
 	var channels []*Channel
 	DB.Where("status = ?", ChannelStatusEnabled).Find(&channels)
-	for _, channel := range channels {
-		newChannelId2channel[channel.Id] = channel
-	}
 	var abilities []*Ability
 	DB.Find(&abilities)
 	groups := make(map[string]bool)

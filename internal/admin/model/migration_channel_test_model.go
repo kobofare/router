@@ -7,10 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func runChannelTestModelMigrations() error {
-	return runChannelTestModelMigrationsWithDB(DB)
-}
-
 func runChannelTestModelMigrationsWithDB(db *gorm.DB) error {
 	channels := make([]Channel, 0)
 	if err := db.Select("id", "models", "test_model").

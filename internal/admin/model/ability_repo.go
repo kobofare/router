@@ -7,7 +7,7 @@ type AbilityRepository struct {
 	AddAbilities              func(channel *Channel) error
 	DeleteAbilities           func(channel *Channel) error
 	UpdateAbilities           func(channel *Channel) error
-	UpdateAbilityStatus       func(channelId int, status bool) error
+	UpdateAbilityStatus       func(channelId string, status bool) error
 	GetTopChannelByModel      func(group string, model string) (*Channel, error)
 	GetGroupModels            func(ctx context.Context, group string) ([]string, error)
 }

@@ -15,10 +15,10 @@ import (
 type Meta struct {
 	Mode         int
 	ChannelType  int
-	ChannelId    int
-	TokenId      int
+	ChannelId    string
+	TokenId      string
 	TokenName    string
-	UserId       int
+	UserId       string
 	Group        string
 	ModelMapping map[string]string
 	// ChannelModelRatio is the optional per-channel model ratio JSON string.
@@ -46,10 +46,10 @@ func GetByContext(c *gin.Context) *Meta {
 	meta := Meta{
 		Mode:                   relaymode.GetByPath(c.Request.URL.Path),
 		ChannelType:            c.GetInt(ctxkey.Channel),
-		ChannelId:              c.GetInt(ctxkey.ChannelId),
-		TokenId:                c.GetInt(ctxkey.TokenId),
+		ChannelId:              c.GetString(ctxkey.ChannelId),
+		TokenId:                c.GetString(ctxkey.TokenId),
 		TokenName:              c.GetString(ctxkey.TokenName),
-		UserId:                 c.GetInt(ctxkey.Id),
+		UserId:                 c.GetString(ctxkey.Id),
 		Group:                  c.GetString(ctxkey.Group),
 		ModelMapping:           c.GetStringMapString(ctxkey.ModelMapping),
 		ChannelModelRatio:      c.GetString(ctxkey.ModelRatio),

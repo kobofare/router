@@ -8,10 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func runGroupCatalogMigrations() error {
-	return runGroupCatalogMigrationsWithDB(DB)
-}
-
 func runGroupCatalogMigrationsWithDB(db *gorm.DB) error {
 	if err := db.AutoMigrate(&GroupCatalog{}); err != nil {
 		return err

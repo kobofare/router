@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -200,7 +201,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 			return
 		}
 
-		if meta.TokenId > 0 {
+		if strings.TrimSpace(meta.TokenId) != "" {
 			err := model.PostConsumeTokenQuota(meta.TokenId, quota)
 			if err != nil {
 				logger.SysError("error consuming token remain quota: " + err.Error())
@@ -229,7 +230,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 				Content:          logContent,
 			})
 			model.UpdateUserUsedQuotaAndRequestCount(meta.UserId, quota)
-			channelId := c.GetInt(ctxkey.ChannelId)
+			channelId := c.GetString(ctxkey.ChannelId)
 			model.UpdateChannelUsedQuota(channelId, quota)
 		}
 	}(c.Request.Context())

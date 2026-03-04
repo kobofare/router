@@ -32,10 +32,10 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	meta := meta.GetByContext(c)
 	audioModel := "whisper-1"
 
-	tokenId := c.GetInt(ctxkey.TokenId)
+	tokenId := c.GetString(ctxkey.TokenId)
 	channelType := c.GetInt(ctxkey.Channel)
-	channelId := c.GetInt(ctxkey.ChannelId)
-	userId := c.GetInt(ctxkey.Id)
+	channelId := c.GetString(ctxkey.ChannelId)
+	userId := c.GetString(ctxkey.Id)
 	group := c.GetString(ctxkey.Group)
 	tokenName := c.GetString(ctxkey.TokenName)
 
@@ -85,7 +85,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		preConsumedQuota = 0
 	}
 	if preConsumedQuota > 0 {
-		if tokenId > 0 {
+		if strings.TrimSpace(tokenId) != "" {
 			err := model.PreConsumeTokenQuota(tokenId, preConsumedQuota)
 			if err != nil {
 				return openai.ErrorWrapper(err, "pre_consume_token_quota_failed", http.StatusForbidden)
@@ -107,7 +107,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 			defer func(ctx context.Context) {
 				go func() {
 					var err error
-					if tokenId > 0 {
+					if strings.TrimSpace(tokenId) != "" {
 						err = model.PostConsumeTokenQuota(tokenId, -preConsumedQuota)
 					} else {
 						err = model.IncreaseUserQuota(userId, preConsumedQuota)

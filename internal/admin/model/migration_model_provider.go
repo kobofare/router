@@ -106,10 +106,6 @@ var mainstreamProviderSeeds = []modelProviderSeed{
 	},
 }
 
-func runModelProviderMigrations() error {
-	return runModelProviderMigrationsWithDB(DB)
-}
-
 func runModelProviderMigrationsWithDB(db *gorm.DB) error {
 	if err := normalizeChannelModelProviders(db); err != nil {
 		return err

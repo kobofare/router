@@ -5,9 +5,17 @@ import "context"
 type Ability struct {
 	Group     string `json:"group" gorm:"type:varchar(32);primaryKey;autoIncrement:false"`
 	Model     string `json:"model" gorm:"primaryKey;autoIncrement:false"`
-	ChannelId int    `json:"channel_id" gorm:"primaryKey;autoIncrement:false;index"`
+	ChannelId string `json:"channel_id" gorm:"type:char(36);primaryKey;autoIncrement:false;index"`
 	Enabled   bool   `json:"enabled"`
 	Priority  *int64 `json:"priority" gorm:"bigint;default:0;index"`
+}
+
+const (
+	AbilityTableName = "group_model_channels"
+)
+
+func (Ability) TableName() string {
+	return AbilityTableName
 }
 
 func GetRandomSatisfiedChannel(group string, model string, ignoreFirstPriority bool) (*Channel, error) {
@@ -28,7 +36,7 @@ func (channel *Channel) UpdateAbilities() error {
 	return mustAbilityRepo().UpdateAbilities(channel)
 }
 
-func UpdateAbilityStatus(channelId int, status bool) error {
+func UpdateAbilityStatus(channelId string, status bool) error {
 	return mustAbilityRepo().UpdateAbilityStatus(channelId, status)
 }
 

@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/yeying-community/router/common/helper"
@@ -36,36 +35,10 @@ type versionedMigration struct {
 func runMainVersionedMigrations(db *gorm.DB) error {
 	migrations := []versionedMigration{
 		{
-			Version:     "202603030001_model_provider_catalog",
-			Description: "normalize and migrate model provider catalog",
+			Version:     "202603040100_baseline_uuid_bootstrap",
+			Description: "baseline: rebuild uuid schema and seed catalogs",
 			Up: func(tx *gorm.DB) error {
-				return runModelProviderMigrationsWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603030002_redemptions_postgres_sequence",
-			Description: "ensure redemptions id sequence for PostgreSQL",
-			Up:          ensureRedemptionsPostgresSequence,
-		},
-		{
-			Version:     "202603030003_channel_type_catalog",
-			Description: "initialize channel interface type catalog",
-			Up: func(tx *gorm.DB) error {
-				return runChannelTypeCatalogMigrationsWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603040001_channel_test_model",
-			Description: "persist and backfill channel test model",
-			Up: func(tx *gorm.DB) error {
-				return runChannelTestModelMigrationsWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603040002_group_catalog",
-			Description: "initialize group catalog from db and ratios",
-			Up: func(tx *gorm.DB) error {
-				return runGroupCatalogMigrationsWithDB(tx)
+				return runMainBaselineMigrationWithDB(tx)
 			},
 		},
 	}
@@ -75,9 +48,11 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 func runLogVersionedMigrations(db *gorm.DB) error {
 	migrations := []versionedMigration{
 		{
-			Version:     "202603030001_logs_postgres_sequence",
-			Description: "ensure logs id sequence for PostgreSQL",
-			Up:          ensureLogsPostgresSequence,
+			Version:     "202603040101_log_uuid_baseline",
+			Description: "baseline: rebuild logs table with uuid primary key",
+			Up: func(tx *gorm.DB) error {
+				return runLogUUIDPrimaryKeyDestructiveMigrationWithDB(tx)
+			},
 		},
 	}
 	return runVersionedMigrations(db, migrationScopeLog, migrations)
@@ -93,10 +68,6 @@ func runVersionedMigrations(db *gorm.DB, scope string, migrations []versionedMig
 	if err := db.AutoMigrate(&SchemaMigration{}); err != nil {
 		return err
 	}
-
-	sort.Slice(migrations, func(i, j int) bool {
-		return migrations[i].Version < migrations[j].Version
-	})
 
 	applied := make([]SchemaMigration, 0)
 	if err := db.Where("scope = ?", scope).Find(&applied).Error; err != nil {
@@ -132,40 +103,6 @@ func runVersionedMigrations(db *gorm.DB, scope string, migrations []versionedMig
 			return fmt.Errorf("migration[%s] failed at %s: %w", scope, migration.Version, err)
 		}
 		logger.SysLogf("migration[%s] applied %s", scope, migration.Version)
-	}
-	return nil
-}
-
-func ensureRedemptionsPostgresSequence(tx *gorm.DB) error {
-	if tx.Dialector.Name() != "postgres" {
-		return nil
-	}
-	statements := []string{
-		"CREATE SEQUENCE IF NOT EXISTS redemptions_id_seq OWNED BY redemptions.id",
-		"SELECT setval('redemptions_id_seq', COALESCE((SELECT MAX(id)+1 FROM redemptions),1), false)",
-		"ALTER TABLE redemptions ALTER COLUMN id SET DEFAULT nextval('redemptions_id_seq')",
-	}
-	for _, stmt := range statements {
-		if err := tx.Exec(stmt).Error; err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func ensureLogsPostgresSequence(tx *gorm.DB) error {
-	if tx.Dialector.Name() != "postgres" {
-		return nil
-	}
-	statements := []string{
-		"CREATE SEQUENCE IF NOT EXISTS logs_id_seq OWNED BY logs.id",
-		"SELECT setval('logs_id_seq', COALESCE((SELECT MAX(id)+1 FROM logs),1), false)",
-		"ALTER TABLE logs ALTER COLUMN id SET DEFAULT nextval('logs_id_seq')",
-	}
-	for _, stmt := range statements {
-		if err := tx.Exec(stmt).Error; err != nil {
-			return err
-		}
 	}
 	return nil
 }

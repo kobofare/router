@@ -250,7 +250,7 @@ func ListModels(c *gin.Context) {
 	if c.GetString(ctxkey.AvailableModels) != "" {
 		availableModels = strings.Split(c.GetString(ctxkey.AvailableModels), ",")
 	} else {
-		userId := c.GetInt(ctxkey.Id)
+		userId := c.GetString(ctxkey.Id)
 		userGroup, _ := model.CacheGetUserGroup(userId)
 		availableModels, _ = model.CacheGetGroupModels(ctx, userGroup)
 	}
@@ -320,7 +320,7 @@ func RetrieveModel(c *gin.Context) {
 // @Router /api/v1/public/user/available_models [get]
 func GetUserAvailableModels(c *gin.Context) {
 	ctx := c.Request.Context()
-	id := c.GetInt(ctxkey.Id)
+	id := c.GetString(ctxkey.Id)
 	userGroup, err := model.CacheGetUserGroup(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{

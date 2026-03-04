@@ -45,7 +45,7 @@ func shouldRequireModelProviderOnUpdate(fields map[string]json.RawMessage) bool 
 }
 
 type updateChannelTestModelRequest struct {
-	ID        int    `json:"id"`
+	ID        string `json:"id"`
 	TestModel string `json:"test_model"`
 }
 
@@ -129,14 +129,15 @@ func SearchChannels(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/channel/{id} [get]
 func GetChannel(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": "id 为空",
 		})
 		return
 	}
+	var err error
 	channel, err := channelsvc.GetByID(id, false)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -217,7 +218,7 @@ func AddChannel(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/channel/{id} [delete]
 func DeleteChannel(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id := c.Param("id")
 	channel := model.Channel{Id: id}
 	err := channelsvc.DeleteByID(channel.Id)
 	if err != nil {
@@ -339,7 +340,8 @@ func UpdateChannelTestModel(c *gin.Context) {
 		})
 		return
 	}
-	if req.ID <= 0 {
+	req.ID = strings.TrimSpace(req.ID)
+	if req.ID == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": "渠道 ID 无效",

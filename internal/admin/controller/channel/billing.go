@@ -384,14 +384,15 @@ func updateChannelBalance(channel *model.Channel) (float64, error) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/channel/update_balance/{id} [get]
 func UpdateChannelBalance(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": "id 为空",
 		})
 		return
 	}
+	var err error
 	channel, err := channelsvc.GetByID(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{

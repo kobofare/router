@@ -37,7 +37,7 @@ func GetAllLogs(c *gin.Context) {
 	username := c.Query("username")
 	tokenName := c.Query("token_name")
 	modelName := c.Query("model_name")
-	channel, _ := strconv.Atoi(c.Query("channel"))
+	channel := c.Query("channel")
 	logs, err := logsvc.GetAll(logType, startTimestamp, endTimestamp, modelName, username, tokenName, p*config.ItemsPerPage, config.ItemsPerPage, channel)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -73,7 +73,7 @@ func GetUserLogs(c *gin.Context) {
 	if p < 0 {
 		p = 0
 	}
-	userId := c.GetInt(ctxkey.Id)
+	userId := c.GetString(ctxkey.Id)
 	logType, _ := strconv.Atoi(c.Query("type"))
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
@@ -133,7 +133,7 @@ func SearchAllLogs(c *gin.Context) {
 // @Router /api/v1/public/log/self/search [get]
 func SearchUserLogs(c *gin.Context) {
 	keyword := c.Query("keyword")
-	userId := c.GetInt(ctxkey.Id)
+	userId := c.GetString(ctxkey.Id)
 	logs, err := logsvc.SearchUser(userId, keyword)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -172,7 +172,7 @@ func GetLogsStat(c *gin.Context) {
 	tokenName := c.Query("token_name")
 	username := c.Query("username")
 	modelName := c.Query("model_name")
-	channel, _ := strconv.Atoi(c.Query("channel"))
+	channel := c.Query("channel")
 	quotaNum := logsvc.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel)
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, "")
 	c.JSON(http.StatusOK, gin.H{
@@ -207,7 +207,7 @@ func GetLogsSelfStat(c *gin.Context) {
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	tokenName := c.Query("token_name")
 	modelName := c.Query("model_name")
-	channel, _ := strconv.Atoi(c.Query("channel"))
+	channel := c.Query("channel")
 	quotaNum := logsvc.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel)
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, tokenName)
 	c.JSON(http.StatusOK, gin.H{

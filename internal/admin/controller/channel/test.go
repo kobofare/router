@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -131,7 +130,7 @@ func testChannel(ctx context.Context, channel *model.Channel, request *relaymode
 	if cfg.UserAgent != "" {
 		c.Request.Header.Set("User-Agent", cfg.UserAgent)
 	}
-	logger.SysLog(fmt.Sprintf("[testChannel] channel_id=%d name=%s path=%s", channel.Id, channel.Name, c.Request.URL.Path))
+	logger.SysLog(fmt.Sprintf("[testChannel] channel_id=%s name=%s path=%s", channel.Id, channel.Name, c.Request.URL.Path))
 	c.Set(ctxkey.Config, cfg)
 	middleware.SetupContextForSelectedChannel(c, channel, "")
 	meta := meta.GetByContext(c)
@@ -216,7 +215,7 @@ func testChannel(ctx context.Context, channel *model.Channel, request *relaymode
 	if err != nil {
 		return "", err, nil
 	}
-	logger.SysLog(fmt.Sprintf("testing channel #%d, response: \n%s", channel.Id, string(respBody)))
+	logger.SysLog(fmt.Sprintf("testing channel #%s, response: \n%s", channel.Id, string(respBody)))
 	return responseMessage, nil, nil
 }
 
@@ -232,14 +231,15 @@ func testChannel(ctx context.Context, channel *model.Channel, request *relaymode
 // @Router /api/v1/admin/channel/test/{id} [get]
 func TestChannel(c *gin.Context) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": "id 为空",
 		})
 		return
 	}
+	var err error
 	channel, err := channelsvc.GetByID(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -315,7 +315,7 @@ func testChannels(ctx context.Context, notify bool, scope string) error {
 				if config.AutomaticDisableChannelEnabled {
 					monitor.DisableChannel(channel.Id, channel.Name, err.Error())
 				} else {
-					_ = message.Notify(message.ByAll, fmt.Sprintf("渠道 %s （%d）测试超时", channel.Name, channel.Id), "", err.Error())
+					_ = message.Notify(message.ByAll, fmt.Sprintf("渠道 %s （%s）测试超时", channel.Name, channel.Id), "", err.Error())
 				}
 			}
 			if isChannelEnabled && monitor.ShouldDisableChannel(openaiErr, -1) {

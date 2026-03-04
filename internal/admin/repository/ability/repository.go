@@ -86,7 +86,7 @@ func UpdateAbilities(channel *model.Channel) error {
 	return AddAbilities(channel)
 }
 
-func UpdateAbilityStatus(channelId int, status bool) error {
+func UpdateAbilityStatus(channelId string, status bool) error {
 	return model.DB.Model(&model.Ability{}).Where("channel_id = ?", channelId).Select("enabled").Update("enabled", status).Error
 }
 

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 
 	"github.com/yeying-community/router/common"
 	"github.com/yeying-community/router/common/helper"
+	"github.com/yeying-community/router/common/random"
 	"github.com/yeying-community/router/internal/admin/model"
 )
 
@@ -38,8 +40,8 @@ func Search(keyword string) ([]*model.Redemption, error) {
 	return redemptions, err
 }
 
-func GetByID(id int) (*model.Redemption, error) {
-	if id == 0 {
+func GetByID(id string) (*model.Redemption, error) {
+	if strings.TrimSpace(id) == "" {
 		return nil, errors.New("id 为空！")
 	}
 	redemption := model.Redemption{Id: id}
@@ -47,11 +49,11 @@ func GetByID(id int) (*model.Redemption, error) {
 	return &redemption, err
 }
 
-func Redeem(ctx context.Context, key string, userId int) (int64, error) {
+func Redeem(ctx context.Context, key string, userId string) (int64, error) {
 	if key == "" {
 		return 0, errors.New("未提供兑换码")
 	}
-	if userId == 0 {
+	if strings.TrimSpace(userId) == "" {
 		return 0, errors.New("无效的 user id")
 	}
 	redemption := &model.Redemption{}
@@ -85,6 +87,9 @@ func Redeem(ctx context.Context, key string, userId int) (int64, error) {
 }
 
 func Create(redemption *model.Redemption) error {
+	if strings.TrimSpace(redemption.Id) == "" {
+		redemption.Id = random.GetUUID()
+	}
 	return model.DB.Create(redemption).Error
 }
 
@@ -100,8 +105,8 @@ func Delete(redemption *model.Redemption) error {
 	return model.DB.Delete(redemption).Error
 }
 
-func DeleteByID(id int) error {
-	if id == 0 {
+func DeleteByID(id string) error {
+	if strings.TrimSpace(id) == "" {
 		return errors.New("id 为空！")
 	}
 	redemption := model.Redemption{Id: id}

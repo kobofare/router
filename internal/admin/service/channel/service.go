@@ -13,7 +13,7 @@ func Search(keyword string) ([]*model.Channel, error) {
 	return channelrepo.Search(keyword)
 }
 
-func GetByID(id int, selectAll bool) (*model.Channel, error) {
+func GetByID(id string, selectAll bool) (*model.Channel, error) {
 	return channelrepo.GetByID(id, selectAll)
 }
 
@@ -21,7 +21,7 @@ func BatchInsert(channels []model.Channel) error {
 	return channelrepo.BatchInsert(channels)
 }
 
-func DeleteByID(id int) error {
+func DeleteByID(id string) error {
 	return channelrepo.DeleteByID(id)
 }
 
@@ -33,6 +33,6 @@ func Update(channel *model.Channel) error {
 	return channelrepo.Update(channel)
 }
 
-func UpdateTestModelByID(id int, testModel string) error {
+func UpdateTestModelByID(id string, testModel string) error {
 	return channelrepo.UpdateTestModelByID(id, testModel)
 }

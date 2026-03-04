@@ -3,11 +3,13 @@ package log
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/yeying-community/router/common"
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
+	"github.com/yeying-community/router/common/random"
 	"github.com/yeying-community/router/internal/admin/model"
 )
 
@@ -30,6 +32,9 @@ func init() {
 }
 
 func recordLogHelper(ctx context.Context, log *model.Log) {
+	if strings.TrimSpace(log.Id) == "" {
+		log.Id = random.GetUUID()
+	}
 	requestId := helper.GetRequestID(ctx)
 	log.RequestId = requestId
 	err := model.LOG_DB.Create(log).Error
@@ -40,7 +45,7 @@ func recordLogHelper(ctx context.Context, log *model.Log) {
 	logger.Infof(ctx, "record log: %+v", log)
 }
 
-func RecordLog(ctx context.Context, userId int, logType int, content string) {
+func RecordLog(ctx context.Context, userId string, logType int, content string) {
 	if logType == model.LogTypeConsume && !config.LogConsumeEnabled {
 		return
 	}
@@ -54,7 +59,7 @@ func RecordLog(ctx context.Context, userId int, logType int, content string) {
 	recordLogHelper(ctx, log)
 }
 
-func RecordTopupLog(ctx context.Context, userId int, content string, quota int) {
+func RecordTopupLog(ctx context.Context, userId string, content string, quota int) {
 	log := &model.Log{
 		UserId:    userId,
 		Username:  model.GetUsernameById(userId),
@@ -82,7 +87,7 @@ func RecordTestLog(ctx context.Context, log *model.Log) {
 	recordLogHelper(ctx, log)
 }
 
-func GetAll(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int) ([]*model.Log, error) {
+func GetAll(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel string) ([]*model.Log, error) {
 	var tx = model.LOG_DB
 	if logType != model.LogTypeUnknown {
 		tx = tx.Where("type = ?", logType)
@@ -102,15 +107,15 @@ func GetAll(logType int, startTimestamp int64, endTimestamp int64, modelName str
 	if endTimestamp != 0 {
 		tx = tx.Where("created_at <= ?", endTimestamp)
 	}
-	if channel != 0 {
+	if strings.TrimSpace(channel) != "" {
 		tx = tx.Where("channel_id = ?", channel)
 	}
 	var logs []*model.Log
-	err := tx.Order("id desc").Limit(num).Offset(startIdx).Find(&logs).Error
+	err := tx.Order("created_at desc").Limit(num).Offset(startIdx).Find(&logs).Error
 	return logs, err
 }
 
-func GetUser(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int) ([]*model.Log, error) {
+func GetUser(userId string, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int) ([]*model.Log, error) {
 	var tx = model.LOG_DB
 	if logType == model.LogTypeUnknown {
 		tx = tx.Where("user_id = ?", userId)
@@ -130,23 +135,23 @@ func GetUser(userId int, logType int, startTimestamp int64, endTimestamp int64, 
 		tx = tx.Where("created_at <= ?", endTimestamp)
 	}
 	var logs []*model.Log
-	err := tx.Order("id desc").Limit(num).Offset(startIdx).Omit("id").Find(&logs).Error
+	err := tx.Order("created_at desc").Limit(num).Offset(startIdx).Omit("id").Find(&logs).Error
 	return logs, err
 }
 
 func SearchAll(keyword string) ([]*model.Log, error) {
 	var logs []*model.Log
-	err := model.LOG_DB.Where("type = ? or content LIKE ?", keyword, keyword+"%").Order("id desc").Limit(config.MaxRecentItems).Find(&logs).Error
+	err := model.LOG_DB.Where("type = ? or content LIKE ?", keyword, keyword+"%").Order("created_at desc").Limit(config.MaxRecentItems).Find(&logs).Error
 	return logs, err
 }
 
-func SearchUser(userId int, keyword string) ([]*model.Log, error) {
+func SearchUser(userId string, keyword string) ([]*model.Log, error) {
 	var logs []*model.Log
-	err := model.LOG_DB.Where("user_id = ? and type = ?", userId, keyword).Order("id desc").Limit(config.MaxRecentItems).Omit("id").Find(&logs).Error
+	err := model.LOG_DB.Where("user_id = ? and type = ?", userId, keyword).Order("created_at desc").Limit(config.MaxRecentItems).Omit("id").Find(&logs).Error
 	return logs, err
 }
 
-func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int) int64 {
+func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel string) int64 {
 	ifnull := "ifnull"
 	if common.UsingPostgreSQL {
 		ifnull = "COALESCE"
@@ -171,7 +176,7 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	if modelName != "" {
 		tx = tx.Where("model_name = ?", modelName)
 	}
-	if channel != 0 {
+	if strings.TrimSpace(channel) != "" {
 		tx = tx.Where("channel_id = ?", channel)
 	}
 	var quota int64
@@ -209,7 +214,7 @@ func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	return token
 }
 
-func SumUsedQuotaByUserId(logType int, userId int, startTimestamp int64, endTimestamp int64) (int64, error) {
+func SumUsedQuotaByUserId(logType int, userId string, startTimestamp int64, endTimestamp int64) (int64, error) {
 	ifnull := "ifnull"
 	if common.UsingPostgreSQL {
 		ifnull = "COALESCE"
@@ -231,7 +236,7 @@ func SumUsedQuotaByUserId(logType int, userId int, startTimestamp int64, endTime
 	return quota, err
 }
 
-func MinLogTimestampByUserId(userId int, logTypes []int) (int64, error) {
+func MinLogTimestampByUserId(userId string, logTypes []int) (int64, error) {
 	ifnull := "ifnull"
 	if common.UsingPostgreSQL {
 		ifnull = "COALESCE"
@@ -296,7 +301,7 @@ func selectGroupByGranularity(granularity string) string {
 	}
 }
 
-func SearchLogsByPeriodAndModel(userId, start, end int, granularity string, models []string) ([]*model.LogStatistic, error) {
+func SearchLogsByPeriodAndModel(userId string, start, end int, granularity string, models []string) ([]*model.LogStatistic, error) {
 	groupSelect := selectGroupByGranularity(granularity)
 	query := `
 		SELECT ` + groupSelect + `,
@@ -323,7 +328,7 @@ func SearchLogsByPeriodAndModel(userId, start, end int, granularity string, mode
 	return stats, err
 }
 
-func SearchLogModelsByPeriod(userId, start, end int) ([]string, error) {
+func SearchLogModelsByPeriod(userId string, start, end int) ([]string, error) {
 	var models []string
 	err := model.LOG_DB.Table("logs").
 		Where("type = ? AND user_id = ? AND created_at BETWEEN ? AND ?", model.LogTypeConsume, userId, start, end).
