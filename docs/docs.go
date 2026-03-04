@@ -167,6 +167,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/channel/preview/models": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Preview models for OpenAI-compatible channel (admin)",
+                "parameters": [
+                    {
+                        "description": "Preview payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/docs.ChannelPreviewModelsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/channel/search": {
             "get": {
                 "security": [
@@ -681,6 +725,152 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/docs.UserLogStatResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/model-provider": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get model provider catalog (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update model provider catalog (admin)",
+                "parameters": [
+                    {
+                        "description": "Model provider catalog payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/model-provider/defaults": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get default model providers from built-in model lists (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/model-provider/fetch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Fetch models from provider API (admin)",
+                "parameters": [
+                    {
+                        "description": "Provider fetch payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderFetchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderFetchResponse"
                         }
                     },
                     "401": {
@@ -4105,7 +4295,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yeying-community_router_internal_admin_controller_user.LoginRequest"
+                            "$ref": "#/definitions/user.LoginRequest"
                         }
                     }
                 ],
@@ -4208,7 +4398,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yeying-community_router_internal_admin_controller.PasswordResetRequest"
+                            "$ref": "#/definitions/controller.PasswordResetRequest"
                         }
                     }
                 ],
@@ -4442,6 +4632,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controller.PasswordResetRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "docs.AdminCreateUserRequest": {
             "type": "object",
             "properties": {
@@ -4548,6 +4749,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "{}"
                 },
+                "model_provider": {
+                    "type": "string",
+                    "example": "openai"
+                },
                 "model_ratio": {
                     "type": "string",
                     "example": "{}"
@@ -4629,6 +4834,28 @@ const docTemplate = `{
                 }
             }
         },
+        "docs.ChannelPreviewModelsRequest": {
+            "type": "object",
+            "properties": {
+                "base_url": {
+                    "type": "string",
+                    "example": "https://api.openai.com"
+                },
+                "config": {},
+                "key": {
+                    "type": "string",
+                    "example": "sk-***"
+                },
+                "model_provider": {
+                    "type": "string",
+                    "example": "openai"
+                },
+                "type": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
         "docs.ChannelUpdateRequest": {
             "type": "object",
             "properties": {
@@ -4659,6 +4886,10 @@ const docTemplate = `{
                 "model_mapping": {
                     "type": "string",
                     "example": "{}"
+                },
+                "model_provider": {
+                    "type": "string",
+                    "example": "openai"
                 },
                 "model_ratio": {
                     "type": "string",
@@ -4708,6 +4939,111 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "integer"
+                }
+            }
+        },
+        "docs.ModelProviderCatalogItem": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string",
+                    "example": "sk-***"
+                },
+                "base_url": {
+                    "type": "string",
+                    "example": "https://api.openai.com"
+                },
+                "models": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "OpenAI"
+                },
+                "provider": {
+                    "type": "string",
+                    "example": "openai"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "manual"
+                },
+                "updated_at": {
+                    "type": "integer",
+                    "example": 1710000000
+                }
+            }
+        },
+        "docs.ModelProviderCatalogResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/docs.ModelProviderCatalogItem"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": ""
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "docs.ModelProviderCatalogUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/docs.ModelProviderCatalogItem"
+                    }
+                }
+            }
+        },
+        "docs.ModelProviderFetchRequest": {
+            "type": "object",
+            "properties": {
+                "base_url": {
+                    "type": "string",
+                    "example": "https://api.openai.com"
+                },
+                "key": {
+                    "type": "string",
+                    "example": "sk-***"
+                },
+                "provider": {
+                    "type": "string",
+                    "example": "openai"
+                }
+            }
+        },
+        "docs.ModelProviderFetchResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": ""
+                },
+                "provider": {
+                    "type": "string",
+                    "example": "openai"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -6643,40 +6979,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yeying-community_router_Codex_Router_LvRouter_internal_admin_controller.PasswordResetRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_yeying-community_router_Codex_Router_LvRouter_internal_admin_controller_user.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_yeying-community_router_internal_admin_controller.PasswordResetRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_yeying-community_router_internal_admin_controller_user.LoginRequest": {
+        "user.LoginRequest": {
             "type": "object",
             "properties": {
                 "password": {

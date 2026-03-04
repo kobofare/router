@@ -180,6 +180,7 @@ Authorization: Bearer <JWT>
 ### 2) 渠道管理
 - `GET    /api/v1/admin/channel`
 - `GET    /api/v1/admin/channel/search`
+- `GET    /api/v1/admin/channel/types`（读取“接口类型”下拉目录，来源 `channel_types` 表）
 - `GET    /api/v1/admin/channel/:id`
 - `GET    /api/v1/admin/channel/test`
 - `GET    /api/v1/admin/channel/test/:id`
@@ -191,6 +192,8 @@ Authorization: Bearer <JWT>
 - `DELETE /api/v1/admin/channel/disabled`
 - `DELETE /api/v1/admin/channel/:id`
 
+说明：服务启动时 migration 会自动初始化 `channel_types` 表（接口类型目录），前端新增/编辑渠道页面统一从该表读取接口类型，而非内置静态枚举。
+
 #### /api/v1/admin/channel/preview/models
 用于创建/编辑渠道时预览模型列表（仅 OpenAI 兼容类）。
 - 请求体：
@@ -199,9 +202,11 @@ Authorization: Bearer <JWT>
   "type": 50,
   "key": "sk-***",
   "base_url": "https://api.openai.com",
+  "model_provider": "openai",
   "config": {}
 }
 ```
+- `model_provider` 可选，支持以下主流供应商别名：`openai/gpt`、`google/gemini`、`anthropic/claude`、`xai/grok`、`mistral`、`cohere`、`qwen/千问`、`deepseek`、`zhipu/glm`、`hunyuan/腾讯/混元`、`volcengine/doubao/ark`、`minimax/abab`；设置后服务端会按供应商过滤返回模型。
 - 响应体：
 ```json
 {
@@ -210,6 +215,47 @@ Authorization: Bearer <JWT>
   "data": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
 }
 ```
+
+### 2.1) 模型供应商管理
+- `GET  /api/v1/admin/model-provider`（读取数据库中的模型供应商目录）
+- `PUT  /api/v1/admin/model-provider`（保存模型供应商目录）
+- `GET  /api/v1/admin/model-provider/defaults`（读取系统预置的 12 家主流供应商默认目录）
+- `POST /api/v1/admin/model-provider/fetch`（通过供应商 OpenAI 兼容 API 拉取模型并按供应商过滤）
+
+说明：服务启动时 migration 会自动确保 `model_providers` 表已初始化，并补齐预置的 12 家主流供应商。
+
+#### /api/v1/admin/model-provider
+用于读取/保存供应商模型目录（可手动编辑）。
+数据存储：`model_providers` 表（不再使用 `options` 的 `ModelProviderCatalog` 键）。
+
+`PUT` 请求体示例：
+```json
+{
+  "providers": [
+    {
+      "provider": "openai",
+      "name": "OpenAI",
+      "base_url": "https://api.openai.com",
+      "api_key": "sk-***",
+      "models": ["gpt-4o-mini", "gpt-4o"],
+      "source": "manual"
+    }
+  ]
+}
+```
+
+#### /api/v1/admin/model-provider/fetch
+通过供应商 API 获取模型：
+```json
+{
+  "provider": "openai",
+  "base_url": "https://api.openai.com",
+  "key": "sk-***"
+}
+```
+- `provider` 必填，支持以下主流供应商别名：`openai/gpt`、`google/gemini`、`anthropic/claude`、`xai/grok`、`mistral`、`cohere`、`qwen/千问`、`deepseek`、`zhipu/glm`、`hunyuan/腾讯/混元`、`volcengine/doubao/ark`、`minimax/abab`。
+- `base_url` 可选，若不传则按优先级使用：已保存供应商 Base URL → 官方默认地址。
+- `key` 可选，若不传则使用已保存供应商 `api_key`。
 
 ### 3) 兑换码管理
 - `GET    /api/v1/admin/redemption`

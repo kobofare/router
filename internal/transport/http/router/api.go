@@ -316,6 +316,7 @@ func SetApiRouter(engine *gin.Engine) {
 		{
 			adminChannelRoute.GET("/", channel.GetAllChannels)
 			adminChannelRoute.GET("/search", channel.SearchChannels)
+			adminChannelRoute.GET("/types", channel.GetChannelTypes)
 			adminChannelRoute.GET("/:id", channel.GetChannel)
 			adminChannelRoute.GET("/test", channel.TestChannels)
 			adminChannelRoute.GET("/test/:id", channel.TestChannel)
@@ -352,6 +353,15 @@ func SetApiRouter(engine *gin.Engine) {
 		adminGroupRoute.Use(middleware.AdminAuth())
 		{
 			adminGroupRoute.GET("/", group.GetGroups)
+		}
+
+		adminModelProviderRoute := adminRouter.Group("/model-provider")
+		adminModelProviderRoute.Use(middleware.AdminAuth())
+		{
+			adminModelProviderRoute.GET("/", channel.GetModelProviders)
+			adminModelProviderRoute.PUT("/", channel.UpdateModelProviders)
+			adminModelProviderRoute.GET("/defaults", channel.GetDefaultModelProviders)
+			adminModelProviderRoute.POST("/fetch", channel.FetchModelProviderModels)
 		}
 	}
 

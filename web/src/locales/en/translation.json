@@ -2,6 +2,7 @@
   "header": {
     "home": "Home",
     "channel": "Channel",
+    "model_providers": "Model Providers",
     "token": "Token",
     "redemption": "Redemption",
     "topup": "Top Up",
@@ -11,6 +12,8 @@
     "setting": "Settings",
     "about": "About",
     "chat": "Chat",
+    "admin_workspace": "Admin Workspace",
+    "user_workspace": "User Workspace",
     "login": "Login",
     "logout": "Logout",
     "register": "Register"
@@ -37,6 +40,10 @@
   },
   "channel": {
     "title": "Channel Management",
+    "tabs": {
+      "channels": "Channels",
+      "model_providers": "Model Providers"
+    },
     "search": "Search channels by ID, name and key...",
     "balance_notice": "OpenAI channels no longer support getting balance via key, so balance shows as 0. For supported channel types, click balance to refresh.",
     "test_notice": "Channel testing only supports chat models, preferring gpt-3.5-turbo. If unavailable, uses the first model in your configured list.",
@@ -89,6 +96,69 @@
       "all_balance_updated": "All enabled channel balances have been updated!",
       "operation_success": "Operation completed successfully!"
     },
+    "providers": {
+      "title": "Model Provider Catalog",
+      "fetch": {
+        "provider": "Provider",
+        "base_url": "Base URL",
+        "base_url_placeholder": "Official default URL is auto-filled, override if needed",
+        "key": "API Key",
+        "key_placeholder": "Optional if API key is already saved for this provider"
+      },
+      "buttons": {
+        "fetch_from_api": "Fetch Models from Provider API",
+        "reload": "Reload Saved Catalog",
+        "load_defaults": "Load Built-in Default Models",
+        "add_provider": "Add Provider",
+        "save": "Save Catalog"
+      },
+      "table": {
+        "provider": "Provider ID",
+        "name": "Display Name",
+        "key": "API Key",
+        "key_set": "Configured",
+        "key_not_set": "Not Set",
+        "models": "Supported Models",
+        "source": "Source",
+        "updated_at": "Updated At",
+        "actions": "Actions",
+        "empty": "No model provider catalog",
+        "model_count": "{{count}} models"
+      },
+      "dialog": {
+        "title_create": "Add Model Provider",
+        "title_edit": "Edit Model Provider",
+        "delete_title": "Confirm Delete Model Provider",
+        "delete_content": "Are you sure you want to delete model provider {{provider}}?",
+        "delete_confirm": "Delete",
+        "provider": "Provider ID",
+        "provider_placeholder": "e.g. openai / google / anthropic",
+        "name": "Display Name",
+        "name_placeholder": "Optional, defaults to provider id",
+        "base_url": "Base URL",
+        "base_url_placeholder": "Leave empty to use official default URL",
+        "key": "API Key",
+        "key_placeholder": "Used when fetching models from provider API",
+        "models": "Models (one per line, or comma-separated)",
+        "models_placeholder": "e.g. gpt-4o-mini",
+        "cancel": "Back",
+        "cancel_create": "Cancel",
+        "confirm": "Confirm"
+      },
+      "messages": {
+        "load_failed": "Failed to load model provider catalog",
+        "load_defaults_failed": "Failed to load default model list",
+        "defaults_loaded": "Built-in default model list loaded",
+        "provider_required": "Provider id is required",
+        "provider_exists": "This provider already exists, please edit it directly",
+        "save_failed": "Failed to save model provider catalog",
+        "save_success": "Model provider catalog saved",
+        "fetch_provider_required": "Please choose a provider first",
+        "fetch_key_required": "Please provide API key first, or save one in provider config",
+        "fetch_failed": "Failed to fetch models from provider API",
+        "fetch_success": "Models fetched and applied to catalog"
+      }
+    },
     "edit": {
       "title_edit": "Update Channel Information",
       "title_create": "Create New Channel",
@@ -99,7 +169,14 @@
         "gemini": "Gemini",
         "claude": "Claude",
         "deepseek": "DeepSeek",
-        "qwen": "Qwen"
+        "qwen": "Qwen",
+        "xai": "xAI Grok",
+        "mistral": "Mistral",
+        "cohere": "Cohere",
+        "zhipu": "Zhipu GLM",
+        "hunyuan": "Tencent Hunyuan",
+        "volcengine": "Volcengine Doubao",
+        "minimax": "MiniMax"
       },
       "name": "Name",
       "name_placeholder": "Please enter name",
@@ -141,6 +218,7 @@
       },
       "messages": {
         "name_required": "Please enter channel name and key!",
+        "model_provider_required": "Please choose a model provider first!",
         "models_required": "Please select at least one model!",
         "model_mapping_invalid": "Model mapping must be valid JSON format!",
         "update_success": "Channel updated successfully!",
@@ -385,7 +463,9 @@
     "messages": {
       "update_success": "User information updated successfully!",
       "create_success": "User account created successfully!",
-      "operation_success": "Operation completed successfully!"
+      "operation_success": "Operation completed successfully!",
+      "wallet_copy_success": "Wallet address copied",
+      "wallet_copy_failed": "Copy failed, please copy manually"
     },
     "search": "Search users or wallet ID...",
     "table": {

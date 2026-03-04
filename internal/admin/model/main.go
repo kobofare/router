@@ -3,13 +3,11 @@ package model
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/yeying-community/router/common"
 	"github.com/yeying-community/router/common/config"
-	"github.com/yeying-community/router/common/env"
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/common/random"
@@ -65,9 +63,7 @@ func CreateRootAccountIfNeed() error {
 	return nil
 }
 
-func chooseDB(envName string) (*gorm.DB, error) {
-	dsn := os.Getenv(envName)
-
+func chooseDB(dsn string) (*gorm.DB, error) {
 	switch {
 	case strings.HasPrefix(dsn, "postgres://"):
 		// Use PostgreSQL
@@ -111,7 +107,7 @@ func openSQLite() (*gorm.DB, error) {
 
 func InitDB() {
 	var err error
-	DB, err = chooseDB("SQL_DSN")
+	DB, err = chooseDB(common.SQLDSN)
 	if err != nil {
 		logger.FatalLog("failed to initialize database: " + err.Error())
 		return
@@ -152,33 +148,36 @@ func migrateDB() error {
 	if err = DB.AutoMigrate(&Redemption{}); err != nil {
 		return err
 	}
-	// PostgreSQL: ensure redemptions.id uses a sequence (legacy tables may lack default)
-	if DB.Dialector.Name() == "postgres" {
-		DB.Exec("CREATE SEQUENCE IF NOT EXISTS redemptions_id_seq OWNED BY redemptions.id")
-		DB.Exec("SELECT setval('redemptions_id_seq', COALESCE((SELECT MAX(id)+1 FROM redemptions),1), false)")
-		DB.Exec("ALTER TABLE redemptions ALTER COLUMN id SET DEFAULT nextval('redemptions_id_seq')")
-	}
 	if err = DB.AutoMigrate(&Ability{}); err != nil {
 		return err
 	}
 	if err = DB.AutoMigrate(&Log{}); err != nil {
 		return err
 	}
+	if err = DB.AutoMigrate(&ModelProvider{}); err != nil {
+		return err
+	}
+	if err = DB.AutoMigrate(&ChannelTypeCatalog{}); err != nil {
+		return err
+	}
 	if err = DB.AutoMigrate(&Channel{}); err != nil {
+		return err
+	}
+	if err = runMainVersionedMigrations(DB); err != nil {
 		return err
 	}
 	return nil
 }
 
 func InitLogDB() {
-	if os.Getenv("LOG_SQL_DSN") == "" {
+	if common.LogSQLDSN == "" {
 		LOG_DB = DB
 		return
 	}
 
 	logger.SysLog("using secondary database for table logs")
 	var err error
-	LOG_DB, err = chooseDB("LOG_SQL_DSN")
+	LOG_DB, err = chooseDB(common.LogSQLDSN)
 	if err != nil {
 		logger.FatalLog("failed to initialize secondary database: " + err.Error())
 		return
@@ -204,11 +203,7 @@ func migrateLOGDB() error {
 	if err = LOG_DB.AutoMigrate(&Log{}); err != nil {
 		return err
 	}
-	// Ensure logs.id has a working sequence (for existing PG tables created without serial/identity)
-	LOG_DB.Exec("CREATE SEQUENCE IF NOT EXISTS logs_id_seq OWNED BY logs.id")
-	LOG_DB.Exec("SELECT setval('logs_id_seq', COALESCE((SELECT MAX(id)+1 FROM logs),1), false)")
-	LOG_DB.Exec("ALTER TABLE logs ALTER COLUMN id SET DEFAULT nextval('logs_id_seq')")
-	return nil
+	return runLogVersionedMigrations(LOG_DB)
 }
 
 func setDBConns(db *gorm.DB) *sql.DB {
@@ -222,9 +217,9 @@ func setDBConns(db *gorm.DB) *sql.DB {
 		return nil
 	}
 
-	sqlDB.SetMaxIdleConns(env.Int("SQL_MAX_IDLE_CONNS", 100))
-	sqlDB.SetMaxOpenConns(env.Int("SQL_MAX_OPEN_CONNS", 1000))
-	sqlDB.SetConnMaxLifetime(time.Second * time.Duration(env.Int("SQL_MAX_LIFETIME", 60)))
+	sqlDB.SetMaxIdleConns(common.SQLMaxIdleConns)
+	sqlDB.SetMaxOpenConns(common.SQLMaxOpenConns)
+	sqlDB.SetConnMaxLifetime(time.Second * time.Duration(common.SQLMaxLifetimeSeconds))
 	return sqlDB
 }
 

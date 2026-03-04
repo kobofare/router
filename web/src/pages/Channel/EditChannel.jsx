@@ -1,9 +1,9 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Button, Card, Form, Input, Message} from 'semantic-ui-react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {API, copy, getChannelModels, showError, showInfo, showSuccess, verifyJSON,} from '../../helpers';
-import {CHANNEL_OPTIONS} from '../../constants';
+import {getChannelOptions, loadChannelOptions} from '../../helpers/helper';
 import {renderChannelTip} from '../../helpers/render';
 
 const MODEL_MAPPING_EXAMPLE = {
@@ -83,53 +83,137 @@ const normalizeModelProviderSelection = (provider) => {
     case 'claude':
     case 'anthropic':
       return 'anthropic';
+    case 'xai':
+    case 'grok':
+      return 'xai';
+    case 'mistral':
+      return 'mistral';
+    case 'cohere':
+    case 'command-r':
+    case 'commandr':
+      return 'cohere';
     case 'deepseek':
       return 'deepseek';
     case 'qwen':
     case 'qwq':
     case 'qvq':
       return 'qwen';
+    case 'zhipu':
+    case 'glm':
+    case 'bigmodel':
+      return 'zhipu';
+    case 'hunyuan':
+    case 'tencent':
+      return 'hunyuan';
+    case 'volc':
+    case 'volcengine':
+    case 'doubao':
+    case 'ark':
+      return 'volcengine';
+    case 'minimax':
+    case 'abab':
+      return 'minimax';
     default:
       if (trimmed === '千问') return 'qwen';
+      if (trimmed === '智谱') return 'zhipu';
+      if (trimmed === '腾讯' || trimmed === '混元') return 'hunyuan';
+      if (trimmed === '火山' || trimmed === '豆包' || trimmed === '字节')
+        return 'volcengine';
       return lower;
   }
 };
 
-const resolveModelProvider = (modelName) => {
-  const name =
-    typeof modelName === 'string'
-      ? modelName.trim()
-      : normalizeModelId(modelName)?.trim();
-  if (!name) return 'unknown';
-  if (name.includes('/')) {
-    const [prefix] = name.split('/', 2);
-    return prefix ? prefix.trim().toLowerCase() : 'unknown';
-  }
-  const lower = name.toLowerCase();
-  switch (true) {
-    case lower.startsWith('gpt-'):
-    case lower.startsWith('o1'):
-    case lower.startsWith('o3'):
-    case lower.startsWith('chatgpt-'):
-      return 'openai';
-    case lower.startsWith('claude-'):
-      return 'anthropic';
-    case lower.startsWith('gemini-'):
-      return 'google';
-    case lower.startsWith('deepseek-'):
-      return 'deepseek';
-    case lower.startsWith('qwen-'):
-    case lower.startsWith('qwq-'):
-    case lower.startsWith('qvq-'):
-      return 'qwen';
-    case lower.startsWith('glm-'):
-    case lower.startsWith('cogview-'):
-      return 'zhipu';
-    case lower.startsWith('ernie-'):
-      return 'baidu';
-    default:
-      return 'unknown';
-  }
+const buildFallbackModelProviderOptions = (t) => [
+  {
+    key: 'openai',
+    text: t('channel.edit.model_provider_options.gpt'),
+    value: 'openai',
+  },
+  {
+    key: 'google',
+    text: t('channel.edit.model_provider_options.gemini'),
+    value: 'google',
+  },
+  {
+    key: 'anthropic',
+    text: t('channel.edit.model_provider_options.claude'),
+    value: 'anthropic',
+  },
+  {
+    key: 'deepseek',
+    text: t('channel.edit.model_provider_options.deepseek'),
+    value: 'deepseek',
+  },
+  {
+    key: 'qwen',
+    text: t('channel.edit.model_provider_options.qwen'),
+    value: 'qwen',
+  },
+  {
+    key: 'xai',
+    text: t('channel.edit.model_provider_options.xai'),
+    value: 'xai',
+  },
+  {
+    key: 'mistral',
+    text: t('channel.edit.model_provider_options.mistral'),
+    value: 'mistral',
+  },
+  {
+    key: 'cohere',
+    text: t('channel.edit.model_provider_options.cohere'),
+    value: 'cohere',
+  },
+  {
+    key: 'zhipu',
+    text: t('channel.edit.model_provider_options.zhipu'),
+    value: 'zhipu',
+  },
+  {
+    key: 'hunyuan',
+    text: t('channel.edit.model_provider_options.hunyuan'),
+    value: 'hunyuan',
+  },
+  {
+    key: 'volcengine',
+    text: t('channel.edit.model_provider_options.volcengine'),
+    value: 'volcengine',
+  },
+  {
+    key: 'minimax',
+    text: t('channel.edit.model_provider_options.minimax'),
+    value: 'minimax',
+  },
+];
+
+const buildModelProviderOptionsFromCatalog = (items) => {
+  if (!Array.isArray(items)) return [];
+  const indexByProvider = new Map();
+  const options = [];
+  items.forEach((item) => {
+    const provider = normalizeModelProviderSelection(
+      item?.provider || item?.name || ''
+    );
+    if (!provider) return;
+    const name = typeof item?.name === 'string' ? item.name.trim() : '';
+    const text =
+      name && name.toLowerCase() !== provider
+        ? `${name} (${provider})`
+        : name || provider;
+    const option = {
+      key: provider,
+      text,
+      value: provider,
+    };
+    if (indexByProvider.has(provider)) {
+      const index = indexByProvider.get(provider);
+      options[index] = option;
+      return;
+    }
+    indexByProvider.set(provider, options.length);
+    options.push(option);
+  });
+  return options.sort((a, b) => a.value.localeCompare(b.value));
 };
 
 function type2secretPrompt(type, t) {
@@ -168,6 +252,7 @@ const EditChannel = () => {
     model_ratio: '',
     completion_ratio: '',
     system_prompt: '',
+    model_provider: '',
     models: [],
     groups: ['default'],
   };
@@ -176,10 +261,13 @@ const EditChannel = () => {
   const [originModelOptions, setOriginModelOptions] = useState([]);
   const [modelOptions, setModelOptions] = useState([]);
   const [groupOptions, setGroupOptions] = useState([]);
+  const [channelTypeOptions, setChannelTypeOptions] = useState(() =>
+    getChannelOptions()
+  );
   const [basicModels, setBasicModels] = useState([]);
   const [fullModels, setFullModels] = useState([]);
+  const [catalogModelProviderOptions, setCatalogModelProviderOptions] = useState([]);
   const [customModel, setCustomModel] = useState('');
-  const [modelProvider, setModelProvider] = useState('');
   const [fetchModelsLoading, setFetchModelsLoading] = useState(false);
   const [config, setConfig] = useState({
     region: '',
@@ -191,33 +279,29 @@ const EditChannel = () => {
     user_agent: '',
     use_responses: false,
   });
-  const modelProviderOptions = [
-    {
-      key: 'gpt',
-      text: t('channel.edit.model_provider_options.gpt'),
-      value: 'gpt',
-    },
-    {
-      key: 'gemini',
-      text: t('channel.edit.model_provider_options.gemini'),
-      value: 'gemini',
-    },
-    {
-      key: 'claude',
-      text: t('channel.edit.model_provider_options.claude'),
-      value: 'claude',
-    },
-    {
-      key: 'deepseek',
-      text: t('channel.edit.model_provider_options.deepseek'),
-      value: 'deepseek',
-    },
-    {
-      key: 'qwen',
-      text: t('channel.edit.model_provider_options.qwen'),
-      value: 'qwen',
-    },
-  ];
+  const fallbackModelProviderOptions = useMemo(
+    () => buildFallbackModelProviderOptions(t),
+    [t]
+  );
+  const modelProviderOptions = useMemo(() => {
+    const baseOptions =
+      catalogModelProviderOptions.length > 0
+        ? catalogModelProviderOptions
+        : fallbackModelProviderOptions;
+    const selectedProvider = normalizeModelProviderSelection(
+      inputs.model_provider
+    );
+    if (!selectedProvider) {
+      return baseOptions;
+    }
+    if (baseOptions.some((option) => option.value === selectedProvider)) {
+      return baseOptions;
+    }
+    return [
+      ...baseOptions,
+      { key: selectedProvider, text: selectedProvider, value: selectedProvider },
+    ];
+  }, [catalogModelProviderOptions, fallbackModelProviderOptions, inputs.model_provider]);
   const handleInputChange = (e, { name, value }) => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
     if (name === 'type') {
@@ -243,6 +327,7 @@ const EditChannel = () => {
       } else {
         data.groups = data.group.split(',');
       }
+      data.model_provider = normalizeModelProviderSelection(data.model_provider);
       if (data.model_mapping !== '') {
         data.model_mapping = JSON.stringify(
           JSON.parse(data.model_mapping),
@@ -290,7 +375,9 @@ const EditChannel = () => {
   }, []);
 
   const handleFetchModels = async () => {
-    const selectedProvider = normalizeModelProviderSelection(modelProvider);
+    const selectedProvider = normalizeModelProviderSelection(
+      inputs.model_provider
+    );
     setFetchModelsLoading(true);
     try {
       let models = [];
@@ -304,6 +391,7 @@ const EditChannel = () => {
           key: inputs.key,
           base_url: inputs.base_url,
           config,
+          model_provider: selectedProvider,
         });
         const { success, message, data } = res.data || {};
         if (!success) {
@@ -322,11 +410,7 @@ const EditChannel = () => {
       }
 
       const { ids } = buildModelOptions(models);
-      const filteredModels = selectedProvider
-        ? ids.filter((model) => resolveModelProvider(model) === selectedProvider)
-        : ids;
-
-      if (filteredModels.length === 0) {
+      if (ids.length === 0) {
         showInfo(
           selectedProvider
             ? '未找到符合所选供应商的模型'
@@ -335,7 +419,7 @@ const EditChannel = () => {
         return;
       }
 
-      setInputs((prev) => ({ ...prev, models: filteredModels }));
+      setInputs((prev) => ({ ...prev, models: ids }));
       showSuccess(t('channel.messages.operation_success'));
     } catch (error) {
       showError(error?.message || error);
@@ -356,6 +440,30 @@ const EditChannel = () => {
       );
     } catch (error) {
       showError(error.message);
+    }
+  }, []);
+
+  const fetchModelProviders = useCallback(async () => {
+    try {
+      const res = await API.get(`/api/v1/admin/model-provider`);
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('channel.providers.messages.load_failed'));
+        return;
+      }
+      const options = buildModelProviderOptionsFromCatalog(data);
+      if (options.length > 0) {
+        setCatalogModelProviderOptions(options);
+      }
+    } catch (error) {
+      showError(error?.message || error);
+    }
+  }, [t]);
+
+  const fetchChannelTypes = useCallback(async () => {
+    const options = await loadChannelOptions();
+    if (Array.isArray(options) && options.length > 0) {
+      setChannelTypeOptions(options);
     }
   }, []);
 
@@ -385,7 +493,9 @@ const EditChannel = () => {
   useEffect(() => {
     fetchModels().then();
     fetchGroups().then();
-  }, [fetchModels, fetchGroups]);
+    fetchModelProviders().then();
+    fetchChannelTypes().then();
+  }, [fetchModels, fetchGroups, fetchModelProviders, fetchChannelTypes]);
 
   const submit = async () => {
     if (inputs.key === '') {
@@ -401,6 +511,10 @@ const EditChannel = () => {
     }
     if (!isEdit && (inputs.name === '' || inputs.key === '')) {
       showInfo(t('channel.edit.messages.name_required'));
+      return;
+    }
+    if (normalizeModelProviderSelection(inputs.model_provider) === '') {
+      showInfo(t('channel.edit.messages.model_provider_required'));
       return;
     }
     if (inputs.type !== 43 && inputs.models.length === 0) {
@@ -432,6 +546,9 @@ const EditChannel = () => {
     if (localInputs.type === 3 && localInputs.other === '') {
       localInputs.other = '2024-03-01-preview';
     }
+    localInputs.model_provider = normalizeModelProviderSelection(
+      localInputs.model_provider
+    );
     let res;
     localInputs.models = localInputs.models.join(',');
     localInputs.group = localInputs.groups.join(',');
@@ -489,11 +606,13 @@ const EditChannel = () => {
             <Form.Field>
               <Form.Select
                 label={t('channel.edit.model_provider')}
-                name='modelProvider'
-                clearable
+                name='model_provider'
+                required
                 options={modelProviderOptions}
-                value={modelProvider}
-                onChange={(e, { value }) => setModelProvider(value)}
+                value={inputs.model_provider}
+                onChange={(e, { name, value }) =>
+                  handleInputChange(e, { name, value: value || '' })
+                }
               />
             </Form.Field>
             <Form.Field>
@@ -502,7 +621,7 @@ const EditChannel = () => {
                 name='type'
                 required
                 search
-                options={CHANNEL_OPTIONS}
+                options={channelTypeOptions}
                 value={inputs.type}
                 onChange={handleInputChange}
               />
