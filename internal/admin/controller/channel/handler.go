@@ -44,6 +44,24 @@ func shouldRequireModelProviderOnUpdate(fields map[string]json.RawMessage) bool 
 	return false
 }
 
+type updateChannelTestModelRequest struct {
+	ID        int    `json:"id"`
+	TestModel string `json:"test_model"`
+}
+
+func isModelInChannelModels(testModel string, models string) bool {
+	normalized := strings.TrimSpace(testModel)
+	if normalized == "" {
+		return true
+	}
+	for _, item := range strings.Split(models, ",") {
+		if strings.TrimSpace(item) == normalized {
+			return true
+		}
+	}
+	return false
+}
+
 // GetAllChannels godoc
 // @Summary List channels (admin)
 // @Tags admin
@@ -300,4 +318,61 @@ func UpdateChannel(c *gin.Context) {
 		"data":    channel,
 	})
 	return
+}
+
+// UpdateChannelTestModel godoc
+// @Summary Update channel test model (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body object true "Channel test model payload"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/channel/test_model [put]
+func UpdateChannelTestModel(c *gin.Context) {
+	req := updateChannelTestModelRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	if req.ID <= 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "渠道 ID 无效",
+		})
+		return
+	}
+	channel, err := channelsvc.GetByID(req.ID, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	req.TestModel = strings.TrimSpace(req.TestModel)
+	if !isModelInChannelModels(req.TestModel, channel.Models) {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "测试模型不在渠道支持的模型列表中",
+		})
+		return
+	}
+	if err := channelsvc.UpdateTestModelByID(req.ID, req.TestModel); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	channel.TestModel = req.TestModel
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    channel,
+	})
 }

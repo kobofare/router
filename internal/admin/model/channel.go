@@ -38,6 +38,7 @@ type Channel struct {
 	ModelRatio         *string `json:"model_ratio" gorm:"type:text;default:''"`
 	CompletionRatio    *string `json:"completion_ratio" gorm:"type:text;default:''"`
 	ModelProvider      string  `json:"model_provider" gorm:"type:varchar(32);default:''"`
+	TestModel          string  `json:"test_model" gorm:"type:varchar(255);default:''"`
 }
 
 type ChannelConfig struct {
@@ -146,4 +147,8 @@ func DeleteChannelByStatus(status int64) (int64, error) {
 
 func DeleteDisabledChannel() (int64, error) {
 	return mustChannelRepo().DeleteDisabledChannel()
+}
+
+func UpdateChannelTestModel(id int, testModel string) error {
+	return mustChannelRepo().UpdateChannelTestModelByID(id, testModel)
 }

@@ -242,6 +242,7 @@ func SetApiRouter(engine *gin.Engine) {
 				adminChannel.GET("/update_balance/:id", channel.UpdateChannelBalance)
 				adminChannel.POST("/", channel.AddChannel)
 				adminChannel.PUT("/", channel.UpdateChannel)
+				adminChannel.PUT("/test_model", channel.UpdateChannelTestModel)
 				adminChannel.DELETE("/disabled", channel.DeleteDisabledChannel)
 				adminChannel.DELETE("/:id", channel.DeleteChannel)
 			}
@@ -325,6 +326,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminChannelRoute.POST("/preview/models", channel.PreviewChannelModels)
 			adminChannelRoute.POST("/", channel.AddChannel)
 			adminChannelRoute.PUT("/", channel.UpdateChannel)
+			adminChannelRoute.PUT("/test_model", channel.UpdateChannelTestModel)
 			adminChannelRoute.DELETE("/disabled", channel.DeleteDisabledChannel)
 			adminChannelRoute.DELETE("/:id", channel.DeleteChannel)
 		}

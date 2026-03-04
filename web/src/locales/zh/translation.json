@@ -74,8 +74,11 @@
     },
     "buttons": {
       "test": "测试",
+      "test_channel": "测试渠道",
       "delete": "删除",
       "confirm_delete": "删除渠道",
+      "confirm": "确定",
+      "cancel": "取消",
       "enable": "启用",
       "disable": "禁用",
       "edit": "编辑",
@@ -92,6 +95,8 @@
     "messages": {
       "test_success": "渠道 {{name}} 测试成功，模型 {{model}}，耗时 {{time}} 秒，模型输出：{{message}}",
       "test_all_started": "已成功开始测试渠道，请刷新页面查看结果。",
+      "batch_test_select_required": "请先选择至少一个渠道。",
+      "batch_test_done": "批量测试完成：成功 {{success}}，失败 {{failed}}。",
       "delete_disabled_success": "已删除所有禁用渠道，共计 {{count}} 个",
       "balance_update_success": "渠道 {{name}} 余额更新成功！",
       "all_balance_updated": "已更新完毕所有已启用渠道余额！",

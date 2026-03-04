@@ -54,6 +54,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return runChannelTypeCatalogMigrationsWithDB(tx)
 			},
 		},
+		{
+			Version:     "202603040001_channel_test_model",
+			Description: "persist and backfill channel test model",
+			Up: func(tx *gorm.DB) error {
+				return runChannelTestModelMigrationsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

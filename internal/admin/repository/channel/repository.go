@@ -22,6 +22,7 @@ func init() {
 		UpdateChannelStatusById:      UpdateStatusByID,
 		UpdateChannelUsedQuota:       UpdateUsedQuota,
 		UpdateChannelUsedQuotaDirect: UpdateUsedQuotaDirect,
+		UpdateChannelTestModelByID:   UpdateTestModelByID,
 		DeleteChannelByStatus:        DeleteByStatus,
 		DeleteDisabledChannel:        DeleteDisabled,
 	})
@@ -151,6 +152,10 @@ func UpdateUsedQuotaDirect(id int, quota int64) {
 	if err != nil {
 		logger.SysError("failed to update channel used quota: " + err.Error())
 	}
+}
+
+func UpdateTestModelByID(id int, testModel string) error {
+	return model.DB.Model(&model.Channel{}).Where("id = ?", id).Update("test_model", testModel).Error
 }
 
 func DeleteByStatus(status int64) (int64, error) {

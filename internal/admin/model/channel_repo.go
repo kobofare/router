@@ -13,6 +13,7 @@ type ChannelRepository struct {
 	UpdateChannelStatusById      func(id int, status int)
 	UpdateChannelUsedQuota       func(id int, quota int64)
 	UpdateChannelUsedQuotaDirect func(id int, quota int64)
+	UpdateChannelTestModelByID   func(id int, testModel string) error
 	DeleteChannelByStatus        func(status int64) (int64, error)
 	DeleteDisabledChannel        func() (int64, error)
 }

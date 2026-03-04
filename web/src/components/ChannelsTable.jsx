@@ -91,6 +91,9 @@ const ChannelsTable = () => {
   const [searching, setSearching] = useState(false);
   const [showPrompt, setShowPrompt] = useState(shouldShowPrompt(promptID));
   const [showDetail, setShowDetail] = useState(isShowDetail());
+  const [batchTestMode, setBatchTestMode] = useState(false);
+  const [batchTesting, setBatchTesting] = useState(false);
+  const [selectedChannelIds, setSelectedChannelIds] = useState([]);
   const [typeMap, setTypeMap] = useState(() =>
     buildTypeMap(getChannelOptions(), t)
   );
@@ -99,10 +102,15 @@ const ChannelsTable = () => {
     if (channel.models === '') {
       channel.models = [];
       channel.test_model = '';
+      channel.model_options = [];
     } else {
       channel.models = channel.models.split(',');
       if (channel.models.length > 0) {
-        channel.test_model = channel.models[0];
+        channel.test_model = channel.models.includes(channel.test_model)
+          ? channel.test_model
+          : channel.models[0];
+      } else {
+        channel.test_model = '';
       }
       channel.model_options = channel.models.map((model) => {
         return {
@@ -111,7 +119,6 @@ const ChannelsTable = () => {
           value: model,
         };
       });
-      console.log('channel', channel);
     }
     return channel;
   }, []);
@@ -182,6 +189,14 @@ const ChannelsTable = () => {
       disposed = true;
     };
   }, [t]);
+
+  useEffect(() => {
+    if (!batchTestMode) {
+      return;
+    }
+    const validIds = new Set(channels.map((channel) => channel.id));
+    setSelectedChannelIds((prev) => prev.filter((id) => validIds.has(id)));
+  }, [batchTestMode, channels]);
 
   const manageChannel = async (id, action, idx, value) => {
     let data = { id };
@@ -333,37 +348,116 @@ const ChannelsTable = () => {
   };
 
   const switchTestModel = async (idx, model) => {
-    let newChannels = [...channels];
     let realIdx = (activePage - 1) * ITEMS_PER_PAGE + idx;
-    newChannels[realIdx].test_model = model;
-    setChannels(newChannels);
+    const currentChannel = channels[realIdx];
+    if (!currentChannel) {
+      return;
+    }
+    const previousModel = currentChannel.test_model;
+    const channelId = currentChannel.id;
+    const selectedModel = typeof model === 'string' ? model : '';
+
+    setChannels((prev) => {
+      if (!prev[realIdx]) return prev;
+      const next = [...prev];
+      next[realIdx] = {
+        ...next[realIdx],
+        test_model: selectedModel,
+      };
+      return next;
+    });
+
+    try {
+      const res = await API.put('/api/v1/admin/channel/test_model', {
+        id: channelId,
+        test_model: selectedModel,
+      });
+      const { success, message } = res.data;
+      if (!success) {
+        setChannels((prev) => {
+          if (!prev[realIdx]) return prev;
+          const next = [...prev];
+          next[realIdx] = {
+            ...next[realIdx],
+            test_model: previousModel,
+          };
+          return next;
+        });
+        showError(message || 'Operation failed');
+      }
+    } catch (error) {
+      setChannels((prev) => {
+        if (!prev[realIdx]) return prev;
+        const next = [...prev];
+        next[realIdx] = {
+          ...next[realIdx],
+          test_model: previousModel,
+        };
+        return next;
+      });
+      showError(error?.message || error);
+    }
   };
 
-  const testChannel = async (id, name, idx, m) => {
-    const preChannels = [...channels];
-    const preIdx = (activePage - 1) * ITEMS_PER_PAGE + idx;
-    preChannels[preIdx].testing = true;
-    setChannels(preChannels);
-    const res = await API.get(`/api/v1/admin/channel/test/${id}?model=${m}`);
-    const { success, message, time, model } = res.data;
-    if (success) {
-      let newChannels = [...channels];
-      let realIdx = (activePage - 1) * ITEMS_PER_PAGE + idx;
-      newChannels[realIdx].response_time = time * 1000;
-      newChannels[realIdx].test_time = Date.now() / 1000;
-      setChannels(newChannels);
-      showSuccess(
-        t('channel.messages.test_success', { name, model, time, message })
-      );
-    } else {
-      showError(message);
+  const runChannelTest = async (channel, absoluteIndex, silent = false) => {
+    if (!channel || absoluteIndex < 0) {
+      return false;
     }
-    let newChannels = [...channels];
-    let realIdx = (activePage - 1) * ITEMS_PER_PAGE + idx;
-    newChannels[realIdx].response_time = time * 1000;
-    newChannels[realIdx].test_time = Date.now() / 1000;
-    newChannels[realIdx].testing = false;
-    setChannels(newChannels);
+    setChannels((prev) => {
+      if (!prev[absoluteIndex]) return prev;
+      const next = [...prev];
+      next[absoluteIndex] = {
+        ...next[absoluteIndex],
+        testing: true,
+      };
+      return next;
+    });
+
+    let success = false;
+    let responseTime = 0;
+    try {
+      const modelName = channel.test_model || '';
+      const res = await API.get(`/api/v1/admin/channel/test/${channel.id}?model=${modelName}`);
+      const { success: ok, message, time, model } = res.data || {};
+      success = !!ok;
+      responseTime = Number(time || 0) * 1000;
+      if (success) {
+        if (!silent) {
+          showSuccess(
+            t('channel.messages.test_success', {
+              name: channel.name,
+              model,
+              time,
+              message,
+            })
+          );
+        }
+      } else if (!silent) {
+        showError(message || '测试失败');
+      }
+    } catch (error) {
+      if (!silent) {
+        showError(error?.message || error);
+      }
+    } finally {
+      setChannels((prev) => {
+        if (!prev[absoluteIndex]) return prev;
+        const next = [...prev];
+        next[absoluteIndex] = {
+          ...next[absoluteIndex],
+          response_time: responseTime,
+          test_time: Date.now() / 1000,
+          testing: false,
+        };
+        return next;
+      });
+    }
+    return success;
+  };
+
+  const testChannel = async (channel, idx) => {
+    const absoluteIndex = (activePage - 1) * ITEMS_PER_PAGE + idx;
+    await runChannelTest(channel, absoluteIndex, false);
   };
 
   const testChannels = async (scope) => {
@@ -428,6 +522,95 @@ const ChannelsTable = () => {
     setLoading(false);
   };
 
+  const startIndex = (activePage - 1) * ITEMS_PER_PAGE;
+  const pagedChannels = channels.slice(startIndex, activePage * ITEMS_PER_PAGE);
+  const pagedChannelIds = pagedChannels
+    .filter((channel) => !channel.deleted)
+    .map((channel) => channel.id);
+  const allPagedSelected =
+    pagedChannelIds.length > 0 &&
+    pagedChannelIds.every((id) => selectedChannelIds.includes(id));
+  const footerColSpan = (showDetail ? 10 : 8) + (batchTestMode ? 1 : 0);
+
+  const toggleChannelSelection = (channelId, checked) => {
+    setSelectedChannelIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(channelId);
+      } else {
+        next.delete(channelId);
+      }
+      return Array.from(next);
+    });
+  };
+
+  const togglePagedSelection = (checked) => {
+    setSelectedChannelIds((prev) => {
+      const next = new Set(prev);
+      pagedChannelIds.forEach((id) => {
+        if (checked) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      });
+      return Array.from(next);
+    });
+  };
+
+  const cancelBatchTest = () => {
+    setBatchTestMode(false);
+    setSelectedChannelIds([]);
+  };
+
+  const confirmBatchTest = async () => {
+    if (selectedChannelIds.length === 0) {
+      showInfo(t('channel.messages.batch_test_select_required'));
+      return;
+    }
+    const selectedIdsSnapshot = [...selectedChannelIds];
+    const targets = selectedIdsSnapshot
+      .map((id) => {
+        const absoluteIndex = channels.findIndex((channel) => channel.id === id);
+        if (absoluteIndex < 0) return null;
+        return {
+          absoluteIndex,
+          channel: channels[absoluteIndex],
+        };
+      })
+      .filter(Boolean);
+
+    if (targets.length === 0) {
+      showInfo(t('channel.messages.batch_test_select_required'));
+      return;
+    }
+
+    // Exit selection mode immediately after confirm.
+    setBatchTestMode(false);
+    setSelectedChannelIds([]);
+    setBatchTesting(true);
+
+    const results = await Promise.allSettled(
+      targets.map((target) =>
+        runChannelTest(target.channel, target.absoluteIndex, true)
+      )
+    );
+    let successCount = 0;
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value) {
+        successCount += 1;
+      }
+    });
+    const failedCount = results.length - successCount;
+    showInfo(
+      t('channel.messages.batch_test_done', {
+        success: successCount,
+        failed: failedCount,
+      })
+    );
+    setBatchTesting(false);
+  };
+
   return (
     <>
       <div
@@ -441,15 +624,28 @@ const ChannelsTable = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <Button
-            size='tiny'
-            loading={loading}
-            onClick={() => {
-              testChannels('all');
-            }}
-          >
-            {t('channel.buttons.test_all')}
-          </Button>
+          {!batchTestMode ? (
+            <Button
+              size='tiny'
+              loading={loading || batchTesting}
+              disabled={loading || batchTesting}
+              onClick={() => {
+                setBatchTestMode(true);
+                setSelectedChannelIds([]);
+              }}
+            >
+              {t('channel.buttons.test_channel')}
+            </Button>
+          ) : (
+            <>
+              <Button size='tiny' positive onClick={confirmBatchTest}>
+                {t('channel.buttons.confirm')}
+              </Button>
+              <Button size='tiny' onClick={cancelBatchTest}>
+                {t('channel.buttons.cancel')}
+              </Button>
+            </>
+          )}
           <Button
             size='tiny'
             loading={loading}
@@ -516,6 +712,16 @@ const ChannelsTable = () => {
       <Table basic={'very'} compact size='small'>
         <Table.Header>
           <Table.Row>
+            {batchTestMode && (
+              <Table.HeaderCell collapsing textAlign='center'>
+                <Form.Checkbox
+                  checked={allPagedSelected}
+                  onChange={(e, { checked }) => {
+                    togglePagedSelection(!!checked);
+                  }}
+                />
+              </Table.HeaderCell>
+            )}
             <Table.HeaderCell
               style={{ cursor: 'pointer' }}
               onClick={() => {
@@ -589,15 +795,21 @@ const ChannelsTable = () => {
         </Table.Header>
 
         <Table.Body>
-          {channels
-            .slice(
-              (activePage - 1) * ITEMS_PER_PAGE,
-              activePage * ITEMS_PER_PAGE
-            )
+          {pagedChannels
             .map((channel, idx) => {
               if (channel.deleted) return <></>;
               return (
                 <Table.Row key={channel.id}>
+                  {batchTestMode && (
+                    <Table.Cell collapsing textAlign='center'>
+                      <Form.Checkbox
+                        checked={selectedChannelIds.includes(channel.id)}
+                        onChange={(e, { checked }) => {
+                          toggleChannelSelection(channel.id, !!checked);
+                        }}
+                      />
+                    </Table.Cell>
+                  )}
                   <Table.Cell>{channel.id}</Table.Cell>
                   <Table.Cell>
                     {channel.name ? channel.name : t('channel.table.no_name')}
@@ -666,7 +878,7 @@ const ChannelsTable = () => {
                       placeholder={t('channel.table.select_test_model')}
                       selection
                       options={channel.model_options}
-                      defaultValue={channel.test_model}
+                      value={channel.test_model}
                       onChange={(event, data) => {
                         switchTestModel(idx, data.value);
                       }}
@@ -686,12 +898,7 @@ const ChannelsTable = () => {
                         size={'tiny'}
                         positive
                         onClick={() => {
-                          testChannel(
-                            channel.id,
-                            channel.name,
-                            idx,
-                            channel.test_model
-                          );
+                          testChannel(channel, idx);
                         }}
                       >
                         {t('channel.buttons.test')}
@@ -753,7 +960,7 @@ const ChannelsTable = () => {
 
         <Table.Footer>
           <Table.Row>
-            <Table.HeaderCell colSpan={showDetail ? '10' : '8'}>
+            <Table.HeaderCell colSpan={footerColSpan}>
               <Pagination
                 floated='right'
                 activePage={activePage}

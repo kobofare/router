@@ -32,3 +32,7 @@ func DeleteDisabled() (int64, error) {
 func Update(channel *model.Channel) error {
 	return channelrepo.Update(channel)
 }
+
+func UpdateTestModelByID(id int, testModel string) error {
+	return channelrepo.UpdateTestModelByID(id, testModel)
+}

@@ -248,7 +248,10 @@ func TestChannel(c *gin.Context) {
 		})
 		return
 	}
-	modelName := c.Query("model")
+	modelName := strings.TrimSpace(c.Query("model"))
+	if modelName == "" {
+		modelName = strings.TrimSpace(channel.TestModel)
+	}
 	testRequest := buildTestRequest(modelName)
 	tik := time.Now()
 	responseMessage, err, _ := testChannel(ctx, channel, testRequest)
@@ -303,7 +306,7 @@ func testChannels(ctx context.Context, notify bool, scope string) error {
 		for _, channel := range channels {
 			isChannelEnabled := channel.Status == model.ChannelStatusEnabled
 			tik := time.Now()
-			testRequest := buildTestRequest("")
+			testRequest := buildTestRequest(strings.TrimSpace(channel.TestModel))
 			_, err, openaiErr := testChannel(ctx, channel, testRequest)
 			tok := time.Now()
 			milliseconds := tok.Sub(tik).Milliseconds()
