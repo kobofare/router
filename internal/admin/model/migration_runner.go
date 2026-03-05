@@ -76,6 +76,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return runDropChannelModelProviderColumnMigrationWithDB(tx)
 			},
 		},
+		{
+			Version:     "202603051100_remove_openai_compatible_protocol",
+			Description: "remove openai-compatible protocol type and normalize existing channels to openai",
+			Up: func(tx *gorm.DB) error {
+				return runRemoveOpenAICompatibleProtocolMigrationWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

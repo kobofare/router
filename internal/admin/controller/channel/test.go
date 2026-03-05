@@ -111,7 +111,7 @@ func parseChannelTestResponse(resp string) (string, error) {
 	return "", fmt.Errorf("parse as chat failed: %v; parse as responses failed: %v", chatErr, responsesErr)
 }
 
-func testChannel(ctx context.Context, channel *model.Channel, request *relaymodel.GeneralOpenAIRequest) (responseMessage string, err error, openaiErr *relaymodel.Error) {
+func testChannel(ctx context.Context, channel *model.Channel, request *relaymodel.GeneralOpenAIRequest, userAgent string) (responseMessage string, err error, openaiErr *relaymodel.Error) {
 	startTime := time.Now()
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -123,13 +123,13 @@ func testChannel(ctx context.Context, channel *model.Channel, request *relaymode
 	}
 	c.Request.Header.Set("Authorization", "Bearer "+channel.Key)
 	c.Request.Header.Set("Content-Type", "application/json")
+	if strings.TrimSpace(userAgent) != "" {
+		c.Request.Header.Set("User-Agent", userAgent)
+	}
 	c.Set(ctxkey.Channel, channel.Type)
 	c.Set(ctxkey.BaseURL, channel.GetBaseURL())
 	cfg, _ := channel.LoadConfig()
 	relayMode := relaymode.ChatCompletions
-	if cfg.UserAgent != "" {
-		c.Request.Header.Set("User-Agent", cfg.UserAgent)
-	}
 	logger.SysLog(fmt.Sprintf("[testChannel] channel_id=%s name=%s path=%s", channel.Id, channel.Name, c.Request.URL.Path))
 	c.Set(ctxkey.Config, cfg)
 	middleware.SetupContextForSelectedChannel(c, channel, "")
@@ -254,7 +254,7 @@ func TestChannel(c *gin.Context) {
 	}
 	testRequest := buildTestRequest(modelName)
 	tik := time.Now()
-	responseMessage, err, _ := testChannel(ctx, channel, testRequest)
+	responseMessage, err, _ := testChannel(ctx, channel, testRequest, c.Request.UserAgent())
 	tok := time.Now()
 	milliseconds := tok.Sub(tik).Milliseconds()
 	if err != nil {
@@ -283,7 +283,7 @@ func TestChannel(c *gin.Context) {
 var testAllChannelsLock sync.Mutex
 var testAllChannelsRunning bool = false
 
-func testChannels(ctx context.Context, notify bool, scope string) error {
+func testChannels(ctx context.Context, notify bool, scope string, userAgent string) error {
 	if config.RootUserEmail == "" {
 		config.RootUserEmail = model.GetRootUserEmail()
 	}
@@ -307,7 +307,7 @@ func testChannels(ctx context.Context, notify bool, scope string) error {
 			isChannelEnabled := channel.Status == model.ChannelStatusEnabled
 			tik := time.Now()
 			testRequest := buildTestRequest(strings.TrimSpace(channel.TestModel))
-			_, err, openaiErr := testChannel(ctx, channel, testRequest)
+			_, err, openaiErr := testChannel(ctx, channel, testRequest, userAgent)
 			tok := time.Now()
 			milliseconds := tok.Sub(tik).Milliseconds()
 			if isChannelEnabled && milliseconds > disableThreshold {
@@ -355,7 +355,7 @@ func TestChannels(c *gin.Context) {
 	if scope == "" {
 		scope = "all"
 	}
-	err := testChannels(ctx, true, scope)
+	err := testChannels(ctx, true, scope, c.Request.UserAgent())
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -375,7 +375,7 @@ func AutomaticallyTestChannels(frequency int) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Minute)
 		logger.SysLog("testing all channels")
-		_ = testChannels(ctx, false, "all")
+		_ = testChannels(ctx, false, "all", "")
 		logger.SysLog("channel test finished")
 	}
 }

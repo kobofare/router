@@ -1,12 +1,5 @@
 export const CHANNEL_OPTIONS = [
   { key: 1, text: 'OpenAI', value: 1, color: 'green' },
-  {
-    key: 50,
-    text: 'OpenAI 兼容',
-    value: 50,
-    color: 'olive',
-    description: 'OpenAI 兼容渠道，支持设置 Base URL',
-  },
   {key: 14, text: 'Anthropic', value: 14, color: 'black'},
   { key: 33, text: 'AWS', value: 33, color: 'black' },
   {key: 3, text: 'Azure', value: 3, color: 'olive'},
@@ -90,8 +83,8 @@ export const CHANNEL_OPTIONS = [
     text: '自定义渠道',
     value: 8,
     color: 'pink',
-    tip: '不推荐使用，请使用 <strong>OpenAI 兼容</strong>渠道类型。注意，这里所需要填入的代理地址仅会在实际请求时替换域名部分，如果你想填入 OpenAI SDK 中所要求的 Base URL，请使用 OpenAI 兼容渠道类型',
-    description: '不推荐使用，请使用 OpenAI 兼容渠道类型',
+    tip: '不推荐使用，请使用 <strong>OpenAI</strong>渠道类型。注意，这里所需要填入的代理地址仅会在实际请求时替换域名部分，如果你想填入 OpenAI SDK 中所要求的 Base URL，请使用 OpenAI 渠道类型',
+    description: '不推荐使用，请使用 OpenAI 渠道类型',
   },
   { key: 22, text: '知识库：FastGPT', value: 22, color: 'blue' },
   { key: 21, text: '知识库：AI Proxy', value: 21, color: 'purple' },

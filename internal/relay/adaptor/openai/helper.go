@@ -16,8 +16,15 @@ func ResponseText2Usage(responseText string, modelName string, promptTokens int)
 	return usage
 }
 
+func shouldTrimOpenAIV1Path(baseURL string) bool {
+	normalized := strings.ToLower(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
+	return strings.HasSuffix(normalized, "/v1") ||
+		strings.HasSuffix(normalized, "/openai") ||
+		strings.HasSuffix(normalized, "/v1beta/openai")
+}
+
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
-	if channelType == channeltype.OpenAICompatible {
+	if channelType == channeltype.OpenAI && shouldTrimOpenAIV1Path(baseURL) {
 		return fmt.Sprintf("%s%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(requestURL, "/v1"))
 	}
 	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)

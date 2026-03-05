@@ -72,18 +72,12 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *me
 	adaptor.SetupCommonRequestHeader(c, req, meta)
 	if meta.ChannelType == channeltype.Azure {
 		req.Header.Set("api-key", meta.APIKey)
-		if meta.Config.UserAgent != "" {
-			req.Header.Set("User-Agent", meta.Config.UserAgent)
-		}
 		return nil
 	}
 	req.Header.Set("Authorization", "Bearer "+meta.APIKey)
 	if meta.ChannelType == channeltype.OpenRouter {
 		req.Header.Set("HTTP-Referer", "https://github.com/yeying-community/router")
 		req.Header.Set("X-Title", "Router")
-	}
-	if meta.Config.UserAgent != "" {
-		req.Header.Set("User-Agent", meta.Config.UserAgent)
 	}
 	return nil
 }

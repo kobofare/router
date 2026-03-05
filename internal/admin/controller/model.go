@@ -22,7 +22,7 @@ func modelBelongsToProvider(provider string, model string) bool {
 	p := strings.ToLower(provider)
 	m := strings.ToLower(model)
 	switch p {
-	case "openai", "openai-compatible", "openai-sb":
+	case "openai", "openai-sb":
 		return strings.HasPrefix(m, "gpt-") ||
 			strings.HasPrefix(m, "o1") ||
 			strings.HasPrefix(m, "o3") ||
@@ -146,6 +146,9 @@ func init() {
 	}
 	channelId2Models = make(map[int][]string)
 	for i := 1; i < channeltype.Dummy; i++ {
+		if i == channeltype.OpenAICompatible {
+			continue
+		}
 		adaptor := relay.GetAdaptor(channeltype.ToAPIType(i))
 		meta := &meta.Meta{
 			ChannelType: i,

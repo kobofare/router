@@ -19,7 +19,6 @@ type channelTypeSeed struct {
 
 var defaultChannelTypeSeeds = []channelTypeSeed{
 	{ID: 1, Label: "OpenAI", Color: "green"},
-	{ID: 50, Label: "OpenAI 兼容", Color: "olive", Description: "OpenAI 兼容渠道，支持设置 Base URL"},
 	{ID: 14, Label: "Anthropic", Color: "black"},
 	{ID: 33, Label: "AWS", Color: "black"},
 	{ID: 3, Label: "Azure", Color: "olive"},
@@ -56,7 +55,7 @@ var defaultChannelTypeSeeds = []channelTypeSeed{
 	{ID: 44, Label: "SiliconFlow", Color: "blue"},
 	{ID: 45, Label: "xAI", Color: "blue"},
 	{ID: 46, Label: "Replicate", Color: "blue"},
-	{ID: 8, Label: "自定义渠道", Color: "pink", Description: "不推荐使用，请使用 OpenAI 兼容渠道类型", Tip: "不推荐使用，请使用 <strong>OpenAI 兼容</strong>渠道类型。注意，这里所需要填入的代理地址仅会在实际请求时替换域名部分，如果你想填入 OpenAI SDK 中所要求的 Base URL，请使用 OpenAI 兼容渠道类型"},
+	{ID: 8, Label: "自定义渠道", Color: "pink", Description: "不推荐使用，请使用 OpenAI 渠道类型", Tip: "不推荐使用，请使用 <strong>OpenAI</strong>渠道类型。注意，这里所需要填入的代理地址仅会在实际请求时替换域名部分，如果你想填入 OpenAI SDK 中所要求的 Base URL，请使用 OpenAI 渠道类型"},
 	{ID: 22, Label: "知识库：FastGPT", Color: "blue"},
 	{ID: 21, Label: "知识库：AI Proxy", Color: "purple"},
 	{ID: 20, Label: "OpenRouter", Color: "black"},

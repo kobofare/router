@@ -11,7 +11,9 @@ import (
 
 	"github.com/yeying-community/router/common/client"
 	commonutils "github.com/yeying-community/router/common/utils"
+	relay "github.com/yeying-community/router/internal/relay"
 	"github.com/yeying-community/router/internal/relay/channeltype"
+	"github.com/yeying-community/router/internal/relay/meta"
 )
 
 type previewModelsRequest struct {
@@ -32,7 +34,7 @@ type openAIModelsResponse struct {
 }
 
 func isOpenAICompatibleType(channelType int) bool {
-	return channelType == channeltype.OpenAICompatible || channelType == channeltype.GeminiOpenAICompatible
+	return channelType == channeltype.OpenAI || channelType == channeltype.GeminiOpenAICompatible
 }
 
 func resolveModelsURL(baseURL string) string {
@@ -113,21 +115,49 @@ func fetchOpenAICompatibleModelIDsByBaseURL(key, baseURL, modelProvider string) 
 }
 
 func fetchOpenAICompatibleModelIDs(channelType int, key, baseURL string) ([]string, error) {
-	if !isOpenAICompatibleType(channelType) {
+	if channelType <= 0 || channelType >= channeltype.Dummy {
 		return nil, fmt.Errorf("当前渠道类型暂不支持自动获取模型")
 	}
-	resolvedBaseURL := strings.TrimSpace(baseURL)
-	if resolvedBaseURL == "" {
-		resolvedBaseURL = channeltype.ChannelBaseURLs[channelType]
-		if resolvedBaseURL == "" {
-			resolvedBaseURL = channeltype.ChannelBaseURLs[channeltype.OpenAICompatible]
+
+	if isOpenAICompatibleType(channelType) {
+		trimmedKey := strings.TrimSpace(key)
+		if trimmedKey != "" {
+			resolvedBaseURL := strings.TrimSpace(baseURL)
+			if resolvedBaseURL == "" {
+				resolvedBaseURL = channeltype.ChannelBaseURLs[channelType]
+				if resolvedBaseURL == "" {
+					resolvedBaseURL = channeltype.ChannelBaseURLs[channeltype.OpenAI]
+				}
+			}
+			return fetchOpenAICompatibleModelIDsByBaseURL(trimmedKey, resolvedBaseURL, "")
 		}
 	}
-	return fetchOpenAICompatibleModelIDsByBaseURL(key, resolvedBaseURL, "")
+
+	adaptor := relay.GetAdaptor(channeltype.ToAPIType(channelType))
+	metaObj := &meta.Meta{ChannelType: channelType}
+	adaptor.Init(metaObj)
+	models := adaptor.GetModelList()
+	seen := make(map[string]struct{}, len(models))
+	modelIDs := make([]string, 0, len(models))
+	for _, item := range models {
+		id := strings.TrimSpace(item)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		modelIDs = append(modelIDs, id)
+	}
+	if len(modelIDs) == 0 {
+		return nil, fmt.Errorf("当前渠道类型未返回可用模型")
+	}
+	return modelIDs, nil
 }
 
 // PreviewChannelModels godoc
-// @Summary Preview models for OpenAI-compatible channel (admin)
+// @Summary Preview models for channel type (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json

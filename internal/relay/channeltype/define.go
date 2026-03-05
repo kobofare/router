@@ -109,6 +109,6 @@ var ChannelTypeNames = []string{
 	"baidu-v2",
 	"xunfei-v2",
 	"ali-bailian",
-	"openai-compatible",
+	"",
 	"gemini-openai-compatible",
 }

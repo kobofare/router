@@ -21,30 +21,6 @@ const normalizeModelId = (model) => {
   return null;
 };
 
-const flattenModels = (payload, meta) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(meta)) {
-    const set = new Set();
-    meta.forEach((entry) => {
-      const models = entry?.models;
-      if (Array.isArray(models)) {
-        models.forEach((model) => set.add(model));
-      }
-    });
-    return Array.from(set);
-  }
-  if (payload && typeof payload === 'object') {
-    const set = new Set();
-    Object.values(payload).forEach((models) => {
-      if (Array.isArray(models)) {
-        models.forEach((model) => set.add(model));
-      }
-    });
-    return Array.from(set);
-  }
-  return [];
-};
-
 const buildModelOptions = (models) => {
   const seen = new Set();
   const options = [];
@@ -63,9 +39,9 @@ const buildModelOptions = (models) => {
   return { options, ids };
 };
 
-const OPENAI_COMPATIBLE_TYPES = new Set([50, 51]);
+const OPENAI_PROTOCOL_TYPES = new Set([1, 51]);
 
-const isOpenAICompatibleType = (type) => OPENAI_COMPATIBLE_TYPES.has(type);
+const isOpenAICompatibleType = (type) => OPENAI_PROTOCOL_TYPES.has(type);
 
 const normalizeBaseURL = (baseURL) =>
   (baseURL || '').trim().replace(/\/+$/, '');
@@ -112,7 +88,6 @@ const CHANNEL_DEFAULT_CONFIG = {
   user_id: '',
   vertex_ai_project_id: '',
   vertex_ai_adc: '',
-  user_agent: '',
 };
 
 function type2secretPrompt(type, t) {
@@ -166,10 +141,14 @@ const EditChannel = () => {
   const [verifiedModelSignature, setVerifiedModelSignature] = useState('');
   const [config, setConfig] = useState(CHANNEL_DEFAULT_CONFIG);
   const fetchingModelsRef = useRef(false);
-  const isOpenAICompatibleCreate = !isEdit && isOpenAICompatibleType(inputs.type);
+  const isOpenAICompatiblePathMode = isOpenAICompatibleType(inputs.type);
   const hasModelPreviewCredentials =
     (inputs.key || '').trim() !== '' &&
-    (normalizeBaseURL(inputs.base_url) !== '' || inputs.type === 51);
+    (
+      normalizeBaseURL(inputs.base_url) !== '' ||
+      inputs.type === 51 ||
+      inputs.type === 1
+    );
   const currentModelSignature = useMemo(
     () =>
       buildChannelConnectionSignature({
@@ -179,7 +158,7 @@ const EditChannel = () => {
       }),
     [inputs.base_url, inputs.key, inputs.type]
   );
-  const requiresConnectionVerification = isOpenAICompatibleCreate && inputs.type !== 43;
+  const requiresConnectionVerification = !isEdit && isOpenAICompatiblePathMode && inputs.type !== 43;
   const showCreateModelFlowGuide = !isEdit && inputs.type !== 43;
   const isCreateMode = !isEdit;
   const showStepOne = isEdit || createStep === 1;
@@ -230,9 +209,11 @@ const EditChannel = () => {
   const flowStepsText = requiresConnectionVerification
     ? t('channel.edit.model_selector.flow_steps')
     : t('channel.edit.model_selector.flow_steps_no_verify');
-  const protocolVerifySupportText = requiresConnectionVerification
-    ? t('channel.edit.model_selector.protocol_support_yes')
-    : t('channel.edit.model_selector.protocol_support_no');
+  const protocolVerifySupportText = useMemo(() => {
+    return requiresConnectionVerification
+      ? t('channel.edit.model_selector.protocol_support_yes')
+      : t('channel.edit.model_selector.protocol_support_no');
+  }, [requiresConnectionVerification, t]);
   const unifiedModelStatusText = useMemo(() => {
     if (requiresConnectionVerification) {
       return modelSyncStatusText;
@@ -414,10 +395,17 @@ const EditChannel = () => {
       } else {
         data.completion_ratio = '';
       }
+      let parsedConfig = {};
+      if (data.config !== '') {
+        parsedConfig = JSON.parse(data.config);
+        delete parsedConfig.use_responses;
+      }
+      const normalizedType = data.type || 1;
+
       if (forCopy) {
         setInputs({
           name: data.name || '',
-          type: data.type || 1,
+          type: normalizedType,
           key: data.key || '',
           base_url: data.base_url || '',
           other: data.other || '',
@@ -429,13 +417,12 @@ const EditChannel = () => {
           groups: data.groups && data.groups.length > 0 ? data.groups : [],
         });
       } else {
-        setInputs(data);
+        setInputs({ ...data, type: normalizedType });
       }
-      if (data.config !== '') {
-        const parsedConfig = JSON.parse(data.config);
-        delete parsedConfig.use_responses;
-        setConfig((prev) => ({ ...prev, ...parsedConfig }));
-      }
+      setConfig((prev) => ({
+        ...prev,
+        ...parsedConfig,
+      }));
     } else {
       showError(message);
     }
@@ -457,18 +444,25 @@ const EditChannel = () => {
   const fetchModels = useCallback(
     async (silent = false) => {
       try {
-        const res = await API.get(`/api/v1/public/channel/models`);
-        const payload = res?.data?.data;
-        const meta = res?.data?.meta;
-        const flattenedModels = flattenModels(payload, meta);
-        applyModelCandidates(flattenedModels, false);
+        const res = await API.post(`/api/v1/admin/channel/preview/models`, {
+          type: inputs.type,
+          key: (inputs.key || '').trim(),
+          base_url: normalizeBaseURL(inputs.base_url),
+          config,
+        });
+        const { success, message, data } = res.data || {};
+        if (!success) {
+          throw new Error(message || t('channel.edit.messages.fetch_models_failed'));
+        }
+        const models = Array.isArray(data) ? data.filter((model) => model) : [];
+        applyModelCandidates(models, false);
       } catch (error) {
         if (!silent) {
           showError(error?.message || error);
         }
       }
     },
-    [applyModelCandidates]
+    [applyModelCandidates, config, inputs.base_url, inputs.key, inputs.type, t]
   );
 
   const handleFetchModels = useCallback(
@@ -482,49 +476,34 @@ const EditChannel = () => {
         let models = [];
         const normalizedBaseURL = normalizeBaseURL(inputs.base_url);
         const key = (inputs.key || '').trim();
-        const useChannelPreviewAPI =
-          isOpenAICompatibleType(inputs.type) &&
-          key !== '' &&
-          (normalizedBaseURL !== '' || inputs.type === 51);
         const requestSignature = buildChannelConnectionSignature({
           type: inputs.type,
           key,
           baseURL: normalizedBaseURL,
         });
-        if (
-          useChannelPreviewAPI
-        ) {
-          const res = await API.post(`/api/v1/admin/channel/preview/models`, {
-            type: inputs.type,
-            key,
-            base_url: normalizedBaseURL,
-            config,
-          });
-          const { success, message, data } = res.data || {};
-          if (!success) {
-            const errorMessage = message || t('channel.edit.messages.fetch_models_failed');
-            setModelsSyncError(errorMessage);
-            setVerifiedModelSignature('');
-            if (!silent) {
-              showError(errorMessage);
-            }
-            return false;
+        const res = await API.post(`/api/v1/admin/channel/preview/models`, {
+          type: inputs.type,
+          key,
+          base_url: normalizedBaseURL,
+          config,
+        });
+        const { success, message, data } = res.data || {};
+        if (!success) {
+          const errorMessage = message || t('channel.edit.messages.fetch_models_failed');
+          setModelsSyncError(errorMessage);
+          setVerifiedModelSignature('');
+          if (!silent) {
+            showError(errorMessage);
           }
-          models = Array.isArray(data) ? data.filter((model) => model) : [];
-        } else {
-          const res = await API.get(`/api/v1/public/channel/models`);
-          const payload = res?.data?.data;
-          const meta = res?.data?.meta;
-          models = flattenModels(payload, meta);
+          return false;
         }
+        models = Array.isArray(data) ? data.filter((model) => model) : [];
 
         const ids = applyModelCandidates(models, selectAll);
         if (ids.length === 0) {
           const message = t('channel.edit.messages.models_empty');
           setModelsSyncError(message);
-          if (useChannelPreviewAPI) {
-            setVerifiedModelSignature('');
-          }
+          setVerifiedModelSignature('');
           if (!silent) {
             showInfo(message);
           }
@@ -533,9 +512,7 @@ const EditChannel = () => {
 
         setModelsSyncError('');
         setModelsLastSyncedAt(Date.now());
-        if (useChannelPreviewAPI) {
-          setVerifiedModelSignature(requestSignature);
-        }
+        setVerifiedModelSignature(requestSignature);
         if (!silent) {
           showSuccess(t('channel.messages.operation_success'));
         }
@@ -753,13 +730,13 @@ const EditChannel = () => {
     if (inputs.type === 43) {
       return;
     }
-    if (isOpenAICompatibleCreate && hasModelPreviewCredentials) {
+    if (requiresConnectionVerification && hasModelPreviewCredentials) {
       const timer = setTimeout(() => {
         handleFetchModels({ silent: true, selectAll: true }).then();
       }, 700);
       return () => clearTimeout(timer);
     }
-    if (isOpenAICompatibleCreate) {
+    if (requiresConnectionVerification) {
       return;
     }
     const timer = setTimeout(() => {
@@ -774,7 +751,7 @@ const EditChannel = () => {
     inputs.key,
     inputs.type,
     isEdit,
-    isOpenAICompatibleCreate,
+    requiresConnectionVerification,
     loading,
     createStep,
   ]);
@@ -841,6 +818,7 @@ const EditChannel = () => {
     localInputs.group = localInputs.groups.join(',');
     const submitConfig = { ...config };
     delete submitConfig.use_responses;
+    delete submitConfig.user_agent;
     localInputs.config = JSON.stringify(submitConfig);
     if (isEdit) {
       res = await API.put(`/api/v1/admin/channel/`, {
@@ -983,10 +961,9 @@ const EditChannel = () => {
                     />
                   </Form.Field>
                 )}
-                {inputs.type === 50 && (
+                {inputs.type === 1 && (
                   <Form.Field>
                     <Form.Input
-                      required
                       label={t('channel.edit.base_url')}
                       name='base_url'
                       placeholder={t('channel.edit.base_url_placeholder')}
@@ -1015,7 +992,7 @@ const EditChannel = () => {
                 {inputs.type !== 3 &&
                   inputs.type !== 33 &&
                   inputs.type !== 8 &&
-                  inputs.type !== 50 &&
+                  inputs.type !== 1 &&
                   inputs.type !== 22 && (
                     <Form.Field>
                       <Form.Input
@@ -1043,23 +1020,6 @@ const EditChannel = () => {
                       />
                     </Form.Field>
                   )}
-                {isOpenAICompatibleType(inputs.type) && (
-                  <Form.Field>
-                    <Form.Input
-                      label={t('channel.edit.user_agent.label')}
-                      name='user_agent'
-                      placeholder={t('channel.edit.user_agent.placeholder')}
-                      onChange={handleConfigChange}
-                      value={config.user_agent || ''}
-                      autoComplete='new-password'
-                    />
-                    <div
-                      style={{ color: 'rgba(0, 0, 0, 0.6)', marginTop: '4px' }}
-                    >
-                      {t('channel.edit.user_agent.help')}
-                    </div>
-                  </Form.Field>
-                )}
                 <Form.Field>
                   <Form.Dropdown
                     label={t('channel.edit.group')}

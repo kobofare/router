@@ -15,6 +15,9 @@ const normalizeChannelOption = (item) => {
   if (!Number.isInteger(value) || value < 0) {
     return null;
   }
+  if (value === 50) {
+    return null;
+  }
   const text = String(item.text ?? item.label ?? item.name ?? value).trim();
   return {
     key: value,

@@ -13,20 +13,13 @@ func TestBuildDefaultChannelTypeCatalog(t *testing.T) {
 		t.Fatalf("expected default channel types, got empty")
 	}
 	foundOpenAI := false
-	foundOpenAICompatible := false
 	for _, item := range items {
 		if item.ID == 1 && item.Name == "openai" && item.Label == "OpenAI" {
 			foundOpenAI = true
 		}
-		if item.ID == 50 && item.Name == "openai-compatible" {
-			foundOpenAICompatible = true
-		}
 	}
 	if !foundOpenAI {
 		t.Fatalf("expected openai channel type in defaults")
-	}
-	if !foundOpenAICompatible {
-		t.Fatalf("expected openai-compatible channel type in defaults")
 	}
 }
 
