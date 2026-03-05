@@ -12,6 +12,7 @@ const (
 	ChannelStatusEnabled          = 1 // don't use 0, 0 is the default value!
 	ChannelStatusManuallyDisabled = 2 // also don't use 0
 	ChannelStatusAutoDisabled     = 3
+	ChannelStatusCreating         = 4
 )
 
 type Channel struct {
@@ -37,6 +38,7 @@ type Channel struct {
 	ModelRatio         *string `json:"model_ratio" gorm:"type:text;default:''"`
 	CompletionRatio    *string `json:"completion_ratio" gorm:"type:text;default:''"`
 	TestModel          string  `json:"test_model" gorm:"type:varchar(255);default:''"`
+	KeySet             bool    `json:"key_set" gorm:"-"`
 }
 
 type ChannelConfig struct {

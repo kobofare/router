@@ -19,6 +19,22 @@ type updateChannelTestModelRequest struct {
 	TestModel string `json:"test_model"`
 }
 
+type createChannelDraftRequest struct {
+	Name    string `json:"name"`
+	Type    int    `json:"type"`
+	Key     string `json:"key"`
+	BaseURL string `json:"base_url"`
+	Config  string `json:"config"`
+}
+
+func sanitizeChannelForResponse(channel *model.Channel) {
+	if channel == nil {
+		return
+	}
+	channel.KeySet = strings.TrimSpace(channel.Key) != ""
+	channel.Key = ""
+}
+
 func isModelInChannelModels(testModel string, models string) bool {
 	normalized := strings.TrimSpace(testModel)
 	if normalized == "" {
@@ -54,6 +70,9 @@ func GetAllChannels(c *gin.Context) {
 		})
 		return
 	}
+	for _, channel := range channels {
+		sanitizeChannelForResponse(channel)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -81,6 +100,9 @@ func SearchChannels(c *gin.Context) {
 		})
 		return
 	}
+	for _, channel := range channels {
+		sanitizeChannelForResponse(channel)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -107,8 +129,13 @@ func GetChannel(c *gin.Context) {
 		})
 		return
 	}
+	selectAll := false
+	selectAllRaw := strings.TrimSpace(c.Query("select_all"))
+	if selectAllRaw == "1" || strings.EqualFold(selectAllRaw, "true") {
+		selectAll = true
+	}
 	var err error
-	channel, err := channelsvc.GetByID(id, false)
+	channel, err := channelsvc.GetByID(id, selectAll)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -116,6 +143,7 @@ func GetChannel(c *gin.Context) {
 		})
 		return
 	}
+	sanitizeChannelForResponse(channel)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -168,6 +196,60 @@ func AddChannel(c *gin.Context) {
 		"message": "",
 	})
 	return
+}
+
+// CreateChannelDraft godoc
+// @Summary Create channel draft (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/channel/draft [post]
+func CreateChannelDraft(c *gin.Context) {
+	req := createChannelDraftRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	key := strings.TrimSpace(req.Key)
+	if name == "" || key == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "渠道名称和密钥不能为空",
+		})
+		return
+	}
+	baseURL := strings.TrimSpace(req.BaseURL)
+	channel := model.Channel{
+		Name:        name,
+		Type:        req.Type,
+		Key:         key,
+		Status:      model.ChannelStatusCreating,
+		Models:      "",
+		BaseURL:     &baseURL,
+		Config:      strings.TrimSpace(req.Config),
+		CreatedTime: helper.GetTimestamp(),
+	}
+	if err := channelsvc.Insert(&channel); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"id": channel.Id,
+		},
+	})
 }
 
 // DeleteChannel godoc
@@ -265,6 +347,7 @@ func UpdateChannel(c *gin.Context) {
 		})
 		return
 	}
+	sanitizeChannelForResponse(&channel)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -324,6 +407,7 @@ func UpdateChannelTestModel(c *gin.Context) {
 		return
 	}
 	channel.TestModel = req.TestModel
+	sanitizeChannelForResponse(channel)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

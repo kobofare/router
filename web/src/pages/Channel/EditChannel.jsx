@@ -39,15 +39,37 @@ const buildModelOptions = (models) => {
   return { options, ids };
 };
 
-const OPENAI_PROTOCOL_TYPES = new Set([1, 51]);
-
-const isOpenAICompatibleType = (type) => OPENAI_PROTOCOL_TYPES.has(type);
-
 const normalizeBaseURL = (baseURL) =>
   (baseURL || '').trim().replace(/\/+$/, '');
 
-const buildChannelConnectionSignature = ({ type, key, baseURL }) =>
-  `${type}|${normalizeBaseURL(baseURL)}|${(key || '').trim()}`;
+const buildChannelConnectionSignature = ({ type, key, baseURL, draftID }) => {
+  const normalizedKey = (key || '').trim();
+  const normalizedDraftID = (draftID || '').trim();
+  const keyPart = normalizedKey !== '' ? normalizedKey : `@draft:${normalizedDraftID}`;
+  return `${type}|${normalizeBaseURL(baseURL)}|${keyPart}`;
+};
+
+const sanitizeDraftInputsForLocalStorage = (inputs) => {
+  if (!inputs || typeof inputs !== 'object') {
+    return CHANNEL_ORIGIN_INPUTS;
+  }
+  return {
+    ...inputs,
+    key: '',
+  };
+};
+
+const sanitizeDraftConfigForLocalStorage = (config) => {
+  if (!config || typeof config !== 'object') {
+    return CHANNEL_DEFAULT_CONFIG;
+  }
+  return {
+    ...config,
+    ak: '',
+    sk: '',
+    vertex_ai_adc: '',
+  };
+};
 
 const CHANNEL_CREATE_DRAFT_KEY = 'router.channel.create.draft.v1';
 const CREATE_CHANNEL_STEP_MIN = 1;
@@ -117,12 +139,18 @@ const EditChannel = () => {
     const id = Number(query.get('copy_from') || 0);
     return Number.isInteger(id) && id > 0 ? id : 0;
   }, [isEdit, location.search]);
+  const draftIdFromQuery = useMemo(() => {
+    if (isEdit) return '';
+    const query = new URLSearchParams(location.search);
+    return (query.get('draft_id') || '').trim();
+  }, [isEdit, location.search]);
   const [loading, setLoading] = useState(isEdit || copyFromId > 0);
   const [createStep, setCreateStep] = useState(() => {
     const query = new URLSearchParams(location.search);
     return parseCreateStep(query.get('step'));
   });
-  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftChannelId, setDraftChannelId] = useState(draftIdFromQuery);
+  const [channelKeySet, setChannelKeySet] = useState(false);
   const handleCancel = () => {
     navigate('/channel');
   };
@@ -139,26 +167,48 @@ const EditChannel = () => {
   const [verifiedModelSignature, setVerifiedModelSignature] = useState('');
   const [config, setConfig] = useState(CHANNEL_DEFAULT_CONFIG);
   const fetchingModelsRef = useRef(false);
-  const isOpenAICompatiblePathMode = isOpenAICompatibleType(inputs.type);
+
+  const buildEffectiveKey = useCallback(() => {
+    let effectiveKey = inputs.key || '';
+    if (effectiveKey === '') {
+      if (config.ak !== '' && config.sk !== '' && config.region !== '') {
+        effectiveKey = `${config.ak}|${config.sk}|${config.region}`;
+      } else if (
+        config.region !== '' &&
+        config.vertex_ai_project_id !== '' &&
+        config.vertex_ai_adc !== ''
+      ) {
+        effectiveKey = `${config.region}|${config.vertex_ai_project_id}|${config.vertex_ai_adc}`;
+      }
+    }
+    return effectiveKey;
+  }, [config.ak, config.region, config.sk, config.vertex_ai_adc, config.vertex_ai_project_id, inputs.key]);
+
+  const effectivePreviewKey = useMemo(
+    () => buildEffectiveKey().trim(),
+    [buildEffectiveKey]
+  );
+  const previewChannelID = useMemo(
+    () => ((isEdit ? channelId : draftChannelId) || '').trim(),
+    [channelId, draftChannelId, isEdit]
+  );
+  const isCreateMode = !isEdit;
   const hasModelPreviewCredentials =
-    (inputs.key || '').trim() !== '' &&
-    (
-      normalizeBaseURL(inputs.base_url) !== '' ||
-      inputs.type === 51 ||
-      inputs.type === 1
-    );
+    effectivePreviewKey !== '' || (previewChannelID !== '' && channelKeySet);
+  const canReuseStoredKeyForCreate =
+    isCreateMode && previewChannelID !== '' && channelKeySet;
   const currentModelSignature = useMemo(
     () =>
       buildChannelConnectionSignature({
         type: inputs.type,
-        key: inputs.key,
+        key: effectivePreviewKey,
         baseURL: inputs.base_url,
+        draftID: previewChannelID,
       }),
-    [inputs.base_url, inputs.key, inputs.type]
+    [effectivePreviewKey, inputs.base_url, inputs.type, previewChannelID]
   );
-  const requiresConnectionVerification = !isEdit && isOpenAICompatiblePathMode && inputs.type !== 43;
+  const requiresConnectionVerification = !isEdit && inputs.type !== 43;
   const showCreateModelFlowGuide = !isEdit && inputs.type !== 43;
-  const isCreateMode = !isEdit;
   const showStepOne = isEdit || createStep === 1;
   const showStepTwo = isEdit || createStep === 2;
   const showStepThree = isEdit || createStep === 3;
@@ -201,45 +251,10 @@ const EditChannel = () => {
   ]);
   const modelSyncStatusColor =
     isCurrentSignatureVerified ? '#1f8f4b' : 'rgba(0, 0, 0, 0.6)';
-  const fetchModelsButtonText = requiresConnectionVerification
-    ? t('channel.edit.buttons.verify_and_fetch_models')
-    : t('channel.edit.buttons.fetch_models');
-  const flowStepsText = requiresConnectionVerification
-    ? t('channel.edit.model_selector.flow_steps')
-    : t('channel.edit.model_selector.flow_steps_no_verify');
-  const protocolVerifySupportText = useMemo(() => {
-    return requiresConnectionVerification
-      ? t('channel.edit.model_selector.protocol_support_yes')
-      : t('channel.edit.model_selector.protocol_support_no');
-  }, [requiresConnectionVerification, t]);
-  const unifiedModelStatusText = useMemo(() => {
-    if (requiresConnectionVerification) {
-      return modelSyncStatusText;
-    }
-    if (showCreateModelFlowGuide) {
-      return t('channel.edit.model_selector.manual_mode_hint');
-    }
-    return null;
-  }, [modelSyncStatusText, requiresConnectionVerification, showCreateModelFlowGuide, t]);
-  const unifiedModelStatusColor = requiresConnectionVerification
-    ? modelSyncStatusColor
-    : 'rgba(0, 0, 0, 0.6)';
-
-  const buildEffectiveKey = useCallback(() => {
-    let effectiveKey = inputs.key || '';
-    if (effectiveKey === '') {
-      if (config.ak !== '' && config.sk !== '' && config.region !== '') {
-        effectiveKey = `${config.ak}|${config.sk}|${config.region}`;
-      } else if (
-        config.region !== '' &&
-        config.vertex_ai_project_id !== '' &&
-        config.vertex_ai_adc !== ''
-      ) {
-        effectiveKey = `${config.region}|${config.vertex_ai_project_id}|${config.vertex_ai_adc}`;
-      }
-    }
-    return effectiveKey;
-  }, [config.ak, config.region, config.sk, config.vertex_ai_adc, config.vertex_ai_project_id, inputs.key]);
+  const fetchModelsButtonText = t('channel.edit.buttons.verify_and_fetch_models');
+  const flowStepsText = t('channel.edit.model_selector.flow_steps');
+  const unifiedModelStatusText = modelSyncStatusText;
+  const unifiedModelStatusColor = modelSyncStatusColor;
 
   const handleInputChange = (e, { name, value }) => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
@@ -273,9 +288,15 @@ const EditChannel = () => {
         return false;
       }
 
-      setInputs({ ...CHANNEL_ORIGIN_INPUTS, ...draft.inputs });
+      setInputs({
+        ...CHANNEL_ORIGIN_INPUTS,
+        ...sanitizeDraftInputsForLocalStorage(draft.inputs),
+      });
       if (draft.config && typeof draft.config === 'object') {
-        setConfig({ ...CHANNEL_DEFAULT_CONFIG, ...draft.config });
+        setConfig({
+          ...CHANNEL_DEFAULT_CONFIG,
+          ...sanitizeDraftConfigForLocalStorage(draft.config),
+        });
       }
       if (Array.isArray(draft.originModelOptions)) {
         setOriginModelOptions(
@@ -297,8 +318,15 @@ const EditChannel = () => {
       if (typeof draft.verifiedModelSignature === 'string') {
         setVerifiedModelSignature(draft.verifiedModelSignature);
       }
+      if (typeof draft.draft_channel_id === 'string') {
+        setDraftChannelId(draft.draft_channel_id.trim());
+      }
+      if (typeof draft.channel_key_set === 'boolean') {
+        setChannelKeySet(draft.channel_key_set);
+      } else {
+        setChannelKeySet(false);
+      }
       setCreateStep(parseCreateStep(draft.step));
-      setDraftRestored(true);
       return true;
     } catch {
       return false;
@@ -319,16 +347,114 @@ const EditChannel = () => {
     goToCreateStep(createStep - 1);
   }, [createStep, goToCreateStep]);
 
-  const moveToStepTwo = useCallback(() => {
+  const buildChannelPayload = useCallback(() => {
     const effectiveKey = buildEffectiveKey();
-    if (inputs.name.trim() === '' || effectiveKey.trim() === '') {
+    let localInputs = { ...inputs, key: effectiveKey };
+    if (localInputs.key === 'undefined|undefined|undefined') {
+      localInputs.key = '';
+    }
+    if (localInputs.base_url && localInputs.base_url.endsWith('/')) {
+      localInputs.base_url = localInputs.base_url.slice(
+        0,
+        localInputs.base_url.length - 1
+      );
+    }
+    if (localInputs.type === 3 && localInputs.other === '') {
+      localInputs.other = '2024-03-01-preview';
+    }
+    localInputs.models = (localInputs.models || []).join(',');
+    const submitConfig = { ...config };
+    delete submitConfig.use_responses;
+    delete submitConfig.user_agent;
+    localInputs.config = JSON.stringify(submitConfig);
+    return localInputs;
+  }, [buildEffectiveKey, config, inputs]);
+
+  const createDraftChannel = useCallback(async () => {
+    const payload = buildChannelPayload();
+    const res = await API.post('/api/v1/admin/channel/draft', {
+      name: payload.name,
+      type: payload.type,
+      key: payload.key,
+      base_url: payload.base_url,
+      config: payload.config,
+    });
+    const { success, message, data } = res.data || {};
+    if (!success) {
+      showError(message || t('channel.edit.messages.create_draft_failed'));
+      return '';
+    }
+    const id = (data?.id || '').toString();
+    if (id === '') {
+      showError(t('channel.edit.messages.create_draft_failed'));
+      return '';
+    }
+    setDraftChannelId(id);
+    if ((payload.key || '').trim() !== '') {
+      setChannelKeySet(true);
+    }
+    return id;
+  }, [buildChannelPayload, t]);
+
+  const saveDraftChannel = useCallback(async () => {
+    if (!draftChannelId) {
+      return true;
+    }
+    const payload = buildChannelPayload();
+    const res = await API.put('/api/v1/admin/channel/', {
+      ...payload,
+      id: draftChannelId,
+      status: 4,
+    });
+    const { success, message } = res.data || {};
+    if (!success) {
+      showError(message || t('channel.edit.messages.update_draft_failed'));
+      return false;
+    }
+    if ((payload.key || '').trim() !== '') {
+      setChannelKeySet(true);
+    }
+    return true;
+  }, [buildChannelPayload, draftChannelId, t]);
+
+  const ensureDraftChannel = useCallback(async () => {
+    if (!isCreateMode) {
+      return true;
+    }
+    if (draftChannelId) {
+      return saveDraftChannel();
+    }
+    const createdID = await createDraftChannel();
+    return createdID !== '';
+  }, [createDraftChannel, draftChannelId, isCreateMode, saveDraftChannel]);
+
+  const moveToStepTwo = useCallback(async () => {
+    const effectiveKey = buildEffectiveKey();
+    if (
+      inputs.name.trim() === '' ||
+      (effectiveKey.trim() === '' && !canReuseStoredKeyForCreate)
+    ) {
       showInfo(t('channel.edit.messages.name_required'));
       return;
     }
+    if (isCreateMode) {
+      const ok = await ensureDraftChannel();
+      if (!ok) {
+        return;
+      }
+    }
     goToCreateStep(2);
-  }, [buildEffectiveKey, goToCreateStep, inputs.name, t]);
+  }, [
+    buildEffectiveKey,
+    canReuseStoredKeyForCreate,
+    ensureDraftChannel,
+    goToCreateStep,
+    inputs.name,
+    isCreateMode,
+    t,
+  ]);
 
-  const moveToStepThree = useCallback(() => {
+  const moveToStepThree = useCallback(async () => {
     if (requiresConnectionVerification) {
       if (!hasModelPreviewCredentials) {
         showInfo(t('channel.edit.model_selector.verify_prerequisite'));
@@ -343,21 +469,32 @@ const EditChannel = () => {
       showInfo(t('channel.edit.messages.models_required'));
       return;
     }
+    if (isCreateMode) {
+      const ok = await saveDraftChannel();
+      if (!ok) {
+        return;
+      }
+    }
     goToCreateStep(3);
   }, [
     goToCreateStep,
     hasModelPreviewCredentials,
     inputs.models.length,
     inputs.type,
+    isCreateMode,
     isCurrentSignatureVerified,
     requiresConnectionVerification,
+    saveDraftChannel,
     t,
   ]);
 
-  const loadChannelById = useCallback(async (targetId, forCopy = false) => {
-    let res = await API.get(`/api/v1/admin/channel/${targetId}`);
+  const loadChannelById = useCallback(
+    async (targetId, forCopy = false, selectAll = true, fromDraft = false) => {
+    const query = selectAll ? '?select_all=1' : '';
+    let res = await API.get(`/api/v1/admin/channel/${targetId}${query}`);
     const { success, message, data } = res.data;
     if (success) {
+      const keySet = !!data.key_set;
       if (data.models === '') {
         data.models = [];
       } else {
@@ -395,7 +532,7 @@ const EditChannel = () => {
         setInputs({
           name: data.name || '',
           type: normalizedType,
-          key: data.key || '',
+          key: '',
           base_url: data.base_url || '',
           other: data.other || '',
           model_mapping: data.model_mapping || '',
@@ -405,17 +542,22 @@ const EditChannel = () => {
           models: data.models || [],
         });
       } else {
-        setInputs({ ...data, type: normalizedType });
+        setInputs({ ...data, key: '', type: normalizedType });
       }
       setConfig((prev) => ({
         ...prev,
         ...parsedConfig,
       }));
+      if (fromDraft || isEdit) {
+        setChannelKeySet(keySet);
+      } else {
+        setChannelKeySet(false);
+      }
     } else {
       showError(message);
     }
     setLoading(false);
-  }, []);
+  }, [isEdit]);
 
   const applyModelCandidates = useCallback((models, selectAll = false) => {
     const { options, ids } = buildModelOptions(models);
@@ -432,10 +574,12 @@ const EditChannel = () => {
   const fetchModels = useCallback(
     async (silent = false) => {
       try {
+        const key = buildEffectiveKey().trim();
         const res = await API.post(`/api/v1/admin/channel/preview/models`, {
           type: inputs.type,
-          key: (inputs.key || '').trim(),
+          key,
           base_url: normalizeBaseURL(inputs.base_url),
+          draft_id: previewChannelID,
           config,
         });
         const { success, message, data } = res.data || {};
@@ -450,7 +594,15 @@ const EditChannel = () => {
         }
       }
     },
-    [applyModelCandidates, config, inputs.base_url, inputs.key, inputs.type, t]
+    [
+      applyModelCandidates,
+      buildEffectiveKey,
+      config,
+      inputs.base_url,
+      inputs.type,
+      previewChannelID,
+      t,
+    ]
   );
 
   const handleFetchModels = useCallback(
@@ -463,16 +615,18 @@ const EditChannel = () => {
       try {
         let models = [];
         const normalizedBaseURL = normalizeBaseURL(inputs.base_url);
-        const key = (inputs.key || '').trim();
+        const key = buildEffectiveKey().trim();
         const requestSignature = buildChannelConnectionSignature({
           type: inputs.type,
           key,
           baseURL: normalizedBaseURL,
+          draftID: previewChannelID,
         });
         const res = await API.post(`/api/v1/admin/channel/preview/models`, {
           type: inputs.type,
           key,
           base_url: normalizedBaseURL,
+          draft_id: previewChannelID,
           config,
         });
         const { success, message, data } = res.data || {};
@@ -520,10 +674,11 @@ const EditChannel = () => {
     },
     [
       applyModelCandidates,
+      buildEffectiveKey,
       config,
       inputs.base_url,
-      inputs.key,
       inputs.type,
+      previewChannelID,
       t,
     ]
   );
@@ -572,22 +727,34 @@ const EditChannel = () => {
 
   useEffect(() => {
     if (isEdit) {
-      setDraftRestored(false);
+      return;
+    }
+    if (draftIdFromQuery === draftChannelId) {
+      return;
+    }
+    setDraftChannelId(draftIdFromQuery);
+  }, [draftIdFromQuery, isEdit]);
+
+  useEffect(() => {
+    if (isEdit) {
       setLoading(true);
-      loadChannelById(channelId).then();
+      loadChannelById(channelId, false, true, false).then();
       return;
     }
     if (copyFromId > 0) {
-      setDraftRestored(false);
       setLoading(true);
-      loadChannelById(copyFromId, true).then();
+      loadChannelById(copyFromId, true, true, false).then();
       return;
     }
-    if (!restoreCreateDraft()) {
-      setDraftRestored(false);
+    if (draftIdFromQuery !== '') {
+      setLoading(true);
+      loadChannelById(draftIdFromQuery, true, true, true).then();
+      return;
     }
+    setChannelKeySet(false);
+    restoreCreateDraft();
     setLoading(false);
-  }, [channelId, copyFromId, isEdit, loadChannelById, restoreCreateDraft]);
+  }, [channelId, copyFromId, draftIdFromQuery, isEdit, loadChannelById, restoreCreateDraft]);
 
   useEffect(() => {
     if (isEdit) {
@@ -602,7 +769,7 @@ const EditChannel = () => {
     if (queryStep !== createStep) {
       setCreateStep(queryStep);
     }
-  }, [createStep, isEdit, location.search]);
+  }, [isEdit, location.search]);
 
   useEffect(() => {
     if (isEdit) {
@@ -633,23 +800,52 @@ const EditChannel = () => {
   }, [createStep, isEdit, location.pathname, location.search, navigate]);
 
   useEffect(() => {
+    if (isEdit) {
+      return;
+    }
+    const query = new URLSearchParams(location.search);
+    const currentDraftID = (query.get('draft_id') || '').trim();
+    const nextDraftID = (draftChannelId || '').trim();
+    if (currentDraftID === nextDraftID) {
+      return;
+    }
+    if (nextDraftID === '') {
+      query.delete('draft_id');
+    } else {
+      query.set('draft_id', nextDraftID);
+    }
+    const nextSearch = query.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : '',
+      },
+      { replace: true }
+    );
+  }, [draftChannelId, isEdit, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
     if (isEdit || loading || typeof window === 'undefined') {
       return;
     }
     const payload = {
       step: createStep,
-      inputs,
-      config,
+      inputs: sanitizeDraftInputsForLocalStorage(inputs),
+      config: sanitizeDraftConfigForLocalStorage(config),
       originModelOptions,
       modelsSyncError,
       modelsLastSyncedAt,
       verifiedModelSignature,
+      draft_channel_id: draftChannelId,
+      channel_key_set: channelKeySet,
       savedAt: Date.now(),
     };
     localStorage.setItem(CHANNEL_CREATE_DRAFT_KEY, JSON.stringify(payload));
   }, [
+    channelKeySet,
     config,
     createStep,
+    draftChannelId,
     inputs,
     isEdit,
     loading,
@@ -738,7 +934,11 @@ const EditChannel = () => {
 
   const submit = async () => {
     const effectiveKey = buildEffectiveKey();
-    if (!isEdit && (inputs.name.trim() === '' || effectiveKey.trim() === '')) {
+    if (
+      !isEdit &&
+      (inputs.name.trim() === '' ||
+        (effectiveKey.trim() === '' && !canReuseStoredKeyForCreate))
+    ) {
       showInfo(t('channel.edit.messages.name_required'));
       return;
     }
@@ -768,29 +968,18 @@ const EditChannel = () => {
       showInfo('补全倍率必须是合法的 JSON 格式！');
       return;
     }
-    let localInputs = { ...inputs, key: effectiveKey };
-    if (localInputs.key === 'undefined|undefined|undefined') {
-      localInputs.key = ''; // prevent potential bug
-    }
-    if (localInputs.base_url && localInputs.base_url.endsWith('/')) {
-      localInputs.base_url = localInputs.base_url.slice(
-        0,
-        localInputs.base_url.length - 1
-      );
-    }
-    if (localInputs.type === 3 && localInputs.other === '') {
-      localInputs.other = '2024-03-01-preview';
-    }
+    let localInputs = buildChannelPayload();
     let res;
-    localInputs.models = localInputs.models.join(',');
-    const submitConfig = { ...config };
-    delete submitConfig.use_responses;
-    delete submitConfig.user_agent;
-    localInputs.config = JSON.stringify(submitConfig);
     if (isEdit) {
       res = await API.put(`/api/v1/admin/channel/`, {
         ...localInputs,
-        id: parseInt(channelId),
+        id: channelId,
+      });
+    } else if (draftChannelId) {
+      res = await API.put(`/api/v1/admin/channel/`, {
+        ...localInputs,
+        id: draftChannelId,
+        status: 1,
       });
     } else {
       res = await API.post(`/api/v1/admin/channel/`, localInputs);
@@ -807,7 +996,8 @@ const EditChannel = () => {
         setModelsSyncError('');
         setModelsLastSyncedAt(0);
         setVerifiedModelSignature('');
-        setDraftRestored(false);
+        setDraftChannelId('');
+        setChannelKeySet(false);
         setCreateStep(1);
         clearCreateDraft();
       }
@@ -817,8 +1007,7 @@ const EditChannel = () => {
     }
   };
 
-  const isRealtimeModelFetchAvailable =
-    isOpenAICompatibleType(inputs.type) && hasModelPreviewCredentials;
+  const isRealtimeModelFetchAvailable = hasModelPreviewCredentials;
 
   return (
     <div className='dashboard-container'>
@@ -868,11 +1057,6 @@ const EditChannel = () => {
                     {t('channel.edit.wizard.step_advanced')}
                   </Button>
                 </div>
-                {draftRestored && (
-                  <div style={{ color: 'rgba(0, 0, 0, 0.6)', marginTop: '8px' }}>
-                    {t('channel.edit.wizard.draft_restored')}
-                  </div>
-                )}
               </div>
             )}
             {showStepOne && (
@@ -897,11 +1081,6 @@ const EditChannel = () => {
                     value={inputs.type}
                     onChange={handleInputChange}
                   />
-                  {!isEdit && (
-                    <div style={{ color: 'rgba(0, 0, 0, 0.6)', marginTop: '4px' }}>
-                      {protocolVerifySupportText}
-                    </div>
-                  )}
                 </Form.Field>
                 {inputs.type === 3 && (
                   <Form.Field>
@@ -979,8 +1158,13 @@ const EditChannel = () => {
                       <Form.Input
                         label={t('channel.edit.key')}
                         name='key'
-                        required
-                        placeholder={type2secretPrompt(inputs.type, t)}
+                        type='password'
+                        required={!isEdit && !canReuseStoredKeyForCreate}
+                        placeholder={
+                          channelKeySet && (inputs.key || '').trim() === ''
+                            ? '********'
+                            : type2secretPrompt(inputs.type, t)
+                        }
                         onChange={handleInputChange}
                         value={inputs.key}
                         autoComplete='new-password'
@@ -1134,13 +1318,11 @@ const EditChannel = () => {
                     </Button>
                   </div>
                 </div>
-                {isOpenAICompatibleType(inputs.type) && (
-                  <div style={{ color: 'rgba(0, 0, 0, 0.6)', marginBottom: '8px' }}>
-                    {isRealtimeModelFetchAvailable
-                      ? t('channel.edit.model_selector.realtime_enabled')
-                      : t('channel.edit.model_selector.realtime_hint')}
-                  </div>
-                )}
+                <div style={{ color: 'rgba(0, 0, 0, 0.6)', marginBottom: '8px' }}>
+                  {isRealtimeModelFetchAvailable
+                    ? t('channel.edit.model_selector.realtime_enabled')
+                    : t('channel.edit.model_selector.realtime_hint')}
+                </div>
                 {unifiedModelStatusText && (
                   <div style={{ color: unifiedModelStatusColor, marginBottom: '8px' }}>
                     {unifiedModelStatusText}

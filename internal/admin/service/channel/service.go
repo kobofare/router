@@ -21,6 +21,10 @@ func BatchInsert(channels []model.Channel) error {
 	return channelrepo.BatchInsert(channels)
 }
 
+func Insert(channel *model.Channel) error {
+	return channelrepo.Insert(channel)
+}
+
 func DeleteByID(id string) error {
 	return channelrepo.DeleteByID(id)
 }

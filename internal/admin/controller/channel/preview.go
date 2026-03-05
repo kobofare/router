@@ -11,6 +11,7 @@ import (
 
 	"github.com/yeying-community/router/common/client"
 	commonutils "github.com/yeying-community/router/common/utils"
+	channelsvc "github.com/yeying-community/router/internal/admin/service/channel"
 	relay "github.com/yeying-community/router/internal/relay"
 	"github.com/yeying-community/router/internal/relay/channeltype"
 	"github.com/yeying-community/router/internal/relay/meta"
@@ -20,6 +21,7 @@ type previewModelsRequest struct {
 	Type    int             `json:"type"`
 	Key     string          `json:"key"`
 	BaseURL string          `json:"base_url"`
+	DraftID string          `json:"draft_id"`
 	Config  json.RawMessage `json:"config"`
 }
 
@@ -175,7 +177,30 @@ func PreviewChannelModels(c *gin.Context) {
 		})
 		return
 	}
-	modelIDs, err := fetchOpenAICompatibleModelIDs(req.Type, req.Key, req.BaseURL)
+
+	channelType := req.Type
+	key := strings.TrimSpace(req.Key)
+	baseURL := strings.TrimSpace(req.BaseURL)
+	draftID := strings.TrimSpace(req.DraftID)
+	if draftID != "" && key == "" {
+		channel, err := channelsvc.GetByID(draftID, true)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "渠道不存在或已删除",
+			})
+			return
+		}
+		key = strings.TrimSpace(channel.Key)
+		if channelType == 0 {
+			channelType = channel.Type
+		}
+		if baseURL == "" {
+			baseURL = strings.TrimSpace(channel.GetBaseURL())
+		}
+	}
+
+	modelIDs, err := fetchOpenAICompatibleModelIDs(channelType, key, baseURL)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

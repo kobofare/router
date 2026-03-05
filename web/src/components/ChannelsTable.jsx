@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Form, Icon, Input, Label, Pagination, Popup, Table,} from 'semantic-ui-react';
-import {Link} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import {
   API,
   loadChannelModels,
@@ -74,23 +74,20 @@ function renderBalance(type, balance, t) {
   }
 }
 
-function isShowDetail() {
-  return localStorage.getItem('show_detail') === 'true';
-}
-
 const selectionModeNone = '';
 const selectionModeTest = 'test';
 const selectionModeDelete = 'delete';
 const selectionModeDisable = 'disable';
+const channelStatusCreating = 4;
 
 const ChannelsTable = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searching, setSearching] = useState(false);
-  const [showDetail, setShowDetail] = useState(isShowDetail());
   const [selectionMode, setSelectionMode] = useState(selectionModeNone);
   const [batchTesting, setBatchTesting] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -162,11 +159,6 @@ const ChannelsTable = () => {
   const refresh = async () => {
     setLoading(true);
     await loadChannels(activePage - 1);
-  };
-
-  const toggleShowDetail = () => {
-    setShowDetail(!showDetail);
-    localStorage.setItem('show_detail', (!showDetail).toString());
   };
 
   useEffect(() => {
@@ -283,6 +275,12 @@ const ChannelsTable = () => {
             content={t('channel.table.status_auto_disabled_tip')}
             basic
           />
+        );
+      case channelStatusCreating:
+        return (
+          <Label basic color='blue'>
+            {t('channel.table.status_creating')}
+          </Label>
         );
       default:
         return (
@@ -510,7 +508,7 @@ const ChannelsTable = () => {
     pagedChannelIds.length > 0 &&
     pagedChannelIds.every((id) => selectedChannelIds.includes(id));
   const inBatchSelectMode = selectionMode !== selectionModeNone;
-  const footerColSpan = (showDetail ? 8 : 6) + (inBatchSelectMode ? 1 : 0);
+  const footerColSpan = 8 + (inBatchSelectMode ? 1 : 0);
   const actionBusy = batchTesting || batchDeleting || batchDisabling;
 
   const toggleChannelSelection = (channelId, checked) => {
@@ -542,6 +540,34 @@ const ChannelsTable = () => {
   const cancelBatchSelection = () => {
     setSelectionMode(selectionModeNone);
     setSelectedChannelIds([]);
+  };
+
+  const resolveCreatingStep = (channel) => {
+    if (!channel) {
+      return 1;
+    }
+    if (channel.type === 43) {
+      return 1;
+    }
+    const models = Array.isArray(channel.models) ? channel.models : [];
+    if (models.length > 0) {
+      return 3;
+    }
+    return 2;
+  };
+
+  const openChannelByStatus = (channel) => {
+    if (!channel || !channel.id || inBatchSelectMode) {
+      return;
+    }
+    if (channel.status === channelStatusCreating) {
+      const step = resolveCreatingStep(channel);
+      navigate(
+        `/channel/add?draft_id=${encodeURIComponent(channel.id)}&step=${step}`
+      );
+      return;
+    }
+    navigate(`/channel/edit/${channel.id}`);
   };
 
   const collectSelectedTargets = () => {
@@ -811,11 +837,6 @@ const ChannelsTable = () => {
           <Button size='tiny' onClick={refresh} loading={loading} disabled={actionBusy}>
             {t('channel.buttons.refresh')}
           </Button>
-          <Button size='tiny' onClick={toggleShowDetail} disabled={actionBusy}>
-            {showDetail
-              ? t('channel.buttons.hide_detail')
-              : t('channel.buttons.show_detail')}
-          </Button>
         </div>
 
         <Form onSubmit={searchChannels} style={{ width: '320px', maxWidth: '100%' }}>
@@ -887,11 +908,10 @@ const ChannelsTable = () => {
               onClick={() => {
                 sortChannel('priority');
               }}
-              hidden={!showDetail}
             >
               {t('channel.table.priority')}
             </Table.HeaderCell>
-            <Table.HeaderCell hidden={!showDetail}>
+            <Table.HeaderCell>
               {t('channel.table.test_model')}
             </Table.HeaderCell>
             <Table.HeaderCell>{t('channel.table.actions')}</Table.HeaderCell>
@@ -915,7 +935,24 @@ const ChannelsTable = () => {
                     </Table.Cell>
                   )}
                   <Table.Cell>
-                    {channel.name ? channel.name : t('channel.table.no_name')}
+                    <span
+                      role='button'
+                      tabIndex={0}
+                      onClick={() => openChannelByStatus(channel)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openChannelByStatus(channel);
+                        }
+                      }}
+                      style={{
+                        cursor: inBatchSelectMode ? 'default' : 'pointer',
+                        color: inBatchSelectMode ? 'inherit' : '#2185d0',
+                        textDecoration: inBatchSelectMode ? 'none' : 'underline',
+                      }}
+                    >
+                      {channel.name ? channel.name : t('channel.table.no_name')}
+                    </span>
                   </Table.Cell>
                   <Table.Cell>{renderType(channel.type, typeMap)}</Table.Cell>
                   <Table.Cell>{renderStatus(channel.status, t)}</Table.Cell>
@@ -953,7 +990,7 @@ const ChannelsTable = () => {
                       basic
                     />
                   </Table.Cell>
-                  <Table.Cell hidden={!showDetail}>
+                  <Table.Cell>
                     <Popup
                       trigger={
                         <Input
@@ -975,7 +1012,7 @@ const ChannelsTable = () => {
                       basic
                     />
                   </Table.Cell>
-                  <Table.Cell hidden={!showDetail}>
+                  <Table.Cell>
                     <Dropdown
                       placeholder={t('channel.table.select_test_model')}
                       selection

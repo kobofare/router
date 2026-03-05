@@ -61,6 +61,7 @@
       "status_enabled": "Enabled",
       "status_disabled": "Disabled",
       "status_auto_disabled": "Disabled",
+      "status_creating": "Creating",
       "status_disabled_tip": "This channel is manually disabled",
       "status_auto_disabled_tip": "This channel is automatically disabled",
       "status_unknown": "Unknown Status",
@@ -85,9 +86,7 @@
       "copy": "Copy",
       "add": "Add New Channel",
       "test_all": "Test All Channels",
-      "refresh": "Refresh",
-      "show_detail": "Details",
-      "hide_detail": "Hide Details"
+      "refresh": "Refresh"
     },
     "messages": {
       "test_success": "Channel {{name}} test successful, model {{model}}, time {{time}}s, output: {{message}}",
@@ -241,6 +240,8 @@
       "name_required": "Please enter channel name and key!",
       "groups_required": "Please select at least one group!",
       "models_required": "Please select at least one model!",
+      "create_draft_failed": "Failed to create channel draft",
+      "update_draft_failed": "Failed to save channel draft",
       "fetch_models_failed": "Failed to fetch models",
       "models_empty": "No available models were returned",
       "model_mapping_invalid": "Model mapping must be valid JSON format!",
@@ -258,10 +259,9 @@
       "douban_notice_link": "Model Inference Page",
       "douban_notice_2": "to create an inference endpoint, and use the endpoint name as model name, e.g.: `ep-20240608051426-tkxvl`.",
       "wizard": {
-        "step_basic": "Step 1: Basic & Connection",
+        "step_basic": "Step 1: Connection",
         "step_models": "Step 2: Model Selection",
-        "step_advanced": "Step 3: Advanced Settings",
-        "draft_restored": "Recovered your unfinished channel creation draft automatically."
+        "step_advanced": "Step 3: Advanced Settings"
       },
       "aws_region_placeholder": "region, e.g.: us-west-2",
       "aws_ak_placeholder": "AWS IAM Access Key",

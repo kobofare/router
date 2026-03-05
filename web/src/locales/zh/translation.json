@@ -61,6 +61,7 @@
       "status_enabled": "已启用",
       "status_disabled": "已禁用",
       "status_auto_disabled": "已禁用",
+      "status_creating": "创建中",
       "status_disabled_tip": "本渠道被手动禁用",
       "status_auto_disabled_tip": "本渠道被程序自动禁用",
       "status_unknown": "未知状态",
@@ -85,9 +86,7 @@
       "copy": "复制",
       "add": "新增渠道",
       "test_all": "测试所有渠道",
-      "refresh": "刷新",
-      "show_detail": "详情",
-      "hide_detail": "隐藏详情"
+      "refresh": "刷新"
     },
     "messages": {
       "test_success": "渠道 {{name}} 测试成功，模型 {{model}}，耗时 {{time}} 秒，模型输出：{{message}}",
@@ -241,6 +240,8 @@
       "name_required": "请填写渠道名称和渠道密钥！",
       "groups_required": "请至少选择一个分组！",
       "models_required": "请至少选择一个模型！",
+      "create_draft_failed": "创建草稿渠道失败",
+      "update_draft_failed": "保存草稿渠道失败",
       "fetch_models_failed": "获取模型失败",
       "models_empty": "未返回可用模型",
       "model_mapping_invalid": "模型映射必须是合法的 JSON 格式！",
@@ -258,10 +259,9 @@
       "douban_notice_link": "模型推理页面",
       "douban_notice_2": "创建推理接入点，以接入点名称作为模型名称，例如：`ep-20240608051426-tkxvl`。你可以结合模型重定向功能将其转换为常规的模型名称，例如：doubao-lite-4k -> ep-20240608051426-tkxvl（前者作为 JSON 的 key，后者作为 value）。注意，doubao-lite-4k 和 ep-20240608051426-tkxvl 都需要通过自定义模型的方式填入到本渠道的模型列表中。",
       "wizard": {
-        "step_basic": "步骤 1：基础与连接",
+        "step_basic": "步骤 1：连接信息",
         "step_models": "步骤 2：模型选择",
-        "step_advanced": "步骤 3：高级配置",
-        "draft_restored": "已自动恢复上次未完成的新建渠道草稿。"
+        "step_advanced": "步骤 3：高级配置"
       },
       "aws_region_placeholder": "region，例如：us-west-2",
       "aws_ak_placeholder": "AWS IAM Access Key",
