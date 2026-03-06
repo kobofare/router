@@ -110,7 +110,7 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 	c.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", channel.Key))
 	c.Set(ctxkey.BaseURL, channel.GetBaseURL())
 	cfg, _ := channel.LoadConfig()
-	// this is for backward compatibility
+	// Some protocol-specific fields are still persisted in channel.other.
 	if channel.Other != nil {
 		switch channelProtocol {
 		case relaychannel.Azure:

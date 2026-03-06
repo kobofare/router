@@ -28,9 +28,6 @@ const normalizeChannelOption = (item) => {
   if (protocol === '') {
     return null;
   }
-  if (protocol === 'openai-compatible') {
-    return null;
-  }
   const text = String(item.text ?? item.label ?? item.name ?? protocol).trim();
   return {
     key: protocol,

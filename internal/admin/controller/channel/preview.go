@@ -178,10 +178,6 @@ func fetchModelsByConfiguredChannel(key, baseURL, modelProvider string) ([]strin
 	return modelIDs, err
 }
 
-func fetchOpenAICompatibleModelIDsByBaseURL(key, baseURL, modelProvider string) ([]string, error) {
-	return fetchModelsByConfiguredChannel(key, baseURL, modelProvider)
-}
-
 func resolvePreviewBaseURL(protocol string, baseURL string) string {
 	trimmedBaseURL := strings.TrimSpace(baseURL)
 	if trimmedBaseURL != "" {

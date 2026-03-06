@@ -246,8 +246,6 @@ func SetApiRouter(engine *gin.Engine) {
 		{
 			adminProviderRoute.GET("/", channel.GetModelProviders)
 			adminProviderRoute.PUT("/", channel.UpdateModelProviders)
-			adminProviderRoute.GET("/defaults", channel.GetDefaultModelProviders)
-			adminProviderRoute.POST("/fetch", channel.FetchModelProviderModels)
 		}
 	}
 

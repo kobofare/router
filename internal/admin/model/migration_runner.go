@@ -35,31 +35,10 @@ type versionedMigration struct {
 func runMainVersionedMigrations(db *gorm.DB) error {
 	migrations := []versionedMigration{
 		{
-			Version:     "202603071300_main_baseline",
-			Description: "baseline: create current main schema and seed initial catalogs",
+			Version:     "202603062100_main_baseline_v2",
+			Description: "baseline: create current main schema, drop legacy objects, and seed current catalogs",
 			Up: func(tx *gorm.DB) error {
 				return runMainBaselineMigrationWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603071700_add_channel_capability_results",
-			Description: "add channel capability result table",
-			Up: func(tx *gorm.DB) error {
-				return runChannelCapabilityResultsMigrationWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603072100_drop_channel_capability_profiles_and_client_profiles",
-			Description: "drop response whitelist tables no longer used",
-			Up: func(tx *gorm.DB) error {
-				return dropChannelCapabilityProfileTablesWithDB(tx)
-			},
-		},
-		{
-			Version:     "202603072130_simplify_channel_capability_results",
-			Description: "drop legacy client profile fields from channel capability results",
-			Up: func(tx *gorm.DB) error {
-				return simplifyChannelCapabilityResultsWithDB(tx)
 			},
 		},
 	}
@@ -86,12 +65,18 @@ func runVersionedMigrations(db *gorm.DB, scope string, migrations []versionedMig
 	if strings.TrimSpace(scope) == "" {
 		return fmt.Errorf("migration scope cannot be empty")
 	}
-	if err := db.AutoMigrate(&SchemaMigration{}); err != nil {
+	// Run migrations without prepared statements. Schema changes can invalidate
+	// cached plans for queries such as SELECT *, especially when columns are dropped.
+	migrationDB := db.Session(&gorm.Session{
+		NewDB:       true,
+		PrepareStmt: false,
+	})
+	if err := migrationDB.AutoMigrate(&SchemaMigration{}); err != nil {
 		return err
 	}
 
 	applied := make([]SchemaMigration, 0)
-	if err := db.Where("scope = ?", scope).Find(&applied).Error; err != nil {
+	if err := migrationDB.Where("scope = ?", scope).Find(&applied).Error; err != nil {
 		return err
 	}
 	appliedSet := make(map[string]struct{}, len(applied))
@@ -108,7 +93,7 @@ func runVersionedMigrations(db *gorm.DB, scope string, migrations []versionedMig
 		}
 
 		logger.SysLogf("migration[%s] applying %s (%s)", scope, migration.Version, migration.Description)
-		err := db.Transaction(func(tx *gorm.DB) error {
+		err := migrationDB.Transaction(func(tx *gorm.DB) error {
 			if err := migration.Up(tx); err != nil {
 				return err
 			}

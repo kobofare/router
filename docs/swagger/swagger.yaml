@@ -243,9 +243,6 @@ definitions:
     type: object
   docs.ModelProviderCatalogItem:
     properties:
-      api_key:
-        example: sk-***
-        type: string
       base_url:
         example: https://api.openai.com
         type: string
@@ -292,34 +289,6 @@ definitions:
         items:
           $ref: '#/definitions/docs.ModelProviderCatalogItem'
         type: array
-    type: object
-  docs.ModelProviderFetchRequest:
-    properties:
-      base_url:
-        example: https://api.openai.com
-        type: string
-      key:
-        example: sk-***
-        type: string
-      provider:
-        example: openai
-        type: string
-    type: object
-  docs.ModelProviderFetchResponse:
-    properties:
-      data:
-        items:
-          type: string
-        type: array
-      message:
-        example: ""
-        type: string
-      provider:
-        example: openai
-        type: string
-      success:
-        example: true
-        type: boolean
     type: object
   docs.ModelProviderModelDetail:
     properties:
@@ -2376,95 +2345,6 @@ paths:
       summary: Log stats (admin)
       tags:
       - admin
-  /api/v1/admin/provider:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get model provider catalog (admin)
-      tags:
-      - admin
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Model provider catalog payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/docs.ModelProviderCatalogUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update model provider catalog (admin)
-      tags:
-      - admin
-  /api/v1/admin/provider/defaults:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get default code model provider catalog (admin)
-      tags:
-      - admin
-  /api/v1/admin/provider/fetch:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Provider fetch payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/docs.ModelProviderFetchRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.ModelProviderFetchResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Fetch models from provider API (admin)
-      tags:
-      - admin
   /api/v1/admin/option:
     get:
       produces:
@@ -2507,6 +2387,50 @@ paths:
       security:
       - BearerAuth: []
       summary: Update option (root)
+      tags:
+      - admin
+  /api/v1/admin/provider:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get model provider catalog (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Model provider catalog payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/docs.ModelProviderCatalogUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update model provider catalog (admin)
       tags:
       - admin
   /api/v1/admin/redemption:

@@ -57,10 +57,6 @@ func Run() {
 
 	// Initialize options
 	model.InitOptionMap()
-	if common.RedisEnabled {
-		// for compatibility with old versions
-		config.MemoryCacheEnabled = true
-	}
 	if config.MemoryCacheEnabled {
 		logger.SysLog("memory cache enabled")
 		logger.SysLog(fmt.Sprintf("sync frequency: %d seconds", config.SyncFrequency))

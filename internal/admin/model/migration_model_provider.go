@@ -16,7 +16,6 @@ type modelProviderCatalogMigrationItem struct {
 	Models       []string                   `json:"models"`
 	ModelDetails []ModelProviderModelDetail `json:"model_details,omitempty"`
 	BaseURL      string                     `json:"base_url,omitempty"`
-	APIKey       string                     `json:"api_key,omitempty"`
 	SortOrder    int                        `json:"sort_order,omitempty"`
 	Source       string                     `json:"source,omitempty"`
 	UpdatedAt    int64                      `json:"updated_at,omitempty"`
@@ -120,7 +119,6 @@ func normalizeModelProviderCatalogItems(items []modelProviderCatalogMigrationIte
 			Models:       ModelProviderModelNames(details),
 			ModelDetails: details,
 			BaseURL:      strings.TrimSpace(item.BaseURL),
-			APIKey:       strings.TrimSpace(item.APIKey),
 			SortOrder:    normalizeModelProviderSortOrderValue(item.SortOrder),
 			Source:       source,
 			UpdatedAt:    item.UpdatedAt,
@@ -144,12 +142,6 @@ func normalizeModelProviderCatalogItems(items []modelProviderCatalogMigrationIte
 			}
 			if entry.BaseURL != "" && entry.Source != "default" {
 				existing.BaseURL = entry.BaseURL
-			}
-			if existing.APIKey == "" && entry.APIKey != "" {
-				existing.APIKey = entry.APIKey
-			}
-			if entry.APIKey != "" && entry.Source != "default" {
-				existing.APIKey = entry.APIKey
 			}
 			if entry.SortOrder > 0 && entry.Source != "default" {
 				existing.SortOrder = entry.SortOrder
@@ -199,7 +191,6 @@ func loadModelProviderCatalogFromTable(db *gorm.DB) ([]modelProviderCatalogMigra
 			Models:       ModelProviderModelNames(details),
 			ModelDetails: details,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
-			APIKey:       strings.TrimSpace(row.APIKey),
 			SortOrder:    normalizeModelProviderSortOrderValue(row.SortOrder),
 			Source:       strings.TrimSpace(strings.ToLower(row.Source)),
 			UpdatedAt:    row.UpdatedAt,
@@ -231,7 +222,6 @@ func saveModelProviderCatalogToTable(db *gorm.DB, items []modelProviderCatalogMi
 			Provider:  provider,
 			Name:      strings.TrimSpace(item.Name),
 			BaseURL:   strings.TrimSpace(item.BaseURL),
-			APIKey:    strings.TrimSpace(item.APIKey),
 			SortOrder: item.SortOrder,
 			Source:    source,
 			UpdatedAt: updatedAt,
@@ -305,9 +295,6 @@ func reconcileWithCodeDefaults(items []modelProviderCatalogMigrationItem, now in
 			}
 			if strings.TrimSpace(item.BaseURL) != "" {
 				merged.BaseURL = strings.TrimSpace(item.BaseURL)
-			}
-			if strings.TrimSpace(item.APIKey) != "" {
-				merged.APIKey = strings.TrimSpace(item.APIKey)
 			}
 			if item.SortOrder > 0 {
 				merged.SortOrder = item.SortOrder

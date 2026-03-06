@@ -20,7 +20,6 @@ type modelProviderCatalogItem struct {
 	Models       []string                         `json:"models"`
 	ModelDetails []model.ModelProviderModelDetail `json:"model_details,omitempty"`
 	BaseURL      string                           `json:"base_url,omitempty"`
-	APIKey       string                           `json:"api_key,omitempty"`
 	SortOrder    int                              `json:"sort_order,omitempty"`
 	Source       string                           `json:"source,omitempty"`
 	UpdatedAt    int64                            `json:"updated_at,omitempty"`
@@ -29,14 +28,6 @@ type modelProviderCatalogItem struct {
 type modelProviderCatalogUpdateRequest struct {
 	Providers []modelProviderCatalogItem `json:"providers"`
 }
-
-type modelProviderFetchRequest struct {
-	Provider string `json:"provider"`
-	Key      string `json:"key"`
-	BaseURL  string `json:"base_url"`
-}
-
-var providerDefaultBaseURLs = model.GetModelProviderDefaultBaseURLs()
 
 func normalizeCatalogSortOrder(sortOrder int) int {
 	if sortOrder > 0 {
@@ -101,7 +92,6 @@ func normalizeModelProviderCatalog(items []modelProviderCatalogItem) []modelProv
 			source = "manual"
 		}
 		baseURL := strings.TrimSpace(item.BaseURL)
-		apiKey := strings.TrimSpace(item.APIKey)
 		detailsInput := make([]model.ModelProviderModelDetail, 0, len(item.ModelDetails)+len(item.Models))
 		detailsInput = append(detailsInput, item.ModelDetails...)
 		for _, modelName := range item.Models {
@@ -114,7 +104,6 @@ func normalizeModelProviderCatalog(items []modelProviderCatalogItem) []modelProv
 			Models:       model.ModelProviderModelNames(details),
 			ModelDetails: details,
 			BaseURL:      baseURL,
-			APIKey:       apiKey,
 			SortOrder:    normalizeCatalogSortOrder(item.SortOrder),
 			Source:       source,
 			UpdatedAt:    item.UpdatedAt,
@@ -137,12 +126,6 @@ func normalizeModelProviderCatalog(items []modelProviderCatalogItem) []modelProv
 			}
 			if entry.BaseURL != "" && entry.Source != "default" {
 				existing.BaseURL = entry.BaseURL
-			}
-			if existing.APIKey == "" && entry.APIKey != "" {
-				existing.APIKey = entry.APIKey
-			}
-			if entry.APIKey != "" && entry.Source != "default" {
-				existing.APIKey = entry.APIKey
 			}
 			if entry.SortOrder > 0 && entry.Source != "default" {
 				existing.SortOrder = entry.SortOrder
@@ -186,7 +169,6 @@ func loadModelProviderCatalog() ([]modelProviderCatalogItem, error) {
 			Models:       model.ModelProviderModelNames(details),
 			ModelDetails: details,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
-			APIKey:       strings.TrimSpace(row.APIKey),
 			SortOrder:    normalizeCatalogSortOrder(row.SortOrder),
 			Source:       strings.TrimSpace(strings.ToLower(row.Source)),
 			UpdatedAt:    row.UpdatedAt,
@@ -202,7 +184,6 @@ func saveModelProviderCatalog(items []modelProviderCatalogItem) ([]modelProvider
 		return nil, currentErr
 	}
 	currentDetailsByProvider := make(map[string][]model.ModelProviderModelDetail, len(currentItems))
-	currentAPIKeyByProvider := make(map[string]string, len(currentItems))
 	for _, item := range currentItems {
 		provider := commonutils.NormalizeModelProvider(item.Provider)
 		if provider == "" {
@@ -210,16 +191,10 @@ func saveModelProviderCatalog(items []modelProviderCatalogItem) ([]modelProvider
 		}
 		details := model.MergeModelProviderDetails(provider, item.ModelDetails, item.Models, false, now)
 		currentDetailsByProvider[provider] = details
-		currentAPIKeyByProvider[provider] = strings.TrimSpace(item.APIKey)
 	}
 
 	normalized := finalizeModelProviderCatalogSortOrder(normalizeModelProviderCatalog(items))
 	for i := range normalized {
-		if strings.TrimSpace(normalized[i].APIKey) == "" {
-			if currentAPIKey, ok := currentAPIKeyByProvider[normalized[i].Provider]; ok {
-				normalized[i].APIKey = currentAPIKey
-			}
-		}
 		if len(normalized[i].ModelDetails) == 0 && len(normalized[i].Models) == 0 {
 			if existingDetails, ok := currentDetailsByProvider[normalized[i].Provider]; ok {
 				normalized[i].ModelDetails = existingDetails
@@ -240,7 +215,6 @@ func saveModelProviderCatalog(items []modelProviderCatalogItem) ([]modelProvider
 			Provider:  item.Provider,
 			Name:      strings.TrimSpace(item.Name),
 			BaseURL:   strings.TrimSpace(item.BaseURL),
-			APIKey:    strings.TrimSpace(item.APIKey),
 			SortOrder: item.SortOrder,
 			Source:    strings.TrimSpace(strings.ToLower(item.Source)),
 			UpdatedAt: item.UpdatedAt,
@@ -275,33 +249,6 @@ func saveModelProviderCatalog(items []modelProviderCatalogItem) ([]modelProvider
 		return nil, err
 	}
 	return normalized, nil
-}
-
-func buildDefaultModelProviderCatalog() []modelProviderCatalogItem {
-	now := helper.GetTimestamp()
-	seeds := model.BuildDefaultModelProviderCatalogSeeds(now)
-	entries := make([]modelProviderCatalogItem, 0, len(seeds))
-	for _, seed := range seeds {
-		entries = append(entries, modelProviderCatalogItem{
-			Provider:     seed.Provider,
-			Name:         seed.Name,
-			Models:       model.ModelProviderModelNames(seed.ModelDetails),
-			ModelDetails: seed.ModelDetails,
-			BaseURL:      seed.BaseURL,
-			SortOrder:    seed.SortOrder,
-			Source:       "default",
-			UpdatedAt:    now,
-		})
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		leftOrder := normalizeCatalogSortOrder(entries[i].SortOrder)
-		rightOrder := normalizeCatalogSortOrder(entries[j].SortOrder)
-		if leftOrder != rightOrder {
-			return leftOrder < rightOrder
-		}
-		return entries[i].Provider < entries[j].Provider
-	})
-	return entries
 }
 
 // GetModelProviders godoc
@@ -388,107 +335,5 @@ func UpdateModelProviders(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    saved,
-	})
-}
-
-// GetDefaultModelProviders godoc
-// @Summary Get default code model provider catalog (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} docs.ModelProviderCatalogResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/provider/defaults [get]
-func GetDefaultModelProviders(c *gin.Context) {
-	defaults := buildDefaultModelProviderCatalog()
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data":    defaults,
-	})
-}
-
-// FetchModelProviderModels godoc
-// @Summary Fetch models from provider API (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param body body docs.ModelProviderFetchRequest true "Provider fetch payload"
-// @Success 200 {object} docs.ModelProviderFetchResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/provider/fetch [post]
-func FetchModelProviderModels(c *gin.Context) {
-	req := modelProviderFetchRequest{}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	provider := commonutils.NormalizeModelProvider(req.Provider)
-	if provider == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "请先选择模型供应商",
-		})
-		return
-	}
-
-	baseURL := strings.TrimSpace(req.BaseURL)
-	catalogItems, loadErr := loadModelProviderCatalog()
-	if loadErr != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "读取模型供应商配置失败: " + loadErr.Error(),
-		})
-		return
-	}
-	savedProvider := modelProviderCatalogItem{}
-	for _, item := range catalogItems {
-		if commonutils.NormalizeModelProvider(item.Provider) == provider {
-			savedProvider = item
-			break
-		}
-	}
-	if baseURL == "" {
-		baseURL = strings.TrimSpace(savedProvider.BaseURL)
-	}
-	if baseURL == "" {
-		baseURL = providerDefaultBaseURLs[provider]
-	}
-	if baseURL == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "该供应商未配置默认 Base URL，请手动填写",
-		})
-		return
-	}
-	apiKey := strings.TrimSpace(req.Key)
-	if apiKey == "" {
-		apiKey = strings.TrimSpace(savedProvider.APIKey)
-	}
-	if apiKey == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "请先配置该供应商 API Key",
-		})
-		return
-	}
-
-	models, err := fetchOpenAICompatibleModelIDsByBaseURL(apiKey, baseURL, provider)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"message":  "",
-		"provider": provider,
-		"data":     models,
 	})
 }

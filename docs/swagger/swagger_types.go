@@ -364,7 +364,6 @@ type ModelProviderCatalogItem struct {
 	Models       []string                   `json:"models"`
 	ModelDetails []ModelProviderModelDetail `json:"model_details,omitempty"`
 	BaseURL      string                     `json:"base_url,omitempty" example:"https://api.openai.com"`
-	APIKey       string                     `json:"api_key,omitempty" example:"sk-***"`
 	SortOrder    int                        `json:"sort_order,omitempty" example:"10"`
 	Source       string                     `json:"source,omitempty" example:"manual"`
 	UpdatedAt    int64                      `json:"updated_at,omitempty" example:"1710000000"`
@@ -389,19 +388,6 @@ type ModelProviderCatalogResponse struct {
 	Success bool                       `json:"success" example:"true"`
 	Message string                     `json:"message" example:""`
 	Data    []ModelProviderCatalogItem `json:"data"`
-}
-
-type ModelProviderFetchRequest struct {
-	Provider string `json:"provider" example:"openai"`
-	Key      string `json:"key,omitempty" example:"sk-***"`
-	BaseURL  string `json:"base_url,omitempty" example:"https://api.openai.com"`
-}
-
-type ModelProviderFetchResponse struct {
-	Success  bool     `json:"success" example:"true"`
-	Message  string   `json:"message" example:""`
-	Provider string   `json:"provider" example:"openai"`
-	Data     []string `json:"data"`
 }
 
 type RedemptionCreateRequest struct {

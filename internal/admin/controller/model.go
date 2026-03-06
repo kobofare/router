@@ -174,7 +174,7 @@ func DashboardListModels(c *gin.Context) {
 	provider := strings.ToLower(strings.TrimSpace(c.Query("provider")))
 	modelProvider := commonutils.NormalizeModelProvider(c.Query("model_provider"))
 
-	// backward compatibility: keep original map response, and add metadata list for UI friendliness
+	// Keep the established map-shaped payload and include metadata for the admin UI.
 	metaList := make([]gin.H, 0, len(channelId2Models))
 	filteredMap := make(map[int][]string, len(channelId2Models))
 	for id, models := range channelId2Models {
@@ -331,7 +331,7 @@ func GetUserAvailableModels(c *gin.Context) {
 	_, providerSpecified := urlValues["provider"]
 	provider := strings.ToLower(strings.TrimSpace(urlValues.Get("provider")))
 	if !providerSpecified {
-		// backward compatibility: keep original payload
+		// Preserve the original list payload when no provider filter is specified.
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"message": "",

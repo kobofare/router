@@ -1069,152 +1069,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/provider": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Get model provider catalog (admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Update model provider catalog (admin)",
-                "parameters": [
-                    {
-                        "description": "Model provider catalog payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/provider/defaults": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Get default code model provider catalog (admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/provider/fetch": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Fetch models from provider API (admin)",
-                "parameters": [
-                    {
-                        "description": "Provider fetch payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderFetchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderFetchResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/admin/option": {
             "get": {
                 "security": [
@@ -1276,6 +1130,78 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/provider": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get model provider catalog (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update model provider catalog (admin)",
+                "parameters": [
+                    {
+                        "description": "Model provider catalog payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
                         }
                     },
                     "401": {
@@ -5275,10 +5201,6 @@ const docTemplate = `{
         "docs.ModelProviderCatalogItem": {
             "type": "object",
             "properties": {
-                "api_key": {
-                    "type": "string",
-                    "example": "sk-***"
-                },
                 "base_url": {
                     "type": "string",
                     "example": "https://api.openai.com"
@@ -5344,46 +5266,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/docs.ModelProviderCatalogItem"
                     }
-                }
-            }
-        },
-        "docs.ModelProviderFetchRequest": {
-            "type": "object",
-            "properties": {
-                "base_url": {
-                    "type": "string",
-                    "example": "https://api.openai.com"
-                },
-                "key": {
-                    "type": "string",
-                    "example": "sk-***"
-                },
-                "provider": {
-                    "type": "string",
-                    "example": "openai"
-                }
-            }
-        },
-        "docs.ModelProviderFetchResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": ""
-                },
-                "provider": {
-                    "type": "string",
-                    "example": "openai"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": true
                 }
             }
         },

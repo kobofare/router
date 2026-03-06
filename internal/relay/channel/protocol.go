@@ -16,7 +16,7 @@ func init() {
 		}
 		protocolNameToType[name] = id
 	}
-	// Keep compatibility with old naming.
+	// Accept the legacy alias and normalize it into openai.
 	protocolNameToType["openai-compatible"] = OpenAI
 }
 
@@ -38,7 +38,6 @@ func ProtocolByType(channelProtocol int) string {
 	if channelProtocol > 0 && channelProtocol < len(ChannelProtocolNames) {
 		name := strings.TrimSpace(strings.ToLower(ChannelProtocolNames[channelProtocol]))
 		if name != "" {
-			// Normalize openai-compatible into openai.
 			if name == "openai-compatible" {
 				return "openai"
 			}

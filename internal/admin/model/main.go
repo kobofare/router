@@ -67,10 +67,18 @@ func chooseDB(dsn string) (*gorm.DB, error) {
 	if trimmed == "" {
 		return nil, errors.New("database.sql_dsn is required and only PostgreSQL is supported")
 	}
-	return openPostgreSQL(trimmed)
+	return openPostgreSQL(trimmed, true)
 }
 
-func openPostgreSQL(dsn string) (*gorm.DB, error) {
+func chooseMigrationDB(dsn string) (*gorm.DB, error) {
+	trimmed := strings.TrimSpace(dsn)
+	if trimmed == "" {
+		return nil, errors.New("database.sql_dsn is required and only PostgreSQL is supported")
+	}
+	return openPostgreSQL(trimmed, false)
+}
+
+func openPostgreSQL(dsn string, prepareStmt bool) (*gorm.DB, error) {
 	if !isPostgreSQLDSN(dsn) {
 		return nil, errors.New("unsupported database.sql_dsn: only PostgreSQL DSN is supported")
 	}
@@ -80,7 +88,7 @@ func openPostgreSQL(dsn string) (*gorm.DB, error) {
 		DSN:                  dsn,
 		PreferSimpleProtocol: true, // disables implicit prepared statement usage
 	}), &gorm.Config{
-		PrepareStmt: true, // precompile SQL
+		PrepareStmt: prepareStmt,
 	})
 }
 
@@ -117,7 +125,15 @@ func InitDB() {
 }
 
 func migrateDB() error {
-	return runMainVersionedMigrations(DB)
+	migrationDB, err := chooseMigrationDB(common.SQLDSN)
+	if err != nil {
+		return err
+	}
+	setDBConns(migrationDB)
+	defer func() {
+		_ = closeDB(migrationDB)
+	}()
+	return runMainVersionedMigrations(migrationDB)
 }
 
 func InitLogDB() {
@@ -150,7 +166,15 @@ func InitLogDB() {
 }
 
 func migrateLOGDB() error {
-	return runLogVersionedMigrations(LOG_DB)
+	migrationDB, err := chooseMigrationDB(common.LogSQLDSN)
+	if err != nil {
+		return err
+	}
+	setDBConns(migrationDB)
+	defer func() {
+		_ = closeDB(migrationDB)
+	}()
+	return runLogVersionedMigrations(migrationDB)
 }
 
 func setDBConns(db *gorm.DB) *sql.DB {
