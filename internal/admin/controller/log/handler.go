@@ -7,8 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/internal/admin/model"
 	logsvc "github.com/yeying-community/router/internal/admin/service/log"
 )
+
+func normalizeStatLogType(raw int) int {
+	if raw == model.LogTypeAll {
+		return model.LogTypeConsume
+	}
+	return raw
+}
 
 // GetAllLogs godoc
 // @Summary List logs (admin)
@@ -173,7 +181,7 @@ func GetLogsStat(c *gin.Context) {
 	username := c.Query("username")
 	modelName := c.Query("model_name")
 	channel := c.Query("channel")
-	quotaNum := logsvc.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel)
+	quotaNum := logsvc.SumUsedQuota(normalizeStatLogType(logType), startTimestamp, endTimestamp, modelName, username, tokenName, channel)
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, "")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -208,7 +216,7 @@ func GetLogsSelfStat(c *gin.Context) {
 	tokenName := c.Query("token_name")
 	modelName := c.Query("model_name")
 	channel := c.Query("channel")
-	quotaNum := logsvc.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel)
+	quotaNum := logsvc.SumUsedQuota(normalizeStatLogType(logType), startTimestamp, endTimestamp, modelName, username, tokenName, channel)
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, tokenName)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

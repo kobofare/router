@@ -84,9 +84,6 @@ definitions:
       model_mapping:
         example: '{}'
         type: string
-      model_provider:
-        example: openai
-        type: string
       model_ratio:
         example: '{}'
         type: string
@@ -153,9 +150,6 @@ definitions:
       key:
         example: sk-***
         type: string
-      model_provider:
-        example: openai
-        type: string
       type:
         example: 50
         type: integer
@@ -182,9 +176,6 @@ definitions:
         type: string
       model_mapping:
         example: '{}'
-        type: string
-      model_provider:
-        example: openai
         type: string
       model_ratio:
         example: '{}'
@@ -230,6 +221,10 @@ definitions:
       base_url:
         example: https://api.openai.com
         type: string
+      model_details:
+        items:
+          $ref: '#/definitions/docs.ModelProviderModelDetail'
+        type: array
       models:
         items:
           type: string
@@ -240,6 +235,9 @@ definitions:
       provider:
         example: openai
         type: string
+      sort_order:
+        example: 10
+        type: integer
       source:
         example: manual
         type: string
@@ -294,6 +292,33 @@ definitions:
       success:
         example: true
         type: boolean
+    type: object
+  docs.ModelProviderModelDetail:
+    properties:
+      currency:
+        example: USD
+        type: string
+      input_price:
+        example: 0.00015
+        type: number
+      model:
+        example: gpt-4o-mini
+        type: string
+      output_price:
+        example: 0.0006
+        type: number
+      price_unit:
+        example: per_1k_tokens
+        type: string
+      source:
+        example: default
+        type: string
+      type:
+        example: text
+        type: string
+      updated_at:
+        example: 1710000000
+        type: integer
     type: object
   docs.OpenAIAudioOutput:
     properties:
@@ -1814,6 +1839,26 @@ paths:
       summary: Delete disabled channels (admin)
       tags:
       - admin
+  /api/v1/admin/channel/draft:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create channel draft (admin)
+      tags:
+      - admin
   /api/v1/admin/channel/preview/models:
     post:
       consumes:
@@ -1838,7 +1883,25 @@ paths:
             $ref: '#/definitions/docs.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Preview models for OpenAI-compatible channel (admin)
+      summary: Preview models for channel protocol (admin)
+      tags:
+      - admin
+  /api/v1/admin/channel/protocols:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get channel protocol catalog (admin)
       tags:
       - admin
   /api/v1/admin/channel/search:
@@ -1942,24 +2005,6 @@ paths:
       summary: Update channel test model (admin)
       tags:
       - admin
-  /api/v1/admin/channel/types:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get channel interface type catalog (admin)
-      tags:
-      - admin
   /api/v1/admin/channel/update_balance:
     get:
       produces:
@@ -2003,23 +2048,6 @@ paths:
       tags:
       - admin
   /api/v1/admin/group:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List groups (admin)
-      tags:
-      - admin
     post:
       consumes:
       - application/json
@@ -2080,6 +2108,55 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete group (admin)
+      tags:
+      - admin
+  /api/v1/admin/group/{name}/channels:
+    get:
+      parameters:
+      - description: Group name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List group channel bindings (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update group channel bindings (admin)
       tags:
       - admin
   /api/v1/admin/group/catalog:
@@ -2303,7 +2380,7 @@ paths:
             $ref: '#/definitions/docs.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get default mainstream model provider catalog (admin)
+      summary: Get default code model provider catalog (admin)
       tags:
       - admin
   /api/v1/admin/model-provider/fetch:
@@ -3649,24 +3726,6 @@ paths:
       security:
       - BearerAuth: []
       summary: List available OpenAI-compatible models
-      tags:
-      - public
-  /api/v1/public/models-all:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.OpenAIModelListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List all models (non OpenAI-compatible)
       tags:
       - public
   /api/v1/public/models/{model}:

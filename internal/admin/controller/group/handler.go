@@ -21,23 +21,6 @@ type updateGroupChannelsRequest struct {
 	ChannelIDs []string `json:"channel_ids"`
 }
 
-// GetGroups godoc
-// @Summary List groups (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/group [get]
-func GetGroups(c *gin.Context) {
-	groupNames := groupsvc.List()
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data":    groupNames,
-	})
-}
-
 // GetGroupCatalog godoc
 // @Summary List groups catalog (admin)
 // @Tags admin

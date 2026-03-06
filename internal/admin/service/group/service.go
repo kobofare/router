@@ -1,16 +1,6 @@
 package group
 
-import (
-	"github.com/yeying-community/router/internal/admin/model"
-)
-
-func List() []string {
-	groupNames, err := model.ListEnabledGroupNames()
-	if err != nil {
-		return []string{}
-	}
-	return groupNames
-}
+import "github.com/yeying-community/router/internal/admin/model"
 
 func ListCatalog() ([]model.GroupCatalog, error) {
 	return model.ListGroupCatalog()

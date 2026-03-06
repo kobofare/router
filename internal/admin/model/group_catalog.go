@@ -24,10 +24,6 @@ func (GroupCatalog) TableName() string {
 	return "groups"
 }
 
-func ListEnabledGroupNames() ([]string, error) {
-	return listEnabledGroupNamesWithDB(DB)
-}
-
 func ListGroupCatalog() ([]GroupCatalog, error) {
 	return listGroupCatalogWithDB(DB)
 }
@@ -62,24 +58,6 @@ func getGroupCatalogByNameWithDB(db *gorm.DB, name string) (GroupCatalog, error)
 		return GroupCatalog{}, err
 	}
 	return row, nil
-}
-
-func listEnabledGroupNamesWithDB(db *gorm.DB) ([]string, error) {
-	rows := make([]GroupCatalog, 0)
-	if err := db.Where("enabled = ?", true).
-		Order("sort_order asc, name asc").
-		Find(&rows).Error; err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(rows))
-	for _, row := range rows {
-		name := strings.TrimSpace(row.Name)
-		if name == "" {
-			continue
-		}
-		names = append(names, name)
-	}
-	return names, nil
 }
 
 func createGroupCatalogWithDB(db *gorm.DB, item GroupCatalog) (GroupCatalog, error) {

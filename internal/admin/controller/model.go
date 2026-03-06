@@ -224,21 +224,6 @@ func DashboardListModels(c *gin.Context) {
 	})
 }
 
-// ListAllModels godoc
-// @Summary List all models (non OpenAI-compatible)
-// @Tags public
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} docs.OpenAIModelListResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/public/models-all [get]
-func ListAllModels(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"object": "list",
-		"data":   models,
-	})
-}
-
 // ListModels godoc
 // @Summary List available OpenAI-compatible models
 // @Tags public

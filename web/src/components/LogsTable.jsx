@@ -170,8 +170,9 @@ const LogsTable = () => {
   const getLogSelfStat = async () => {
     let localStartTimestamp = Date.parse(start_timestamp) / 1000;
     let localEndTimestamp = Date.parse(end_timestamp) / 1000;
+    const statLogType = logType === 0 ? 2 : logType;
     let res = await API.get(
-      `/api/v1/public/log/self/stat?type=${logType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`
+      `/api/v1/public/log/self/stat?type=${statLogType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`
     );
     const { success, message, data } = res.data;
     if (success) {
@@ -184,8 +185,9 @@ const LogsTable = () => {
   const getLogStat = async () => {
     let localStartTimestamp = Date.parse(start_timestamp) / 1000;
     let localEndTimestamp = Date.parse(end_timestamp) / 1000;
+    const statLogType = logType === 0 ? 2 : logType;
     let res = await API.get(
-      `/api/v1/admin/log/stat?type=${logType}&username=${username}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&channel=${channel}`
+      `/api/v1/admin/log/stat?type=${statLogType}&username=${username}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&channel=${channel}`
     );
     const { success, message, data } = res.data;
     if (success) {
@@ -210,41 +212,44 @@ const LogsTable = () => {
     return logType !== 5;
   };
 
-  const loadLogs = useCallback(async (startIdx) => {
-    let url = '';
-    let localStartTimestamp = Date.parse(start_timestamp) / 1000;
-    let localEndTimestamp = Date.parse(end_timestamp) / 1000;
-    if (isAdminUser) {
-      url = `/api/v1/admin/log/?p=${startIdx}&type=${logType}&username=${username}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&channel=${channel}`;
-    } else {
-      url = `/api/v1/public/log/self/?p=${startIdx}&type=${logType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
-    }
-    const res = await API.get(url);
-    const { success, message, data } = res.data;
-    if (success) {
-      if (startIdx === 0) {
-        setLogs(data);
+  const loadLogs = useCallback(
+    async (startIdx) => {
+      let url = '';
+      let localStartTimestamp = Date.parse(start_timestamp) / 1000;
+      let localEndTimestamp = Date.parse(end_timestamp) / 1000;
+      if (isAdminUser) {
+        url = `/api/v1/admin/log/?p=${startIdx}&type=${logType}&username=${username}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&channel=${channel}`;
       } else {
-        setLogs((prev) => {
-          let next = [...prev];
-          next.splice(startIdx * ITEMS_PER_PAGE, data.length, ...data);
-          return next;
-        });
+        url = `/api/v1/public/log/self/?p=${startIdx}&type=${logType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
       }
-    } else {
-      showError(message);
-    }
-    setLoading(false);
-  }, [
-    isAdminUser,
-    logType,
-    username,
-    token_name,
-    model_name,
-    start_timestamp,
-    end_timestamp,
-    channel,
-  ]);
+      const res = await API.get(url);
+      const { success, message, data } = res.data;
+      if (success) {
+        if (startIdx === 0) {
+          setLogs(data);
+        } else {
+          setLogs((prev) => {
+            let next = [...prev];
+            next.splice(startIdx * ITEMS_PER_PAGE, data.length, ...data);
+            return next;
+          });
+        }
+      } else {
+        showError(message);
+      }
+      setLoading(false);
+    },
+    [
+      isAdminUser,
+      logType,
+      username,
+      token_name,
+      model_name,
+      start_timestamp,
+      end_timestamp,
+      channel,
+    ]
+  );
 
   const onPaginationChange = (e, { activePage }) => {
     (async () => {

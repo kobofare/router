@@ -388,21 +388,15 @@ func WalletChallengeProto(c *gin.Context) {
 	logger.Loginf(c.Request.Context(), "wallet proto challenge success addr=%s nonce=%s chain=%s", addr, nonce, req.ChainId)
 	expireAt := time.Now().Add(time.Duration(config.WalletNonceTTLMinutes) * time.Minute)
 	body := gin.H{
-		"status":     protoStatus(1, "OK"),
 		"nonce":      nonce,
 		"message":    message,
 		"address":    addr,
 		"expires_at": expireAt.UTC().Format(time.RFC3339),
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"body":    body,
 		"success": true,
 		"message": "",
-		"data": gin.H{ // 兼容旧格式
-			"nonce":      nonce,
-			"message":    message,
-			"expires_at": expireAt.UTC().Format(time.RFC3339),
-		},
+		"data":    body,
 	})
 }
 
@@ -446,7 +440,6 @@ func WalletVerifyProto(c *gin.Context) {
 	}
 	logger.Loginf(c.Request.Context(), "wallet proto verify success user=%s addr=%s token_exp=%s", user.Id, addr, exp.UTC().Format(time.RFC3339))
 	body := gin.H{
-		"status":     protoStatus(1, "OK"),
 		"token":      token,
 		"expires_at": exp.UTC().Format(time.RFC3339),
 		"user": gin.H{
@@ -458,10 +451,9 @@ func WalletVerifyProto(c *gin.Context) {
 		},
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"body":    body,
 		"success": true,
 		"message": "",
-		"data":    body, // 兼容旧风格
+		"data":    body,
 	})
 }
 
@@ -524,32 +516,22 @@ func WalletRefreshToken(c *gin.Context) {
 	}
 	logger.Loginf(c.Request.Context(), "wallet refresh success user=%s addr=%s exp=%s", user.Id, addr, exp.UTC().Format(time.RFC3339))
 	body := gin.H{
-		"status":     protoStatus(1, "OK"),
 		"token":      token,
 		"expires_at": exp.UTC().Format(time.RFC3339),
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"body":    body,
 		"success": true,
 		"message": "",
 		"data":    body,
 	})
 }
 
-func protoStatus(code int, message string) gin.H {
-	return gin.H{
-		"code":    code,
-		"message": message,
-	}
-}
-
 func writeProtoError(c *gin.Context, code int, message string) {
+	_ = code
 	c.JSON(http.StatusOK, gin.H{
-		"body": gin.H{
-			"status": protoStatus(code, message),
-		},
 		"success": false,
 		"message": message,
+		"data":    nil,
 	})
 }
 

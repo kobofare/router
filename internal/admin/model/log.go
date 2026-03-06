@@ -22,7 +22,7 @@ type Log struct {
 }
 
 const (
-	LogTypeUnknown = iota
+	LogTypeAll = iota
 	LogTypeTopup
 	LogTypeConsume
 	LogTypeManage

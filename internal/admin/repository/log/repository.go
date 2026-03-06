@@ -87,7 +87,7 @@ func RecordTestLog(ctx context.Context, log *model.Log) {
 
 func GetAll(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel string) ([]*model.Log, error) {
 	var tx = model.LOG_DB
-	if logType != model.LogTypeUnknown {
+	if logType != model.LogTypeAll {
 		tx = tx.Where("type = ?", logType)
 	}
 	if modelName != "" {
@@ -115,7 +115,7 @@ func GetAll(logType int, startTimestamp int64, endTimestamp int64, modelName str
 
 func GetUser(userId string, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int) ([]*model.Log, error) {
 	var tx = model.LOG_DB
-	if logType == model.LogTypeUnknown {
+	if logType == model.LogTypeAll {
 		tx = tx.Where("user_id = ?", userId)
 	} else {
 		tx = tx.Where("user_id = ? and type = ?", userId, logType)
@@ -151,10 +151,6 @@ func SearchUser(userId string, keyword string) ([]*model.Log, error) {
 
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel string) int64 {
 	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(quota),0)")
-	// unknown log type falls back to consume to keep legacy behavior
-	if logType == model.LogTypeUnknown {
-		logType = model.LogTypeConsume
-	}
 	if username != "" {
 		tx = tx.Where("username = ?", username)
 	}
@@ -180,10 +176,6 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) int {
 	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(prompt_tokens),0) + COALESCE(sum(completion_tokens),0)")
-	// unknown log type falls back to consume to keep legacy behavior
-	if logType == model.LogTypeUnknown {
-		logType = model.LogTypeConsume
-	}
 	if username != "" {
 		tx = tx.Where("username = ?", username)
 	}
@@ -206,10 +198,6 @@ func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelNa
 
 func SumUsedQuotaByUserId(logType int, userId string, startTimestamp int64, endTimestamp int64) (int64, error) {
 	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(quota),0)")
-	// unknown log type falls back to consume to keep legacy behavior
-	if logType == model.LogTypeUnknown {
-		logType = model.LogTypeConsume
-	}
 	tx = tx.Where("user_id = ?", userId)
 	if startTimestamp != 0 {
 		tx = tx.Where("created_at >= ?", startTimestamp)

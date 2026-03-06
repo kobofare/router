@@ -167,6 +167,39 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/channel/draft": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create channel draft (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/channel/preview/models": {
             "post": {
                 "security": [
@@ -183,7 +216,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Preview models for OpenAI-compatible channel (admin)",
+                "summary": "Preview models for channel protocol (admin)",
                 "parameters": [
                     {
                         "description": "Preview payload",
@@ -195,6 +228,36 @@ const docTemplate = `{
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/channel/protocols": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get channel protocol catalog (admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -376,36 +439,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/channel/types": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Get channel interface type catalog (admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/admin/channel/update_balance": {
             "get": {
                 "security": [
@@ -552,34 +585,6 @@ const docTemplate = `{
             }
         },
         "/api/v1/admin/group": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "List groups (admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            },
             "put": {
                 "security": [
                     {
@@ -687,6 +692,85 @@ const docTemplate = `{
                     "admin"
                 ],
                 "summary": "Delete group (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/group/{name}/channels": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List group channel bindings (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update group channel bindings (admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1026,7 +1110,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Get default mainstream model provider catalog (admin)",
+                "summary": "Get default code model provider catalog (admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3225,36 +3309,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/public/models-all": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "public"
-                ],
-                "summary": "List all models (non OpenAI-compatible)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/docs.OpenAIModelListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/docs.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/public/models/{model}": {
             "get": {
                 "security": [
@@ -4954,10 +5008,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "{}"
                 },
-                "model_provider": {
-                    "type": "string",
-                    "example": "openai"
-                },
                 "model_ratio": {
                     "type": "string",
                     "example": "{}"
@@ -5051,10 +5101,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "sk-***"
                 },
-                "model_provider": {
-                    "type": "string",
-                    "example": "openai"
-                },
                 "type": {
                     "type": "integer",
                     "example": 50
@@ -5091,10 +5137,6 @@ const docTemplate = `{
                 "model_mapping": {
                     "type": "string",
                     "example": "{}"
-                },
-                "model_provider": {
-                    "type": "string",
-                    "example": "openai"
                 },
                 "model_ratio": {
                     "type": "string",
@@ -5158,6 +5200,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://api.openai.com"
                 },
+                "model_details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/docs.ModelProviderModelDetail"
+                    }
+                },
                 "models": {
                     "type": "array",
                     "items": {
@@ -5171,6 +5219,10 @@ const docTemplate = `{
                 "provider": {
                     "type": "string",
                     "example": "openai"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "source": {
                     "type": "string",
@@ -5249,6 +5301,43 @@ const docTemplate = `{
                 "success": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "docs.ModelProviderModelDetail": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "input_price": {
+                    "type": "number",
+                    "example": 0.00015
+                },
+                "model": {
+                    "type": "string",
+                    "example": "gpt-4o-mini"
+                },
+                "output_price": {
+                    "type": "number",
+                    "example": 0.0006
+                },
+                "price_unit": {
+                    "type": "string",
+                    "example": "per_1k_tokens"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "default"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "text"
+                },
+                "updated_at": {
+                    "type": "integer",
+                    "example": 1710000000
                 }
             }
         },
