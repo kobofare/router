@@ -886,7 +886,7 @@ const ModelProvidersManager = () => {
           />
         </Form>
       </div>
-      <Table basic='very' compact size='small' stackable>
+      <Table basic='very' compact size='small' stackable className='router-hover-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell width={3}>{t('channel.providers.table.provider')}</Table.HeaderCell>

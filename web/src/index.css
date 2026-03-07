@@ -42,6 +42,14 @@ code {
     font-size: 1.1em;
 }
 
+.ui.table.router-hover-table tbody tr {
+    transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ui.table.router-hover-table tbody tr:hover > td {
+    background: rgba(33, 133, 208, 0.08) !important;
+}
+
 @media only screen and (max-width: 600px) {
     .hide-on-mobile {
         display: none !important;

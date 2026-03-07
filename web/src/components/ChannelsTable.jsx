@@ -578,6 +578,10 @@ const ChannelsTable = () => {
     navigate(`/channel/edit/${channel.id}`);
   };
 
+  const stopRowClick = (event) => {
+    event.stopPropagation();
+  };
+
   const collectSelectedTargets = () => {
     return selectedChannelIds
       .map((id) => {
@@ -858,7 +862,7 @@ const ChannelsTable = () => {
           />
         </Form>
       </div>
-      <Table basic={'very'} compact size='small'>
+      <Table basic={'very'} compact size='small' className='router-hover-table'>
         <Table.Header>
           <Table.Row>
             {inBatchSelectMode && (
@@ -933,9 +937,13 @@ const ChannelsTable = () => {
             .map((channel, idx) => {
               if (channel.deleted) return <></>;
               return (
-                <Table.Row key={channel.id}>
+                <Table.Row
+                  key={channel.id}
+                  onClick={() => openChannelByStatus(channel)}
+                  style={{ cursor: inBatchSelectMode ? 'default' : 'pointer' }}
+                >
                   {inBatchSelectMode && (
-                    <Table.Cell collapsing textAlign='center'>
+                    <Table.Cell collapsing textAlign='center' onClick={stopRowClick}>
                       <Form.Checkbox
                         checked={selectedChannelIds.includes(channel.id)}
                         onChange={(e, { checked }) => {
@@ -944,26 +952,7 @@ const ChannelsTable = () => {
                       />
                     </Table.Cell>
                   )}
-                  <Table.Cell>
-                    <span
-                      role='button'
-                      tabIndex={0}
-                      onClick={() => openChannelByStatus(channel)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          openChannelByStatus(channel);
-                        }
-                      }}
-                      style={{
-                        cursor: inBatchSelectMode ? 'default' : 'pointer',
-                        color: inBatchSelectMode ? 'inherit' : '#2185d0',
-                        textDecoration: inBatchSelectMode ? 'none' : 'underline',
-                      }}
-                    >
-                      {channel.name ? channel.name : t('channel.table.no_name')}
-                    </span>
-                  </Table.Cell>
+                  <Table.Cell>{channel.name ? channel.name : t('channel.table.no_name')}</Table.Cell>
                   <Table.Cell>{renderProtocol(channel.protocol, protocolMap)}</Table.Cell>
                   <Table.Cell>{renderStatus(channel.status, t)}</Table.Cell>
                   <Table.Cell>
@@ -984,7 +973,7 @@ const ChannelsTable = () => {
                       basic
                     />
                   </Table.Cell>
-                  <Table.Cell>
+                  <Table.Cell onClick={stopRowClick}>
                     <Popup
                       trigger={
                         <span
@@ -1000,7 +989,7 @@ const ChannelsTable = () => {
                       basic
                     />
                   </Table.Cell>
-                  <Table.Cell>
+                  <Table.Cell onClick={stopRowClick}>
                     <Popup
                       trigger={
                         <Input
@@ -1022,7 +1011,7 @@ const ChannelsTable = () => {
                       basic
                     />
                   </Table.Cell>
-                  <Table.Cell>
+                  <Table.Cell onClick={stopRowClick}>
                     <Dropdown
                       placeholder={t('channel.table.select_test_model')}
                       selection
@@ -1033,7 +1022,7 @@ const ChannelsTable = () => {
                       }}
                     />
                   </Table.Cell>
-                  <Table.Cell style={{ width: '280px' }}>
+                  <Table.Cell style={{ width: '280px' }} onClick={stopRowClick}>
                     <div
                       style={{
                         display: 'flex',
