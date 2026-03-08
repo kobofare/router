@@ -296,6 +296,11 @@ const ModelProvidersManager = () => {
     );
   }, [rows, viewingProvider]);
 
+  const editingRowProvider = useMemo(() => {
+    if (editIndex < 0 || editIndex >= rows.length) return '';
+    return normalizeProvider(rows[editIndex]?.provider || '');
+  }, [editIndex, rows]);
+
   useEffect(() => {
     if (viewingProvider && !viewingRow) {
       setViewingProvider('');
@@ -492,7 +497,7 @@ const ModelProvidersManager = () => {
   };
 
   const applyEditToRows = async () => {
-    const provider = normalizeProvider(editRow.provider);
+    const provider = editingRowProvider || normalizeProvider(editRow.provider);
     if (!provider) {
       showInfo(t('channel.providers.messages.provider_required'));
       return;
@@ -1008,9 +1013,8 @@ const ModelProvidersManager = () => {
         <Form.Group widths='equal'>
           <Form.Input
             label={t('channel.providers.dialog.provider')}
-            placeholder={t('channel.providers.dialog.provider_placeholder')}
-            value={editRow.provider}
-            onChange={(e, { value }) => setEditValue('provider', normalizeProvider(value || ''))}
+            value={editingRowProvider || editRow.provider}
+            readOnly
           />
           <Form.Input
             label={t('channel.providers.dialog.name')}
