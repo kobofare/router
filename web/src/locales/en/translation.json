@@ -371,6 +371,10 @@
       "bind_channels_title": "Configure Channels for Group {{id}}"
     },
     "detail": {
+      "model": "Model",
+      "model_channels": "Channels",
+      "supported_models": "Supported Models",
+      "empty_models": "No supported models",
       "bound_channels": "Bound Channels",
       "empty_channels": "No bound channels"
     },
@@ -381,6 +385,7 @@
       "billing_ratio_invalid": "Billing ratio must be greater than or equal to 0",
       "load_failed": "Failed to load groups",
       "bind_load_failed": "Failed to load group channels",
+      "model_load_failed": "Failed to load group models",
       "create_success": "Group created successfully",
       "create_failed": "Failed to create group",
       "update_success": "Group updated successfully",

@@ -38,6 +38,10 @@ func ListChannelBindingCandidates() ([]model.GroupChannelBindingItem, error) {
 	return model.ListGroupChannelBindingCandidates()
 }
 
+func ListModelSummaries(id string) ([]model.GroupModelSummaryItem, error) {
+	return model.ListGroupModelSummaries(id)
+}
+
 func ReplaceChannelBindings(id string, channelIDs []string) error {
 	return model.ReplaceGroupChannelBindings(id, channelIDs)
 }

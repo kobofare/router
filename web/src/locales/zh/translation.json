@@ -371,6 +371,10 @@
       "bind_channels_title": "配置分组 {{id}} 的渠道"
     },
     "detail": {
+      "model": "模型",
+      "model_channels": "渠道",
+      "supported_models": "支持模型",
+      "empty_models": "暂无支持模型",
       "bound_channels": "已绑定渠道",
       "empty_channels": "暂无绑定渠道"
     },
@@ -381,6 +385,7 @@
       "billing_ratio_invalid": "业务倍率必须大于或等于 0",
       "load_failed": "加载分组失败",
       "bind_load_failed": "加载分组渠道失败",
+      "model_load_failed": "加载分组模型失败",
       "create_success": "分组创建成功",
       "create_failed": "分组创建失败",
       "update_success": "分组更新成功",

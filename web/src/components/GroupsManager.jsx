@@ -54,6 +54,13 @@ const formatChannelDisplayName = (item) => {
   return item.name || item.id || '-';
 };
 
+const channelStatusColor = (status) => {
+  const normalized = Number(status || 0);
+  if (normalized === 1) return 'green';
+  if (normalized === 4) return 'blue';
+  return 'grey';
+};
+
 const actionBarStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -79,6 +86,8 @@ const GroupsManager = () => {
 
   const [detailChannelRows, setDetailChannelRows] = useState([]);
   const [detailChannelLoading, setDetailChannelLoading] = useState(false);
+  const [detailModelRows, setDetailModelRows] = useState([]);
+  const [detailModelLoading, setDetailModelLoading] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -130,6 +139,8 @@ const GroupsManager = () => {
   const resetDetailState = () => {
     setDetailChannelRows([]);
     setDetailChannelLoading(false);
+    setDetailModelRows([]);
+    setDetailModelLoading(false);
   };
 
   const clearDeleteState = () => {
@@ -182,6 +193,24 @@ const GroupsManager = () => {
     }
   }, [fetchGroupChannels]);
 
+  const loadViewModelRows = useCallback(async (groupID) => {
+    setDetailModelLoading(true);
+    try {
+      const encodedID = encodeURIComponent(groupID || '');
+      const res = await API.get(`/api/v1/admin/group/${encodedID}/models`);
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('group_manage.messages.model_load_failed'));
+        return;
+      }
+      setDetailModelRows(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showError(error);
+    } finally {
+      setDetailModelLoading(false);
+    }
+  }, [t]);
+
   const loadEditChannelRows = useCallback(async (groupID) => {
     setFormChannelLoading(true);
     try {
@@ -223,6 +252,7 @@ const GroupsManager = () => {
     resetFormState();
     resetDetailState();
     loadViewChannelRows(row.id || '').then();
+    loadViewModelRows(row.id || '').then();
   };
 
   const openEditPanel = (row = activeGroup) => {
@@ -302,6 +332,7 @@ const GroupsManager = () => {
       setMode(MODE_VIEW);
       resetFormState();
       loadViewChannelRows(data.id || '').then();
+      loadViewModelRows(data.id || '').then();
     } catch (error) {
       showError(error);
     } finally {
@@ -586,6 +617,69 @@ const GroupsManager = () => {
     </div>
   );
 
+  const renderModelSummaryTable = (items, loadingState) => (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>
+        {t('group_manage.detail.supported_models')}
+      </div>
+      <Table compact size='small' celled>
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell>{t('group_manage.detail.model')}</Table.HeaderCell>
+            <Table.HeaderCell>{t('group_manage.detail.model_channels')}</Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {loadingState ? (
+            <Table.Row>
+              <Table.Cell colSpan={2} textAlign='center'>
+                {t('group_manage.messages.loading')}
+              </Table.Cell>
+            </Table.Row>
+          ) : items.length === 0 ? (
+            <Table.Row>
+              <Table.Cell colSpan={2} textAlign='center'>
+                {t('group_manage.detail.empty_models')}
+              </Table.Cell>
+            </Table.Row>
+          ) : (
+            items.map((item) => (
+              <Table.Row key={item.model}>
+                <Table.Cell style={{ minWidth: 240 }}>{item.model || '-'}</Table.Cell>
+                <Table.Cell>
+                  {Array.isArray(item.channels) && item.channels.length > 0 ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {item.channels.map((channel) => (
+                        <Label
+                          key={`${item.model}-${channel.id}`}
+                          size='tiny'
+                          basic
+                          color={channelStatusColor(channel.status)}
+                        >
+                          {formatChannelDisplayName(channel)}
+                          {` · ${channel.protocol || '-'}`}
+                        </Label>
+                      ))}
+                    </div>
+                  ) : (
+                    '-'
+                  )}
+                </Table.Cell>
+              </Table.Row>
+            ))
+          )}
+        </Table.Body>
+      </Table>
+    </div>
+  );
+
   const renderView = () => {
     if (!activeGroup) return null;
     return (
@@ -647,6 +741,7 @@ const GroupsManager = () => {
             />
           </Form.Group>
         </Form>
+        {renderModelSummaryTable(detailModelRows, detailModelLoading)}
         {renderBoundChannelsTable(detailChannelRows, detailChannelLoading)}
       </div>
     );

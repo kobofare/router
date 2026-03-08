@@ -239,6 +239,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminGroupRoute.PUT("/", group.UpdateGroup)
 			adminGroupRoute.DELETE("/:id", group.DeleteGroup)
 			adminGroupRoute.GET("/:id/channels", group.GetGroupChannels)
+			adminGroupRoute.GET("/:id/models", group.GetGroupModels)
 			adminGroupRoute.PUT("/:id/channels", group.UpdateGroupChannels)
 		}
 

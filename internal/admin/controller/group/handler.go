@@ -271,6 +271,39 @@ func GetGroupChannels(c *gin.Context) {
 	})
 }
 
+// GetGroupModels godoc
+// @Summary List group model summaries (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/group/{id}/models [get]
+func GetGroupModels(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "分组标识不能为空",
+		})
+		return
+	}
+	rows, err := groupsvc.ListModelSummaries(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    rows,
+	})
+}
+
 // UpdateGroupChannels godoc
 // @Summary Update group channel bindings (admin)
 // @Tags admin
