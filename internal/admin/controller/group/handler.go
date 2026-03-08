@@ -17,6 +17,7 @@ type upsertGroupRequest struct {
 	BillingRatio *float64 `json:"billing_ratio"`
 	Enabled      *bool    `json:"enabled"`
 	SortOrder    int      `json:"sort_order"`
+	ChannelIDs   []string `json:"channel_ids"`
 }
 
 type updateGroupChannelsRequest struct {
@@ -33,6 +34,30 @@ type updateGroupChannelsRequest struct {
 // @Router /api/v1/admin/group/catalog [get]
 func GetGroupCatalog(c *gin.Context) {
 	rows, err := groupsvc.ListCatalog()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    rows,
+	})
+}
+
+// GetGroupChannelOptions godoc
+// @Summary List group channel candidates (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/group/channel-options [get]
+func GetGroupChannelOptions(c *gin.Context) {
+	rows, err := groupsvc.ListChannelBindingCandidates()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -73,13 +98,13 @@ func CreateGroup(c *gin.Context) {
 		})
 		return
 	}
-	row, err := groupsvc.Create(model.GroupCatalog{
+	row, err := groupsvc.CreateWithChannelBindings(model.GroupCatalog{
 		Id:           strings.TrimSpace(req.Id),
 		Name:         strings.TrimSpace(req.Name),
 		Description:  strings.TrimSpace(req.Description),
 		Source:       "manual",
 		BillingRatio: billingRatio,
-	})
+	}, req.ChannelIDs)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

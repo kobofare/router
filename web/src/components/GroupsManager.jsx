@@ -23,8 +23,11 @@ const GroupsManager = forwardRef((_, ref) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createVisible, setCreateVisible] = useState(false);
   const [createForm, setCreateForm] = useState(createEmptyForm());
+  const [createChannelOptions, setCreateChannelOptions] = useState([]);
+  const [createChannelIDs, setCreateChannelIDs] = useState([]);
+  const [createChannelOptionsLoading, setCreateChannelOptionsLoading] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState(createEmptyForm());
@@ -58,20 +61,64 @@ const GroupsManager = forwardRef((_, ref) => {
     loadCatalog().then();
   }, [loadCatalog]);
 
-  const openCreateModal = () => {
+  const sortCatalogRows = (items) =>
+    [...items].sort((a, b) => {
+      const aOrder = Number(a.sort_order || 0);
+      const bOrder = Number(b.sort_order || 0);
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      return (a.id || '').localeCompare(b.id || '');
+    });
+
+  const loadCreateChannelOptions = useCallback(async () => {
+    setCreateChannelOptionsLoading(true);
+    try {
+      const res = await API.get('/api/v1/admin/group/channel-options');
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('group_manage.messages.bind_load_failed'));
+        return false;
+      }
+      const options = (Array.isArray(data) ? data : []).map((item) => ({
+        key: item.id,
+        text: `${item.name || item.id} (${item.id})`,
+        value: item.id,
+      }));
+      setCreateChannelOptions(options);
+      return true;
+    } catch (error) {
+      showError(error);
+      return false;
+    } finally {
+      setCreateChannelOptionsLoading(false);
+    }
+  }, [t]);
+
+  const openCreatePanel = () => {
     if (submitting) return;
     setCreateForm(createEmptyForm());
-    setCreateOpen(true);
+    setCreateChannelIDs([]);
+    setCreateChannelOptions([]);
+    setCreateVisible(true);
+    loadCreateChannelOptions().then();
   };
 
   useImperativeHandle(ref, () => ({
-    openCreateModal,
+    openCreatePanel,
   }));
 
-  const closeCreateModal = () => {
-    if (submitting) return;
-    setCreateOpen(false);
+  const resetCreatePanel = () => {
+    setCreateVisible(false);
     setCreateForm(createEmptyForm());
+    setCreateChannelIDs([]);
+    setCreateChannelOptions([]);
+    setCreateChannelOptionsLoading(false);
+  };
+
+  const closeCreatePanel = () => {
+    if (submitting) return;
+    resetCreatePanel();
   };
 
   const openEditModal = (row) => {
@@ -162,23 +209,16 @@ const GroupsManager = forwardRef((_, ref) => {
         name: (createForm.name || '').trim(),
         description: (createForm.description || '').trim(),
         billing_ratio: billingRatio,
+        channel_ids: createChannelIDs,
       });
       const { success, message, data } = res.data || {};
       if (!success) {
         showError(message || t('group_manage.messages.create_failed'));
         return;
       }
-      setRows((prev) => [...prev, data].sort((a, b) => {
-        const aOrder = Number(a.sort_order || 0);
-        const bOrder = Number(b.sort_order || 0);
-        if (aOrder !== bOrder) {
-          return aOrder - bOrder;
-        }
-        return (a.id || '').localeCompare(b.id || '');
-      }));
+      setRows((prev) => sortCatalogRows([...prev, data]));
       showSuccess(t('group_manage.messages.create_success'));
-      setCreateOpen(false);
-      setCreateForm(createEmptyForm());
+      resetCreatePanel();
     } catch (error) {
       showError(error);
     } finally {
@@ -212,16 +252,7 @@ const GroupsManager = forwardRef((_, ref) => {
         return;
       }
       setRows((prev) =>
-        prev
-          .map((row) => (row.id === data.id ? data : row))
-          .sort((a, b) => {
-            const aOrder = Number(a.sort_order || 0);
-            const bOrder = Number(b.sort_order || 0);
-            if (aOrder !== bOrder) {
-              return aOrder - bOrder;
-            }
-            return (a.id || '').localeCompare(b.id || '');
-          })
+        sortCatalogRows(prev.map((row) => (row.id === data.id ? data : row)))
       );
       showSuccess(t('group_manage.messages.update_success'));
       setEditOpen(false);
@@ -306,6 +337,103 @@ const GroupsManager = forwardRef((_, ref) => {
 
   return (
     <>
+      {createVisible && (
+        <div
+          style={{
+            marginBottom: '16px',
+            padding: '16px',
+            border: '1px solid rgba(34, 36, 38, 0.08)',
+            borderRadius: '10px',
+            background: '#fff',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              marginBottom: '12px',
+            }}
+          >
+            <div style={{ fontSize: '16px', fontWeight: 600 }}>
+              {t('group_manage.modal.create_title')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button onClick={closeCreatePanel} disabled={submitting}>
+                {t('group_manage.buttons.cancel')}
+              </Button>
+              <Button primary onClick={submitCreate} loading={submitting}>
+                {t('group_manage.buttons.confirm')}
+              </Button>
+            </div>
+          </div>
+          <Form>
+            <Form.Group widths='equal'>
+              <Form.Input
+                required
+                label={t('group_manage.form.id')}
+                placeholder={t('group_manage.form.id_placeholder')}
+                value={createForm.id}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, id: e.target.value }))
+                }
+              />
+              <Form.Input
+                label={t('group_manage.form.name')}
+                placeholder={t('group_manage.form.name_placeholder')}
+                value={createForm.name}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+              />
+            </Form.Group>
+            <Form.TextArea
+              label={t('group_manage.form.description')}
+              placeholder={t('group_manage.form.description_placeholder')}
+              value={createForm.description}
+              onChange={(e) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+            />
+            <Form.Group widths='equal'>
+              <Form.Input
+                type='number'
+                min='0'
+                step='0.01'
+                label={t('group_manage.form.billing_ratio')}
+                placeholder={t('group_manage.form.billing_ratio_placeholder')}
+                value={createForm.billing_ratio}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    billing_ratio: e.target.value,
+                  }))
+                }
+              />
+              <Form.Dropdown
+                fluid
+                multiple
+                search
+                selection
+                loading={createChannelOptionsLoading}
+                disabled={createChannelOptionsLoading || submitting}
+                label={t('group_manage.form.channels')}
+                placeholder={t('group_manage.form.channels_placeholder')}
+                options={createChannelOptions}
+                value={createChannelIDs}
+                onChange={(e, { value }) =>
+                  setCreateChannelIDs(Array.isArray(value) ? value : [])
+                }
+              />
+            </Form.Group>
+          </Form>
+        </div>
+      )}
+
       <Table basic='very' compact size='small'>
         <Table.Header>
           <Table.Row>
@@ -399,64 +527,6 @@ const GroupsManager = forwardRef((_, ref) => {
           )}
         </Table.Body>
       </Table>
-
-      <Modal open={createOpen} onClose={closeCreateModal} size='small'>
-        <Modal.Header>{t('group_manage.modal.create_title')}</Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Input
-              required
-              label={t('group_manage.form.id')}
-              placeholder={t('group_manage.form.id_placeholder')}
-              value={createForm.id}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, id: e.target.value }))
-              }
-            />
-            <Form.Input
-              label={t('group_manage.form.name')}
-              placeholder={t('group_manage.form.name_placeholder')}
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, name: e.target.value }))
-              }
-            />
-            <Form.TextArea
-              label={t('group_manage.form.description')}
-              placeholder={t('group_manage.form.description_placeholder')}
-              value={createForm.description}
-              onChange={(e) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-            />
-            <Form.Input
-              type='number'
-              min='0'
-              step='0.01'
-              label={t('group_manage.form.billing_ratio')}
-              placeholder={t('group_manage.form.billing_ratio_placeholder')}
-              value={createForm.billing_ratio}
-              onChange={(e) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  billing_ratio: e.target.value,
-                }))
-              }
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button onClick={closeCreateModal} disabled={submitting}>
-            {t('group_manage.buttons.cancel')}
-          </Button>
-          <Button primary onClick={submitCreate} loading={submitting}>
-            {t('group_manage.buttons.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
 
       <Modal open={editOpen} onClose={closeEditModal} size='small'>
         <Modal.Header>{t('group_manage.modal.edit_title')}</Modal.Header>

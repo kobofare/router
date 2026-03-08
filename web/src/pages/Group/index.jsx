@@ -16,7 +16,7 @@ const Group = () => {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
             <span>{t('group_manage.title')}</span>
-            <Button type='button' onClick={() => managerRef.current?.openCreateModal()}>
+            <Button type='button' onClick={() => managerRef.current?.openCreatePanel()}>
               {t('group_manage.buttons.add')}
             </Button>
           </Card.Header>

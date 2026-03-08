@@ -234,6 +234,7 @@ func SetApiRouter(engine *gin.Engine) {
 		adminGroupRoute.Use(middleware.AdminAuth())
 		{
 			adminGroupRoute.GET("/catalog", group.GetGroupCatalog)
+			adminGroupRoute.GET("/channel-options", group.GetGroupChannelOptions)
 			adminGroupRoute.POST("/", group.CreateGroup)
 			adminGroupRoute.PUT("/", group.UpdateGroup)
 			adminGroupRoute.DELETE("/:id", group.DeleteGroup)

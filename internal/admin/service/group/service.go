@@ -14,6 +14,10 @@ func Create(item model.GroupCatalog) (model.GroupCatalog, error) {
 	return model.CreateGroupCatalog(item)
 }
 
+func CreateWithChannelBindings(item model.GroupCatalog, channelIDs []string) (model.GroupCatalog, error) {
+	return model.CreateGroupCatalogWithChannelBindings(item, channelIDs)
+}
+
 func Update(item model.GroupCatalog) (model.GroupCatalog, error) {
 	return model.UpdateGroupCatalog(item)
 }
@@ -24,6 +28,10 @@ func Delete(id string) error {
 
 func ListChannelBindings(id string) ([]model.GroupChannelBindingItem, error) {
 	return model.ListGroupChannelBindings(id)
+}
+
+func ListChannelBindingCandidates() ([]model.GroupChannelBindingItem, error) {
+	return model.ListGroupChannelBindingCandidates()
 }
 
 func ReplaceChannelBindings(id string, channelIDs []string) error {
