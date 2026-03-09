@@ -132,7 +132,7 @@ export function renderColorLabel(text) {
   }
   let index = Math.abs(hash % colors.length);
   return (
-    <Label basic color={colors[index]}>
+    <Label basic color={colors[index]} className='router-tag'>
       {text}
     </Label>
   );

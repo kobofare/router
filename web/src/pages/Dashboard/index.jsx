@@ -915,7 +915,7 @@ const Dashboard = () => {
         <div className='dashboard-spend-stack'>
           <Card fluid className='chart-card dashboard-spend-card'>
             <Card.Content>
-              <Card.Header>{t('dashboard.spending.overview.title')}</Card.Header>
+              <Card.Header className='router-card-header router-section-title'>{t('dashboard.spending.overview.title')}</Card.Header>
               <div className='dashboard-spend-summary'>
                 <div className='dashboard-spend-summary-row'>
                   <div className='dashboard-spend-metric'>
@@ -1024,7 +1024,7 @@ const Dashboard = () => {
           </Card>
           <Card fluid className='chart-card dashboard-spend-card'>
             <Card.Content>
-              <Card.Header>{t('dashboard.spending.calendar.title')}</Card.Header>
+              <Card.Header className='router-card-header router-section-title'>{t('dashboard.spending.calendar.title')}</Card.Header>
               <div className='dashboard-calendar-toolbar'>
                 <div className='calendar-view-toggle'>
                   <Button.Group>
@@ -1175,16 +1175,8 @@ const Dashboard = () => {
           </Card>
           <Card fluid className='chart-card dashboard-spend-card'>
             <Card.Content>
-              <Card.Header>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    flexWrap: 'wrap',
-                  }}
-                >
+              <Card.Header className='router-card-header router-section-title'>
+                <div className='router-toolbar'>
                   <span>{t('dashboard.spending.details.title')}</span>
                   <Dropdown
                     className='router-section-dropdown'
@@ -1222,7 +1214,7 @@ const Dashboard = () => {
       </div>
       <Card fluid className='chart-card dashboard-filter-card'>
         <Card.Content>
-          <Card.Header>{t('dashboard.filters.title')}</Card.Header>
+          <Card.Header className='router-card-header router-section-title'>{t('dashboard.filters.title')}</Card.Header>
           <Form>
             <Form.Group widths='equal' className='dashboard-filter-row'>
               <Form.Field>
@@ -1314,7 +1306,7 @@ const Dashboard = () => {
         <Grid.Column>
           <Card fluid className='chart-card'>
             <Card.Content>
-              <Card.Header>
+              <Card.Header className='router-card-header router-section-title'>
                 {t('dashboard.charts.requests.title')}
                 {/* <span className='stat-value'>{summaryData.todayRequests}</span> */}
               </Card.Header>
@@ -1366,7 +1358,7 @@ const Dashboard = () => {
         <Grid.Column>
           <Card fluid className='chart-card'>
             <Card.Content>
-              <Card.Header>
+              <Card.Header className='router-card-header router-section-title'>
                 {t('dashboard.charts.quota.title')}
                 {/* <span className='stat-value'>
                   ${summaryData.todayQuota.toFixed(3)}
@@ -1420,7 +1412,7 @@ const Dashboard = () => {
         <Grid.Column>
           <Card fluid className='chart-card'>
             <Card.Content>
-              <Card.Header>
+              <Card.Header className='router-card-header router-section-title'>
                 {t('dashboard.charts.tokens.title')}
                 {/* <span className='stat-value'>{summaryData.todayTokens}</span> */}
               </Card.Header>
@@ -1473,7 +1465,7 @@ const Dashboard = () => {
       {/* 模型使用统计 */}
       <Card fluid className='chart-card'>
         <Card.Content>
-          <Card.Header>{t('dashboard.statistics.title')}</Card.Header>
+          <Card.Header className='router-card-header router-section-title'>{t('dashboard.statistics.title')}</Card.Header>
           <div className='chart-container'>
             <ResponsiveContainer width='100%' height={300}>
               <BarChart data={modelData}>

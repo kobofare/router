@@ -159,7 +159,7 @@ const EditToken = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
-          <Card.Header className='header'>
+          <Card.Header className='header router-page-title'>
             {isEdit ? t('token.edit.title_edit') : t('token.edit.title_create')}
           </Card.Header>
           <Form loading={loading} autoComplete='new-password'>
@@ -217,15 +217,7 @@ const EditToken = () => {
                 type='datetime-local'
               />
             </Form.Field>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '8px',
-              }}
-            >
+            <div className='router-toolbar-start router-block-gap-xs'>
               <Button
                 className='router-inline-button'
                 type={'button'}
@@ -272,7 +264,7 @@ const EditToken = () => {
                 {t('token.edit.buttons.expire_1_minute')}
               </Button>
             </div>
-            <Message>{t('token.edit.quota_notice')}</Message>
+            <Message className='router-section-message'>{t('token.edit.quota_notice')}</Message>
             <Form.Field>
               <Form.Input
                 className='router-section-input'
@@ -300,12 +292,14 @@ const EditToken = () => {
                 ? t('token.edit.buttons.cancel_unlimited')
                 : t('token.edit.buttons.unlimited_quota')}
             </Button>
-            <Button className='router-page-button' floated='right' positive onClick={submit}>
-              {t('token.edit.buttons.submit')}
-            </Button>
-            <Button className='router-page-button' floated='right' onClick={handleCancel}>
-              {t('token.edit.buttons.cancel')}
-            </Button>
+            <div className='router-toolbar-end router-block-top-sm'>
+              <Button className='router-page-button' onClick={handleCancel}>
+                {t('token.edit.buttons.cancel')}
+              </Button>
+              <Button className='router-page-button' positive onClick={submit}>
+                {t('token.edit.buttons.submit')}
+              </Button>
+            </div>
           </Form>
         </Card.Content>
       </Card>

@@ -563,22 +563,15 @@ const ModelProvidersManager = () => {
     return (
       <div>
         <div
-          style={{
-            marginTop: 6,
-            marginBottom: 4,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
+          className='router-toolbar router-toolbar-compact'
         >
-          <div style={{ fontWeight: 600 }}>{t('channel.providers.dialog.model_details')}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className='router-toolbar-title'>{t('channel.providers.dialog.model_details')}</div>
+          <div className='router-toolbar-end'>
             {searchable ? (
               <Form.Input
-                className='router-inline-input'
+                className='router-inline-input router-search-form-xs'
                 icon='search'
                 iconPosition='left'
-                style={{ width: 260 }}
                 placeholder={t('channel.providers.model_detail_table.search_placeholder')}
                 value={modelSearchKeyword}
                 onChange={(e, { value }) => {
@@ -599,7 +592,7 @@ const ModelProvidersManager = () => {
             </Button>
           </div>
         </div>
-        <Table compact size='small' celled>
+        <Table compact celled className='router-detail-table'>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell width={4}>{t('channel.providers.model_detail_table.model')}</Table.HeaderCell>
@@ -615,14 +608,14 @@ const ModelProvidersManager = () => {
           <Table.Body>
             {visibleDetailRows.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan={8} textAlign='center'>
+                  <Table.Cell className='router-empty-cell' colSpan={8} textAlign='center'>
                   {t('channel.providers.model_detail_table.empty')}
                   </Table.Cell>
                 </Table.Row>
             ) : (
               visibleDetailRows.map(({ detail, index: detailIndex }) => (
                 <Table.Row key={`${detail.model || 'model'}-${detailIndex}`}>
-                  <Table.Cell style={{ minWidth: 260 }}>
+                  <Table.Cell className='router-cell-min-260'>
                     <Form.Input
                       className='router-inline-input'
                       fluid
@@ -633,7 +626,7 @@ const ModelProvidersManager = () => {
                       }
                     />
                   </Table.Cell>
-                  <Table.Cell style={{ minWidth: 120 }}>
+                  <Table.Cell className='router-cell-min-120'>
                     <Form.Select
                       className='router-inline-dropdown'
                       fluid
@@ -759,24 +752,16 @@ const ModelProvidersManager = () => {
       safeCurrentPage * pageSize,
     );
     return (
-      <div style={{ marginTop: 12 }}>
-        <div
-          style={{
-            marginBottom: 8,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>
+      <div className='router-block-top-sm'>
+        <div className='router-toolbar router-block-gap-xs'>
+          <div className='router-toolbar-title'>
             {t('channel.providers.dialog.model_details')}
           </div>
           {searchable ? (
             <Form.Input
-              className='router-inline-input'
+              className='router-inline-input router-search-form-xs'
               icon='search'
               iconPosition='left'
-              style={{ width: 260 }}
               placeholder={t('channel.providers.model_detail_table.search_placeholder')}
               value={modelSearchKeyword}
               onChange={(e, { value }) => {
@@ -787,7 +772,7 @@ const ModelProvidersManager = () => {
             />
           ) : null}
         </div>
-        <Table compact size='small' celled>
+        <Table compact celled className='router-detail-table'>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell width={4}>{t('channel.providers.model_detail_table.model')}</Table.HeaderCell>
@@ -802,15 +787,15 @@ const ModelProvidersManager = () => {
           <Table.Body>
             {visibleDetailRows.length === 0 ? (
               <Table.Row>
-                <Table.Cell colSpan={7} textAlign='center'>
+                <Table.Cell className='router-empty-cell' colSpan={7} textAlign='center'>
                   {t('channel.providers.model_detail_table.empty')}
                 </Table.Cell>
               </Table.Row>
             ) : (
               pageRows.map((detail, index) => (
                 <Table.Row key={`${detail.model || 'model'}-${index}`}>
-                  <Table.Cell style={{ minWidth: 260 }}>{detail.model || '-'}</Table.Cell>
-                  <Table.Cell style={{ minWidth: 120 }}>{detail.type || 'text'}</Table.Cell>
+                  <Table.Cell className='router-cell-min-260'>{detail.model || '-'}</Table.Cell>
+                  <Table.Cell className='router-cell-min-120'>{detail.type || 'text'}</Table.Cell>
                   <Table.Cell>{detail.input_price || 0}</Table.Cell>
                   <Table.Cell>{detail.output_price || 0}</Table.Cell>
                   <Table.Cell>{detail.price_unit || '-'}</Table.Cell>
@@ -822,15 +807,9 @@ const ModelProvidersManager = () => {
           </Table.Body>
         </Table>
         {totalPages > 1 ? (
-          <div
-            style={{
-              marginTop: 12,
-              display: 'flex',
-              justifyContent: 'flex-end',
-            }}
-          >
+          <div className='router-pagination-wrap'>
             <Pagination
-              size='mini'
+              className='router-section-pagination'
               activePage={safeCurrentPage}
               totalPages={totalPages}
               onPageChange={(e, { activePage: nextActivePage }) => {
@@ -848,16 +827,9 @@ const ModelProvidersManager = () => {
   const renderRows = () => (
     <div>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginBottom: '12px',
-        }}
+        className='router-toolbar router-block-gap-sm'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className='router-toolbar-start'>
           <Button
             type='button'
             className='router-page-button'
@@ -867,8 +839,9 @@ const ModelProvidersManager = () => {
             {t('channel.providers.buttons.add_provider')}
           </Button>
         </div>
-        <Form style={{ width: '320px', maxWidth: '100%' }}>
+        <Form className='router-search-form-md'>
           <Form.Input
+            className='router-section-input'
             icon='search'
             iconPosition='left'
             placeholder={t('channel.providers.search')}
@@ -880,7 +853,7 @@ const ModelProvidersManager = () => {
           />
         </Form>
       </div>
-      <Table basic='very' compact size='small' stackable className='router-hover-table'>
+      <Table basic='very' compact stackable className='router-hover-table router-list-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell width={3}>{t('channel.providers.table.provider')}</Table.HeaderCell>
@@ -894,7 +867,7 @@ const ModelProvidersManager = () => {
         <Table.Body>
           {rows.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={6} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={6} textAlign='center'>
                 {loading ? t('common.loading') : t('channel.providers.table.empty')}
               </Table.Cell>
             </Table.Row>
@@ -907,16 +880,14 @@ const ModelProvidersManager = () => {
                   onClick={() => {
                     openViewer(row);
                   }}
-                  style={{
-                    cursor: creating || editing || saving ? 'default' : 'pointer',
-                  }}
+                  className={creating || editing || saving ? undefined : 'router-row-clickable'}
                 >
                   <Table.Cell>{row.id || '-'}</Table.Cell>
                   <Table.Cell>{row.name || row.id || '-'}</Table.Cell>
                   <Table.Cell textAlign='left'>
                     {capabilities.length > 0 ? (
                       capabilities.map((type) => (
-                        <Label key={`${row.id}-${type}`} basic size='small'>
+                        <Label key={`${row.id}-${type}`} basic className='router-tag'>
                           {t(`channel.model_types.${type}`)}
                         </Label>
                       ))
@@ -925,12 +896,12 @@ const ModelProvidersManager = () => {
                     )}
                   </Table.Cell>
                   <Table.Cell textAlign='left'>
-                    <Label>{row.source || '-'}</Label>
+                    <Label className='router-tag'>{row.source || '-'}</Label>
                   </Table.Cell>
                   <Table.Cell textAlign='left'>
                     {row.updated_at ? timestamp2string(row.updated_at) : '-'}
                   </Table.Cell>
-                  <Table.Cell textAlign='left' style={{ whiteSpace: 'nowrap' }}>
+                  <Table.Cell textAlign='left' className='router-nowrap'>
                     <Button
                       type='button'
                       className='router-inline-button'
@@ -965,8 +936,9 @@ const ModelProvidersManager = () => {
         </Table.Body>
       </Table>
       {totalPages > 1 ? (
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <div className='router-pagination-wrap-md'>
           <Pagination
+            className='router-section-pagination'
             activePage={activePage}
             totalPages={totalPages}
             onPageChange={(e, { activePage: nextActivePage }) => {
@@ -980,16 +952,7 @@ const ModelProvidersManager = () => {
 
   const renderEditor = () => (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          gap: '8px',
-          flexWrap: 'wrap',
-          marginBottom: 12,
-        }}
-      >
+      <div className='router-toolbar-start router-block-gap-sm'>
         <Button type='button' className='router-page-button' onClick={rollbackEditor} disabled={saving}>
           <Icon name='undo' />
           {t('channel.providers.dialog.cancel_create')}
@@ -1036,16 +999,7 @@ const ModelProvidersManager = () => {
     if (!viewRow) return null;
     return (
       <div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: '8px',
-            flexWrap: 'wrap',
-            marginBottom: 12,
-          }}
-        >
+        <div className='router-toolbar-start router-block-gap-sm'>
           <Button type='button' className='router-page-button' onClick={closeViewer} disabled={saving}>
             <Icon name='undo' />
             {t('channel.providers.dialog.cancel')}
@@ -1114,16 +1068,7 @@ const ModelProvidersManager = () => {
 
   const renderCreatePanel = () => (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          gap: '8px',
-          flexWrap: 'wrap',
-          marginBottom: 12,
-        }}
-      >
+      <div className='router-toolbar-start router-block-gap-sm'>
         <Button type='button' className='router-page-button' onClick={closeCreatePanel} disabled={saving}>
           <Icon name='undo' />
           {t('channel.providers.dialog.cancel_create')}

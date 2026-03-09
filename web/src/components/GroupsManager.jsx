@@ -129,15 +129,6 @@ const channelStatusColor = (status) => {
   return 'grey';
 };
 
-const actionBarStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'flex-start',
-  gap: '8px',
-  flexWrap: 'wrap',
-  marginBottom: 12,
-};
-
 const GroupsManager = () => {
   const { t } = useTranslation();
   const [mode, setMode] = useState(MODE_LIST);
@@ -543,11 +534,11 @@ const GroupsManager = () => {
 
   const renderGroupStatus = (enabled) =>
     enabled ? (
-      <Label basic color='green'>
+      <Label basic color='green' className='router-tag'>
         {t('group_manage.status.enabled')}
       </Label>
     ) : (
-      <Label basic color='grey'>
+      <Label basic color='grey' className='router-tag'>
         {t('group_manage.status.disabled')}
       </Label>
     );
@@ -556,20 +547,20 @@ const GroupsManager = () => {
     const normalized = Number(status || 0);
     if (normalized === 1) {
       return (
-        <Label basic color='green'>
+        <Label basic color='green' className='router-tag'>
           {t('channel.table.status_enabled')}
         </Label>
       );
     }
     if (normalized === 4) {
       return (
-        <Label basic color='blue'>
+        <Label basic color='blue' className='router-tag'>
           {t('channel.table.status_creating')}
         </Label>
       );
     }
     return (
-      <Label basic color='grey'>
+      <Label basic color='grey' className='router-tag'>
         {t('channel.table.status_disabled')}
       </Label>
     );
@@ -578,16 +569,9 @@ const GroupsManager = () => {
   const renderList = () => (
     <>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginBottom: '12px',
-        }}
+        className='router-toolbar router-block-gap-sm'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div className='router-toolbar-start'>
           <Button
             type='button'
             className='router-page-button'
@@ -606,8 +590,9 @@ const GroupsManager = () => {
             {t('group_manage.buttons.refresh')}
           </Button>
         </div>
-        <Form style={{ width: '320px', maxWidth: '100%' }}>
+        <Form className='router-search-form-md'>
           <Form.Input
+            className='router-section-input'
             icon='search'
             iconPosition='left'
             placeholder={t('group_manage.search')}
@@ -617,7 +602,7 @@ const GroupsManager = () => {
         </Form>
       </div>
 
-      <Table basic='very' compact size='small' className='router-hover-table'>
+      <Table basic='very' compact className='router-hover-table router-list-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell>{t('group_manage.table.id')}</Table.HeaderCell>
@@ -627,7 +612,7 @@ const GroupsManager = () => {
             <Table.HeaderCell>{t('group_manage.table.billing_ratio')}</Table.HeaderCell>
             <Table.HeaderCell>{t('group_manage.table.status')}</Table.HeaderCell>
             <Table.HeaderCell>{t('group_manage.table.updated_at')}</Table.HeaderCell>
-            <Table.HeaderCell style={{ width: '220px' }}>
+            <Table.HeaderCell className='router-cell-min-240'>
               {t('group_manage.table.actions')}
             </Table.HeaderCell>
           </Table.Row>
@@ -635,7 +620,7 @@ const GroupsManager = () => {
         <Table.Body>
           {visibleRows.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={8} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={8} textAlign='center'>
                 {loading
                   ? t('group_manage.messages.loading')
                   : t('group_manage.messages.empty')}
@@ -646,23 +631,16 @@ const GroupsManager = () => {
               <Table.Row
                 key={row.id}
                 onClick={() => openViewPanel(row)}
-                style={{ cursor: submitting || loading ? 'default' : 'pointer' }}
+                className={submitting || loading ? undefined : 'router-row-clickable'}
               >
                 <Table.Cell>{row.id}</Table.Cell>
                 <Table.Cell>{row.name || '-'}</Table.Cell>
                 <Table.Cell>{row.description || '-'}</Table.Cell>
                 <Table.Cell>
                   {Array.isArray(row.channels) && row.channels.length > 0 ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
+                    <div className='router-tag-group'>
                       {row.channels.map((item) => (
-                        <Label key={item.id} size='tiny'>
+                        <Label key={item.id} className='router-tag'>
                           {formatChannelDisplayName(item)}
                         </Label>
                       ))}
@@ -675,14 +653,7 @@ const GroupsManager = () => {
                 <Table.Cell>{renderGroupStatus(row.enabled)}</Table.Cell>
                 <Table.Cell>{row.updated_at ? timestamp2string(row.updated_at) : '-'}</Table.Cell>
                 <Table.Cell>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      flexWrap: 'wrap',
-                    }}
-                  >
+                  <div className='router-action-group'>
                     <Button
                       className='router-inline-button'
                       color={row.enabled ? 'orange' : 'green'}
@@ -718,11 +689,11 @@ const GroupsManager = () => {
   );
 
   const renderBoundChannelsTable = (items, loadingState) => (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>
+    <div className='router-block-top-sm'>
+      <div className='router-toolbar-title router-block-gap-xs'>
         {t('group_manage.detail.bound_channels')}
       </div>
-      <Table compact size='small' celled>
+      <Table compact celled className='router-detail-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell>{t('channel.table.id')}</Table.HeaderCell>
@@ -734,13 +705,13 @@ const GroupsManager = () => {
         <Table.Body>
           {loadingState ? (
             <Table.Row>
-              <Table.Cell colSpan={4} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
                 {t('group_manage.messages.loading')}
               </Table.Cell>
             </Table.Row>
           ) : items.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={4} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
                 {t('group_manage.detail.empty_channels')}
               </Table.Cell>
             </Table.Row>
@@ -777,31 +748,21 @@ const GroupsManager = () => {
           });
 
     return (
-      <div style={{ marginTop: 12 }}>
-        <div
-          style={{
-            marginBottom: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>
+      <div className='router-block-top-sm'>
+        <div className='router-toolbar router-block-gap-xs'>
+          <div className='router-toolbar-title'>
             {t('group_manage.detail.supported_models')}
           </div>
           <Form.Input
-            className='router-inline-input'
+            className='router-inline-input router-search-form-sm'
             icon='search'
             iconPosition='left'
-            style={{ width: 280, maxWidth: '100%' }}
             placeholder={t('group_manage.detail.model_search_placeholder')}
             value={detailModelSearchKeyword}
             onChange={(e, { value }) => setDetailModelSearchKeyword(value || '')}
           />
         </div>
-        <Table compact size='small' celled>
+        <Table compact celled className='router-detail-table'>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell>{t('group_manage.detail.model')}</Table.HeaderCell>
@@ -812,37 +773,30 @@ const GroupsManager = () => {
           <Table.Body>
             {loadingState ? (
               <Table.Row>
-                <Table.Cell colSpan={3} textAlign='center'>
+                <Table.Cell className='router-empty-cell' colSpan={3} textAlign='center'>
                   {t('group_manage.messages.loading')}
                 </Table.Cell>
               </Table.Row>
             ) : visibleItems.length === 0 ? (
               <Table.Row>
-                <Table.Cell colSpan={3} textAlign='center'>
+                <Table.Cell className='router-empty-cell' colSpan={3} textAlign='center'>
                   {t('group_manage.detail.empty_models')}
                 </Table.Cell>
               </Table.Row>
             ) : (
               visibleItems.map((item) => (
                 <Table.Row key={item.model}>
-                  <Table.Cell style={{ minWidth: 240 }}>{item.model || '-'}</Table.Cell>
+                  <Table.Cell className='router-cell-min-240'>{item.model || '-'}</Table.Cell>
                   <Table.Cell textAlign='center'>
                     {Array.isArray(item.channels) ? item.channels.length : 0}
                   </Table.Cell>
                   <Table.Cell>
                     {Array.isArray(item.channels) && item.channels.length > 0 ? (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
+                      <div className='router-tag-group'>
                         {item.channels.map((channel) => (
                           <Label
                             key={`${item.model}-${channel.id}`}
-                            size='tiny'
+                            className='router-tag'
                             basic
                             color={channelStatusColor(channel.status)}
                           >
@@ -945,19 +899,10 @@ const GroupsManager = () => {
   };
 
   const renderEditModelConfigTable = () => (
-    <div style={{ marginTop: 18 }}>
-      <div
-        style={{
-          marginBottom: 8,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ fontWeight: 600 }}>{t('group_manage.edit.model_configs')}</div>
+    <div className='router-block-top-md'>
+      <div className='router-toolbar router-block-gap-xs'>
+        <div className='router-toolbar-start'>
+          <div className='router-toolbar-title'>{t('group_manage.edit.model_configs')}</div>
           <Button
             type='button'
             className='router-inline-button'
@@ -968,25 +913,24 @@ const GroupsManager = () => {
           </Button>
         </div>
         <Form.Input
-          className='router-inline-input'
+          className='router-inline-input router-search-form-sm'
           icon='search'
           iconPosition='left'
-          style={{ width: 280, maxWidth: '100%' }}
           placeholder={t('group_manage.edit.model_search_placeholder')}
           value={editModelSearchKeyword}
           onChange={(e, { value }) => setEditModelSearchKeyword(value || '')}
         />
       </div>
-      <Table compact size='small' celled>
+      <Table compact celled className='router-detail-table'>
         <Table.Header>
           <Table.Row>
-            <Table.HeaderCell style={{ minWidth: 260 }}>
+            <Table.HeaderCell className='router-cell-min-260'>
               {t('group_manage.edit.model')}
             </Table.HeaderCell>
-            <Table.HeaderCell style={{ minWidth: 240 }}>
+            <Table.HeaderCell className='router-cell-min-240'>
               {t('group_manage.edit.channel')}
             </Table.HeaderCell>
-            <Table.HeaderCell style={{ minWidth: 280 }}>
+            <Table.HeaderCell className='router-cell-min-280'>
               {t('group_manage.edit.upstream_model')}
             </Table.HeaderCell>
             <Table.HeaderCell collapsing>
@@ -997,13 +941,13 @@ const GroupsManager = () => {
         <Table.Body>
           {formModelLoading ? (
             <Table.Row>
-              <Table.Cell colSpan={4} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
                 {t('group_manage.messages.loading')}
               </Table.Cell>
             </Table.Row>
           ) : visibleEditModelConfigs.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={4} textAlign='center'>
+              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
                 {t('group_manage.edit.empty_model_configs')}
               </Table.Cell>
             </Table.Row>
@@ -1099,7 +1043,7 @@ const GroupsManager = () => {
     if (!activeGroup) return null;
     return (
       <div>
-        <div style={actionBarStyle}>
+        <div className='router-toolbar-start router-block-gap-sm'>
           <Button type='button' className='router-page-button' onClick={backToList} disabled={submitting}>
             <Icon name='undo' />
             {t('group_manage.buttons.back')}
@@ -1171,7 +1115,7 @@ const GroupsManager = () => {
 
   const renderEdit = () => (
     <div>
-      <div style={actionBarStyle}>
+      <div className='router-toolbar-start router-block-gap-sm'>
         <Button type='button' className='router-page-button' onClick={() => setMode(MODE_VIEW)} disabled={submitting}>
           {t('group_manage.buttons.cancel')}
         </Button>
@@ -1262,7 +1206,7 @@ const GroupsManager = () => {
 
   const renderCreate = () => (
     <div>
-      <div style={actionBarStyle}>
+      <div className='router-toolbar-start router-block-gap-sm'>
         <Button type='button' className='router-page-button' onClick={backToList} disabled={submitting}>
           {t('group_manage.buttons.cancel')}
         </Button>

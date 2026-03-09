@@ -42,17 +42,17 @@ function buildProtocolMap(options, t) {
 function renderProtocol(protocol, protocolMap) {
   const normalized = (protocol || '').toString().trim().toLowerCase();
   const option = protocolMap[normalized] || protocolMap.unknown;
-  const colorMap = {
-    grey: 'rgba(0, 0, 0, 0.5)',
-    green: '#1f8f4b',
-    red: '#d64545',
-    yellow: '#b58105',
-    olive: '#7f8b24',
-    blue: '#2185d0',
-    orange: '#c66900',
+  const colorClassMap = {
+    grey: 'router-text-muted',
+    green: 'router-text-success',
+    red: 'router-text-danger',
+    yellow: 'router-text-warning',
+    olive: 'router-text-olive',
+    blue: 'router-text-info',
+    orange: 'router-text-warning',
   };
   return (
-    <span style={{ color: colorMap[option?.color] || 'inherit', fontWeight: 500 }}>
+    <span className={colorClassMap[option?.color] || undefined}>
       {option ? option.text : normalized || 'unknown'}
     </span>
   );
@@ -82,10 +82,10 @@ function renderChannelName(channel, t) {
   const identifier = (channel?.id || '').toString().trim();
   const showIdentifier = identifier !== '' && displayName !== identifier;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+    <div className='router-compact-stack'>
       <span>{displayName || t('channel.table.no_name')}</span>
       {showIdentifier && (
-        <span style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.45)' }}>
+        <span className='router-subtext'>
           {t('channel.table.identifier', { id: identifier })}
         </span>
       )}
@@ -326,17 +326,17 @@ const ChannelsTable = () => {
   };
 
   const renderStatus = (status, t) => {
-    const plainStatusText = (text, color) => (
-      <span style={{ color, fontWeight: 500 }}>{text}</span>
+    const plainStatusText = (text, className) => (
+      <span className={className}>{text}</span>
     );
     switch (status) {
       case 1:
-        return plainStatusText(t('channel.table.status_enabled'), '#1f8f4b');
+        return plainStatusText(t('channel.table.status_enabled'), 'router-text-success');
       case 2:
         return (
           <Popup
             trigger={
-              <span style={{ color: '#d64545', fontWeight: 500 }}>
+              <span className='router-text-danger'>
                 {t('channel.table.status_disabled')}
               </span>
             }
@@ -348,7 +348,7 @@ const ChannelsTable = () => {
         return (
           <Popup
             trigger={
-              <span style={{ color: '#b58105', fontWeight: 500 }}>
+              <span className='router-text-warning'>
                 {t('channel.table.status_auto_disabled')}
               </span>
             }
@@ -357,9 +357,9 @@ const ChannelsTable = () => {
           />
         );
       case channelStatusCreating:
-        return plainStatusText(t('channel.table.status_creating'), '#2185d0');
+        return plainStatusText(t('channel.table.status_creating'), 'router-text-info');
       default:
-        return plainStatusText(t('channel.table.status_unknown'), 'rgba(0, 0, 0, 0.5)');
+        return plainStatusText(t('channel.table.status_unknown'), 'router-text-muted');
     }
   };
 
@@ -367,15 +367,15 @@ const ChannelsTable = () => {
     let time = responseTime / 1000;
     time = time.toFixed(2) + 's';
     if (responseTime === 0) {
-      return <span style={{ color: 'rgba(0, 0, 0, 0.5)' }}>{t('channel.table.not_tested')}</span>;
+      return <span className='router-text-muted'>{t('channel.table.not_tested')}</span>;
     } else if (responseTime <= 1000) {
-      return <span style={{ color: '#1f8f4b', fontWeight: 500 }}>{time}</span>;
+      return <span className='router-text-success'>{time}</span>;
     } else if (responseTime <= 3000) {
-      return <span style={{ color: '#7f8b24', fontWeight: 500 }}>{time}</span>;
+      return <span className='router-text-olive'>{time}</span>;
     } else if (responseTime <= 5000) {
-      return <span style={{ color: '#b58105', fontWeight: 500 }}>{time}</span>;
+      return <span className='router-text-warning'>{time}</span>;
     } else {
-      return <span style={{ color: '#d64545', fontWeight: 500 }}>{time}</span>;
+      return <span className='router-text-danger'>{time}</span>;
     }
   };
 
@@ -846,16 +846,9 @@ const ChannelsTable = () => {
   return (
     <>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginBottom: '12px',
-        }}
+        className='router-toolbar router-block-gap-sm'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div className='router-toolbar-start'>
           {selectionMode === selectionModeNone ? (
             <>
               <Button className='router-page-button' as={Link} to='/channel/add' disabled={actionBusy}>
@@ -931,7 +924,7 @@ const ChannelsTable = () => {
           </Button>
         </div>
 
-        <Form onSubmit={searchChannels} style={{ width: '320px', maxWidth: '100%' }}>
+        <Form onSubmit={searchChannels} className='router-search-form-md'>
           <Form.Input
             className='router-section-input'
             icon='search'
@@ -943,7 +936,7 @@ const ChannelsTable = () => {
           />
         </Form>
       </div>
-      <Table basic={'very'} compact size='small' className='router-hover-table'>
+      <Table basic={'very'} compact className='router-hover-table router-list-table'>
         <Table.Header>
           <Table.Row>
             {inBatchSelectMode && (
@@ -957,7 +950,7 @@ const ChannelsTable = () => {
               </Table.HeaderCell>
             )}
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('name');
               }}
@@ -965,7 +958,7 @@ const ChannelsTable = () => {
               {t('channel.table.name')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('protocol');
               }}
@@ -973,7 +966,7 @@ const ChannelsTable = () => {
               {t('channel.table.type')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('status');
               }}
@@ -981,7 +974,7 @@ const ChannelsTable = () => {
               {t('channel.table.status')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('response_time');
               }}
@@ -989,7 +982,7 @@ const ChannelsTable = () => {
               {t('channel.table.response_time')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('balance');
               }}
@@ -997,7 +990,7 @@ const ChannelsTable = () => {
               {t('channel.table.balance')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortChannel('priority');
               }}
@@ -1007,7 +1000,7 @@ const ChannelsTable = () => {
             <Table.HeaderCell>
               {t('channel.table.test_model')}
             </Table.HeaderCell>
-            <Table.HeaderCell style={{ width: '280px' }}>
+            <Table.HeaderCell className='router-table-action-cell'>
               {t('channel.table.actions')}
             </Table.HeaderCell>
           </Table.Row>
@@ -1021,7 +1014,7 @@ const ChannelsTable = () => {
                 <Table.Row
                   key={channel.id}
                   onClick={() => openChannelByStatus(channel)}
-                  style={{ cursor: inBatchSelectMode ? 'default' : 'pointer' }}
+                  className={inBatchSelectMode ? undefined : 'router-row-clickable'}
                 >
                   {inBatchSelectMode && (
                     <Table.Cell collapsing textAlign='center' onClick={stopRowClick}>
@@ -1065,7 +1058,7 @@ const ChannelsTable = () => {
                               idx,
                             );
                           }}
-                          style={{ cursor: 'pointer' }}
+                          className='router-row-clickable'
                         >
                           {renderBalance(channel.protocol, channel.balance, t)}
                         </span>
@@ -1078,7 +1071,7 @@ const ChannelsTable = () => {
                     <Popup
                       trigger={
                         <Input
-                          className='router-inline-input'
+                          className='router-inline-input router-inline-input-short'
                           type='number'
                           defaultValue={channel.priority}
                           onBlur={(event) => {
@@ -1089,9 +1082,7 @@ const ChannelsTable = () => {
                               event.target.value
                             );
                           }}
-                        >
-                          <input style={{ maxWidth: '60px' }} />
-                        </Input>
+                        />
                       }
                       content={t('channel.table.priority_tip')}
                       basic
@@ -1109,16 +1100,8 @@ const ChannelsTable = () => {
                       }}
                     />
                   </Table.Cell>
-                  <Table.Cell style={{ width: '280px' }} onClick={stopRowClick}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '4px',
-                        rowGap: '4px',
-                      }}
-                    >
+                  <Table.Cell className='router-table-action-cell' onClick={stopRowClick}>
+                    <div className='router-action-group-tight'>
                       <Button
                         className='router-inline-button'
                         positive
@@ -1176,10 +1159,10 @@ const ChannelsTable = () => {
           <Table.Row>
             <Table.HeaderCell colSpan={footerColSpan}>
               <Pagination
+                className='router-page-pagination'
                 floated='right'
                 activePage={activePage}
                 onPageChange={onPaginationChange}
-                size='tiny'
                 siblingRange={1}
                 totalPages={
                   Math.ceil(channels.length / ITEMS_PER_PAGE) +

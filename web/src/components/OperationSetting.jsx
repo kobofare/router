@@ -154,7 +154,7 @@ const OperationSetting = () => {
     <Grid columns={1}>
       <Grid.Column>
         <Form loading={loading}>
-          <Header as='h3'>{t('setting.operation.quota.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.operation.quota.title')}</Header>
           <Form.Group widths='equal'>
             <Form.Input
               className='router-section-input'
@@ -214,7 +214,7 @@ const OperationSetting = () => {
             {t('setting.operation.quota.buttons.save')}
           </Form.Button>
           <Divider />
-          <Header as='h3'>{t('setting.operation.log.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.operation.log.title')}</Header>
           <Form.Group inline>
             <Form.Checkbox
               className='router-section-checkbox'
@@ -246,7 +246,7 @@ const OperationSetting = () => {
           </Form.Button>
 
           <Divider />
-          <Header as='h3'>{t('setting.operation.monitor.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.operation.monitor.title')}</Header>
           <Form.Group widths={3}>
             <Form.Input
               className='router-section-input'
@@ -301,7 +301,7 @@ const OperationSetting = () => {
           </Form.Button>
 
           <Divider />
-          <Header as='h3'>{t('setting.operation.general.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.operation.general.title')}</Header>
           <Form.Group widths={4}>
             <Form.Input
               className='router-section-input'

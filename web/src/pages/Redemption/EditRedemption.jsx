@@ -86,7 +86,7 @@ const EditRedemption = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
-          <Card.Header className='header'>
+          <Card.Header className='header router-page-title'>
             {isEdit ? t('redemption.edit.title_edit') : t('redemption.edit.title_create')}
           </Card.Header>
           <Form loading={loading} autoComplete='new-password'>
@@ -130,12 +130,14 @@ const EditRedemption = () => {
                 </Form.Field>
               </>
             )}
-            <Button className='router-page-button' positive onClick={submit}>
-              {t('redemption.edit.buttons.submit')}
-            </Button>
-            <Button className='router-page-button' onClick={handleCancel}>
-              {t('redemption.edit.buttons.cancel')}
-            </Button>
+            <div className='router-toolbar-start router-block-gap-sm'>
+              <Button className='router-page-button' onClick={handleCancel}>
+                {t('redemption.edit.buttons.cancel')}
+              </Button>
+              <Button className='router-page-button' positive onClick={submit}>
+                {t('redemption.edit.buttons.submit')}
+              </Button>
+            </div>
           </Form>
         </Card.Content>
       </Card>

@@ -29,25 +29,25 @@ function renderStatus(status, t) {
   switch (status) {
     case 1:
       return (
-        <Label basic color='green'>
+        <Label basic color='green' className='router-tag'>
           {t('redemption.status.unused')}
         </Label>
       );
     case 2:
       return (
-        <Label basic color='red'>
+        <Label basic color='red' className='router-tag'>
           {t('redemption.status.disabled')}
         </Label>
       );
     case 3:
       return (
-        <Label basic color='grey'>
+        <Label basic color='grey' className='router-tag'>
           {t('redemption.status.used')}
         </Label>
       );
     default:
       return (
-        <Label basic color='black'>
+        <Label basic color='black' className='router-tag'>
           {t('redemption.status.unknown')}
         </Label>
       );
@@ -184,17 +184,8 @@ const RedemptionsTable = () => {
 
   return (
     <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginBottom: '16px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className='router-toolbar router-block-gap-md'>
+        <div className='router-toolbar-start'>
           <Button
             className='router-page-button'
             as={Link}
@@ -207,10 +198,7 @@ const RedemptionsTable = () => {
             {t('redemption.buttons.refresh')}
           </Button>
         </div>
-        <Form
-          onSubmit={searchRedemptions}
-          style={{ marginLeft: 'auto', width: 'min(360px, 100%)' }}
-        >
+        <Form onSubmit={searchRedemptions} className='router-search-form-lg'>
           <Form.Input
             className='router-section-input'
             icon='search'
@@ -224,11 +212,11 @@ const RedemptionsTable = () => {
         </Form>
       </div>
 
-      <Table basic={'very'} compact size='small' className='router-hover-table'>
+      <Table basic={'very'} compact className='router-hover-table router-list-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortRedemption('name');
               }}
@@ -236,7 +224,7 @@ const RedemptionsTable = () => {
               {t('redemption.table.name')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortRedemption('status');
               }}
@@ -244,7 +232,7 @@ const RedemptionsTable = () => {
               {t('redemption.table.status')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortRedemption('quota');
               }}
@@ -252,7 +240,7 @@ const RedemptionsTable = () => {
               {t('redemption.table.quota')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortRedemption('created_time');
               }}
@@ -260,7 +248,7 @@ const RedemptionsTable = () => {
               {t('redemption.table.created_time')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortRedemption('redeemed_time');
               }}
@@ -282,7 +270,7 @@ const RedemptionsTable = () => {
               return (
                 <Table.Row
                   key={redemption.id}
-                  style={{ cursor: 'pointer' }}
+                  className='router-row-clickable'
                   onClick={() => {
                     navigate(`/redemption/${redemption.id}`);
                   }}
@@ -305,7 +293,7 @@ const RedemptionsTable = () => {
                       e.stopPropagation();
                     }}
                   >
-                    <div>
+                    <div className='router-action-group'>
                       <Button
                         className='router-inline-button'
                         positive
@@ -373,10 +361,10 @@ const RedemptionsTable = () => {
           <Table.Row>
             <Table.HeaderCell colSpan='6'>
               <Pagination
+                className='router-page-pagination'
                 floated='right'
                 activePage={activePage}
                 onPageChange={onPaginationChange}
-                size='small'
                 siblingRange={1}
                 totalPages={
                   Math.ceil(redemptions.length / ITEMS_PER_PAGE) +

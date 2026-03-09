@@ -23,15 +23,15 @@ import {
 function renderRole(role, t) {
   switch (role) {
     case 1:
-      return <Label>{t('user.table.role_types.normal')}</Label>;
+      return <Label className='router-tag'>{t('user.table.role_types.normal')}</Label>;
     case 10:
-      return <Label color='yellow'>{t('user.table.role_types.admin')}</Label>;
+      return <Label color='yellow' className='router-tag'>{t('user.table.role_types.admin')}</Label>;
     case 100:
       return (
-        <Label color='orange'>{t('user.table.role_types.super_admin')}</Label>
+        <Label color='orange' className='router-tag'>{t('user.table.role_types.super_admin')}</Label>
       );
     default:
-      return <Label color='red'>{t('user.table.role_types.unknown')}</Label>;
+      return <Label color='red' className='router-tag'>{t('user.table.role_types.unknown')}</Label>;
   }
 }
 
@@ -117,16 +117,16 @@ const UsersTable = () => {
   const renderStatus = (status) => {
     switch (status) {
       case 1:
-        return <Label basic>{t('user.table.status_types.activated')}</Label>;
+        return <Label basic className='router-tag'>{t('user.table.status_types.activated')}</Label>;
       case 2:
         return (
-          <Label basic color='red'>
+          <Label basic color='red' className='router-tag'>
             {t('user.table.status_types.banned')}
           </Label>
         );
       default:
         return (
-          <Label basic color='grey'>
+          <Label basic color='grey' className='router-tag'>
             {t('user.table.status_types.unknown')}
           </Label>
         );
@@ -254,23 +254,16 @@ const UsersTable = () => {
   return (
     <>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginBottom: '12px',
-        }}
+        className='router-toolbar router-block-gap-sm'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div className='router-toolbar-start'>
           <Button className='router-page-button' as={Link} to='/user/add' loading={loading}>
             {t('user.buttons.add')}
           </Button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className='router-toolbar-end'>
           <Dropdown
-            className='router-section-dropdown'
+            className='router-section-dropdown router-dropdown-min-170'
             placeholder={t('user.table.sort_by')}
             selection
             options={[
@@ -293,9 +286,8 @@ const UsersTable = () => {
             ]}
             value={orderBy}
             onChange={handleOrderByChange}
-            style={{ minWidth: 170 }}
           />
-          <Form onSubmit={searchUsers} style={{ width: '240px', maxWidth: '100%' }}>
+          <Form onSubmit={searchUsers} className='router-search-form-xs'>
             <Form.Input
               className='router-section-input'
               icon='search'
@@ -309,11 +301,11 @@ const UsersTable = () => {
         </div>
       </div>
 
-      <Table basic={'very'} compact size='small'>
+      <Table basic={'very'} compact className='router-list-table'>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('username');
               }}
@@ -322,7 +314,7 @@ const UsersTable = () => {
             </Table.HeaderCell>
             <Table.HeaderCell>{t('user.table.wallet')}</Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('group');
               }}
@@ -330,29 +322,29 @@ const UsersTable = () => {
               {t('user.table.group')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('quota');
               }}
             >
               {t('user.table.remaining_quota')}
-              <span style={{ fontSize: '0.75em', opacity: 0.7, marginLeft: 4 }}>
+              <span className='router-inline-unit'>
                 $
               </span>
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('used_quota');
               }}
             >
               {t('user.table.used_quota')}
-              <span style={{ fontSize: '0.75em', opacity: 0.7, marginLeft: 4 }}>
+              <span className='router-inline-unit'>
                 $
               </span>
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('request_count');
               }}
@@ -360,7 +352,7 @@ const UsersTable = () => {
               {t('user.table.request_count')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('role');
               }}
@@ -368,7 +360,7 @@ const UsersTable = () => {
               {t('user.table.role_text')}
             </Table.HeaderCell>
             <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
+              className='router-sortable-header'
               onClick={() => {
                 sortUser('status');
               }}
@@ -402,13 +394,7 @@ const UsersTable = () => {
                   </Table.Cell>
                   <Table.Cell>
                     {user.wallet_address ? (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                        }}
-                      >
+                      <span className='router-action-group'>
                         <Popup
                           content={user.wallet_address}
                           trigger={<span>{maskWalletAddress(user.wallet_address)}</span>}
@@ -448,7 +434,7 @@ const UsersTable = () => {
                   </Table.Cell>
                   <Table.Cell>{renderStatus(user.status)}</Table.Cell>
                   <Table.Cell>
-                    <div>
+                    <div className='router-action-group'>
                       <Popup
                         trigger={
                           <Button
@@ -506,10 +492,10 @@ const UsersTable = () => {
           <Table.Row>
             <Table.HeaderCell colSpan='9'>
               <Pagination
+                className='router-page-pagination'
                 floated='right'
                 activePage={activePage}
                 onPageChange={onPaginationChange}
-                size='small'
                 siblingRange={1}
                 totalPages={
                   Math.ceil(users.length / ITEMS_PER_PAGE) +

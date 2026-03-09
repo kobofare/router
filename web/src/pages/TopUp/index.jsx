@@ -87,49 +87,27 @@ const TopUp = () => {
       <Card fluid className='chart-card'>
         <Card.Content>
           <Card.Header>
-            <Header as='h2'>{t('topup.title')}</Header>
+            <Header as='h2' className='router-page-title'>{t('topup.title')}</Header>
           </Card.Header>
 
           <Grid columns={2} stackable>
             <Grid.Column>
               <Card
                 fluid
-                style={{
-                  height: '100%',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
+                className='router-soft-card router-soft-card-fill'
               >
-                <Card.Content
-                  style={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Card.Header>
-                    <Header as='h3' style={{ color: '#2185d0', margin: '1em' }}>
+                <Card.Content className='router-card-fill'>
+                  <Card.Header className='router-card-header'>
+                    <Header as='h3' className='router-section-title router-title-accent-primary'>
                       <i className='credit card icon'></i>
                       {t('topup.get_code.title')}
                     </Header>
                   </Card.Header>
-                  <Card.Description
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
-                    <div
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <div style={{ textAlign: 'center', paddingTop: '1em' }}>
-                        <Statistic>
-                          <Statistic.Value style={{ color: '#2185d0' }}>
+                  <Card.Description className='router-card-fill'>
+                    <div className='router-card-body-spread'>
+                      <div className='router-center-panel'>
+                        <Statistic className='router-accent-statistic'>
+                          <Statistic.Value>
                             {renderQuota(userQuota, t)}
                           </Statistic.Value>
                           <Statistic.Label>
@@ -138,15 +116,11 @@ const TopUp = () => {
                         </Statistic>
                       </div>
 
-                      <div
-                        style={{ textAlign: 'center', paddingBottom: '1em' }}
-                      >
+                      <div className='router-action-footer'>
                         <Button
-                          className='router-section-button'
+                          className='router-section-button router-action-button-wide'
                           primary
-                          size='large'
                           onClick={openTopUpLink}
-                          style={{ width: '80%' }}
                         >
                           {t('topup.get_code.button')}
                         </Button>
@@ -160,39 +134,17 @@ const TopUp = () => {
             <Grid.Column>
               <Card
                 fluid
-                style={{
-                  height: '100%',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
+                className='router-soft-card router-soft-card-fill'
               >
-                <Card.Content
-                  style={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Card.Header>
-                    <Header as='h3' style={{ color: '#21ba45', margin: '1em' }}>
+                <Card.Content className='router-card-fill'>
+                  <Card.Header className='router-card-header'>
+                    <Header as='h3' className='router-section-title router-title-accent-positive'>
                       <i className='ticket alternate icon'></i>
                       {t('topup.redeem_code.title')}
                     </Header>
                   </Card.Header>
-                  <Card.Description
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
-                    <div
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                      }}
-                    >
+                  <Card.Description className='router-card-fill'>
+                    <div className='router-card-body-spread'>
                       <Form.Input
                         className='router-section-input'
                         fluid
@@ -226,12 +178,11 @@ const TopUp = () => {
                         }
                       />
 
-                      <div style={{ paddingBottom: '1em' }}>
+                      <div className='router-action-footer'>
                         <Button
                           className='router-section-button'
                           color='green'
                           fluid
-                          size='large'
                           onClick={topUp}
                           loading={isSubmitting}
                           disabled={isSubmitting}

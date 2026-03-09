@@ -87,16 +87,15 @@ const OtherSetting = () => {
     <Grid columns={1}>
       <Grid.Column>
         <Form loading={loading}>
-          <Header as='h3'>{t('setting.other.notice.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.other.notice.title')}</Header>
           <Form.Group widths='equal'>
             <Form.TextArea
-              className='router-section-textarea'
+              className='router-section-textarea router-code-textarea router-code-textarea-sm'
               label={t('setting.other.notice.content')}
               placeholder={t('setting.other.notice.content_placeholder')}
               value={inputs.Notice}
               name='Notice'
               onChange={handleInputChange}
-              style={{ minHeight: 100, fontFamily: 'JetBrains Mono, Consolas' }}
             />
           </Form.Group>
           <Form.Button className='router-section-button' onClick={submitNotice}>
@@ -104,7 +103,7 @@ const OtherSetting = () => {
           </Form.Button>
 
           <Divider />
-          <Header as='h3'>{t('setting.other.system.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.other.system.title')}</Header>
           <Form.Group widths='equal'>
             <Form.Input
               className='router-section-input'
@@ -134,16 +133,15 @@ const OtherSetting = () => {
           </Form.Button>
 
           <Divider />
-          <Header as='h3'>{t('setting.other.content.title')}</Header>
+          <Header as='h3' className='router-section-title'>{t('setting.other.content.title')}</Header>
           <Form.Group widths='equal'>
             <Form.TextArea
-              className='router-section-textarea'
+              className='router-section-textarea router-code-textarea router-code-textarea-md'
               label={t('setting.other.content.homepage.title')}
               placeholder={t('setting.other.content.homepage.placeholder')}
               value={inputs.HomePageContent}
               name='HomePageContent'
               onChange={handleInputChange}
-              style={{ minHeight: 150, fontFamily: 'JetBrains Mono, Consolas' }}
             />
           </Form.Group>
           <Form.Button className='router-section-button' onClick={() => submitOption('HomePageContent')}>
@@ -151,19 +149,18 @@ const OtherSetting = () => {
           </Form.Button>
           <Form.Group widths='equal'>
             <Form.TextArea
-              className='router-section-textarea'
+              className='router-section-textarea router-code-textarea router-code-textarea-md'
               label={t('setting.other.content.about.title')}
               placeholder={t('setting.other.content.about.placeholder')}
               value={inputs.About}
               name='About'
               onChange={handleInputChange}
-              style={{ minHeight: 150, fontFamily: 'JetBrains Mono, Consolas' }}
             />
           </Form.Group>
           <Form.Button className='router-section-button' onClick={submitAbout}>
             {t('setting.other.content.buttons.save_about')}
           </Form.Button>
-          <Message>{t('setting.other.copyright.notice')}</Message>
+          <Message className='router-section-message'>{t('setting.other.copyright.notice')}</Message>
           <Form.Group widths='equal'>
             <Form.Input
               className='router-section-input'

@@ -9,25 +9,25 @@ function renderStatus(status, t) {
   switch (status) {
     case 1:
       return (
-        <Label basic color='green'>
+        <Label basic color='green' className='router-tag'>
           {t('redemption.status.unused')}
         </Label>
       );
     case 2:
       return (
-        <Label basic color='red'>
+        <Label basic color='red' className='router-tag'>
           {t('redemption.status.disabled')}
         </Label>
       );
     case 3:
       return (
-        <Label basic color='grey'>
+        <Label basic color='grey' className='router-tag'>
           {t('redemption.status.used')}
         </Label>
       );
     default:
       return (
-        <Label basic color='black'>
+        <Label basic color='black' className='router-tag'>
           {t('redemption.status.unknown')}
         </Label>
       );
@@ -66,15 +66,7 @@ const RedemptionDetail = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-              flexWrap: 'wrap',
-            }}
-          >
+          <div className='router-toolbar-start router-block-gap-md'>
             <Button className='router-page-button' onClick={() => navigate('/redemption')}>
               {t('redemption.detail.buttons.back')}
             </Button>
@@ -105,7 +97,7 @@ const RedemptionDetail = () => {
             <Form.Group widths='equal'>
               <Form.Field>
                 <label>{t('redemption.table.status')}</label>
-                <div style={{ minHeight: '38px', display: 'flex', alignItems: 'center' }}>
+                <div className='router-field-display'>
                   {redemption ? renderStatus(redemption.status, t) : null}
                 </div>
               </Form.Field>

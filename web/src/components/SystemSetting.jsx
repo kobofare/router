@@ -98,7 +98,7 @@ const SystemSetting = () => {
 
   return (
     <Segment loading={loading} basic>
-      <Header as='h3'>{t('setting.system.general.title')}</Header>
+      <Header as='h3' className='router-section-title'>{t('setting.system.general.title')}</Header>
       <Form>
         <Form.Input
           className='router-section-input'
@@ -149,8 +149,8 @@ const SystemSetting = () => {
       </Form>
 
       <Divider />
-      <Header as='h3'>{t('setting.system.smtp.title')}</Header>
-      <Message>{t('setting.system.smtp.subtitle')}</Message>
+      <Header as='h3' className='router-section-title'>{t('setting.system.smtp.title')}</Header>
+      <Message className='router-section-message'>{t('setting.system.smtp.subtitle')}</Message>
       <Form>
         <Form.Group widths={3}>
           <Form.Input
@@ -202,7 +202,7 @@ const SystemSetting = () => {
       </Form>
 
       <Divider />
-      <Header as='h3'>{t('setting.system.login.title')}</Header>
+      <Header as='h3' className='router-section-title'>{t('setting.system.login.title')}</Header>
       <Form>
         <Form.Checkbox
           className='router-section-checkbox'
@@ -229,7 +229,7 @@ const SystemSetting = () => {
       </Form>
 
       <Divider />
-      <Header as='h3'>{t('setting.system.notice', '站点公告')}</Header>
+      <Header as='h3' className='router-section-title'>{t('setting.system.notice', '站点公告')}</Header>
       <Form>
         <Form.TextArea
           className='router-section-textarea'

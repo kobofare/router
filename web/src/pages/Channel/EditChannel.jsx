@@ -2367,16 +2367,7 @@ const EditChannel = () => {
       <Card fluid className='chart-card'>
         <Card.Content>
           {isDetailMode && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: '8px',
-                flexWrap: 'wrap',
-                marginBottom: 12,
-              }}
-            >
+            <div className='router-toolbar-start router-block-gap-sm'>
               <Button type='button' className='router-page-button' onClick={handleCancel}>
                 <Icon name='undo' />
                 {t('channel.edit.buttons.back')}
@@ -2388,16 +2379,7 @@ const EditChannel = () => {
             </div>
           )}
           {isEditMode && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: '8px',
-                flexWrap: 'wrap',
-                marginBottom: 12,
-              }}
-            >
+            <div className='router-toolbar-start router-block-gap-sm'>
               <Button type='button' className='router-page-button' onClick={handleCancel}>
                 {t('channel.edit.buttons.cancel')}
               </Button>
@@ -2415,7 +2397,7 @@ const EditChannel = () => {
               </Button>
             </div>
           )}
-          <Card.Header className='header'>
+          <Card.Header className='header router-page-title'>
             {isDetailMode
               ? t('channel.edit.title_detail')
               : isEditMode
@@ -2424,15 +2406,8 @@ const EditChannel = () => {
           </Card.Header>
           <Form loading={loading} autoComplete='new-password'>
             {isCreateMode && (
-              <div style={{ marginBottom: '12px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                  }}
-                >
+              <div className='router-block-gap-sm'>
+                <div className='router-toolbar-start'>
                   <Button
                     type='button'
                     className='router-page-button'
@@ -2537,7 +2512,7 @@ const EditChannel = () => {
                 {/* Azure OpenAI specific fields */}
                 {inputs.protocol === 'azure' && (
                   <>
-                    <Message>
+                    <Message className='router-section-message'>
                       注意，<strong>模型部署名称必须和模型名称保持一致</strong>
                       ，因为 Router 会把请求体中的 model
                       参数替换为你的部署名称（模型名称中的点会被剔除），
@@ -2608,10 +2583,10 @@ const EditChannel = () => {
                   </Form.Field>
                 )}
                 {inputs.protocol === 'coze' && (
-                  <Message>{t('channel.edit.coze_notice')}</Message>
+                  <Message className='router-section-message'>{t('channel.edit.coze_notice')}</Message>
                 )}
                 {inputs.protocol === 'doubao' && (
-                  <Message>
+                  <Message className='router-section-message'>
                     {t('channel.edit.douban_notice')}
                     <a
                       target='_blank'
@@ -2627,46 +2602,17 @@ const EditChannel = () => {
             )}
             {showStepTwo && inputs.protocol !== 'proxy' && (
               <Form.Field>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '12px',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
+                <div className='router-toolbar router-block-gap-xs'>
+                  <div className='router-toolbar-start'>
+                    <span className='router-section-title router-section-title-inline'>
                       {t('channel.edit.models')}
                     </span>
-                    <span
-                      style={{
-                        color: 'rgba(0, 0, 0, 0.58)',
-                        fontSize: '13px',
-                        lineHeight: 1.5,
-                      }}
-                    >
+                    <span className='router-toolbar-meta'>
                       ({modelSectionMetaText})
                     </span>
                   </div>
                   {isDetailMode ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '8px',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                      }}
-                    >
+                    <div className='router-toolbar-end'>
                       <Form.Select
                         className='router-section-dropdown'
                         compact
@@ -2710,14 +2656,7 @@ const EditChannel = () => {
                       </Button>
                     </div>
                   ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '8px',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                      }}
-                    >
+                    <div className='router-toolbar-end'>
                       <Button
                         type='button'
                         className='router-page-button'
@@ -2756,7 +2695,7 @@ const EditChannel = () => {
                 <Table
                   celled
                   stackable
-                  size='small'
+                  className='router-detail-table'
                   compact={isDetailMode ? 'very' : undefined}
                   style={isDetailMode ? { tableLayout: 'fixed' } : undefined}
                 >
@@ -2796,7 +2735,7 @@ const EditChannel = () => {
                   <Table.Body>
                     {detailFilteredModelConfigs.length === 0 ? (
                       <Table.Row>
-                        <Table.Cell colSpan={isDetailMode ? 9 : 8}>
+                        <Table.Cell className='router-empty-cell' colSpan={isDetailMode ? 9 : 8}>
                           {isDetailMode && visibleModelConfigs.length > 0
                             ? t('channel.edit.model_selector.empty_filtered')
                             : t('channel.edit.model_selector.empty')}
@@ -2810,7 +2749,7 @@ const EditChannel = () => {
                           <Table.Row key={`${row.upstream_model}-${row.model}`}>
                             <Table.Cell
                               textAlign='center'
-                              style={isDetailMode ? { width: '72px' } : undefined}
+                              className={isDetailMode ? 'router-cell-checkbox' : undefined}
                             >
                               <Checkbox
                                 checked={!!row.selected}
@@ -2825,15 +2764,7 @@ const EditChannel = () => {
                             </Table.Cell>
                             <Table.Cell
                               title={row.upstream_model}
-                              style={
-                                isDetailMode
-                                  ? {
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }
-                                  : undefined
-                              }
+                              className={isDetailMode ? 'router-cell-truncate' : undefined}
                             >
                               {row.upstream_model}
                             </Table.Cell>
@@ -2850,13 +2781,13 @@ const EditChannel = () => {
                                   <Label
                                     key={`${row.upstream_model}-${providerId}`}
                                     basic
-                                    size='small'
+                                    className='router-tag'
                                   >
                                     {providerId}
                                   </Label>
                                 ))
                               ) : providerCatalogLoading ? (
-                                <Label basic size='small'>
+                                <Label basic className='router-tag'>
                                   {t(
                                     'channel.edit.model_selector.provider_loading',
                                   )}
@@ -2871,30 +2802,21 @@ const EditChannel = () => {
                                   {t('channel.edit.model_selector.provider_add')}
                                 </Button>
                               ) : (
-                                <Label basic color='orange' size='small'>
+                                <Label basic color='orange' className='router-tag'>
                                   {t('channel.edit.model_selector.provider_unassigned')}
                                 </Label>
                               )}
                             </Table.Cell>
                             <Table.Cell
                               title={isDetailMode ? row.model : undefined}
-                              style={
-                                isDetailMode
-                                  ? {
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }
-                                  : undefined
-                              }
+                              className={isDetailMode ? 'router-cell-truncate' : undefined}
                             >
                               {isDetailMode ? (
                                 row.model
                               ) : (
                                 <Form.Input
-                                  className='router-inline-input'
+                                  className='router-inline-input router-inline-input-wide'
                                   transparent
-                                  style={{ minWidth: 220 }}
                                   value={row.model}
                                   onChange={(e, { value }) =>
                                     updateModelConfigField(
@@ -2908,7 +2830,7 @@ const EditChannel = () => {
                             </Table.Cell>
                             <Table.Cell>
                               {isDetailMode ? (
-                                <span style={{ whiteSpace: 'nowrap' }}>
+                                <span className='router-nowrap'>
                                   {row.price_unit}
                                 </span>
                               ) : (
@@ -2922,7 +2844,7 @@ const EditChannel = () => {
                             </Table.Cell>
                             <Table.Cell>
                               {isDetailMode ? (
-                                <span style={{ whiteSpace: 'nowrap' }}>
+                                <span className='router-nowrap'>
                                   {row.input_price ?? '-'}
                                 </span>
                               ) : (
@@ -2946,7 +2868,7 @@ const EditChannel = () => {
                             </Table.Cell>
                             <Table.Cell>
                               {isDetailMode ? (
-                                <span style={{ whiteSpace: 'nowrap' }}>
+                                <span className='router-nowrap'>
                                   {row.output_price ?? '-'}
                                 </span>
                               ) : (
@@ -2971,7 +2893,7 @@ const EditChannel = () => {
                             {isDetailMode && (
                               <Table.Cell
                                 collapsing
-                                style={{ width: '1%', whiteSpace: 'nowrap' }}
+                                className='router-nowrap router-cell-shrink'
                               >
                                 {isUnassigned ? (
                                   <Button
@@ -2994,15 +2916,9 @@ const EditChannel = () => {
                   </Table.Body>
                 </Table>
                 {isDetailMode && detailModelTotalPages > 1 && (
-                  <div
-                    style={{
-                      marginTop: '12px',
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                    }}
-                  >
+                  <div className='router-pagination-wrap'>
                     <Pagination
-                      size='mini'
+                      className='router-section-pagination'
                       activePage={detailModelPage}
                       totalPages={detailModelTotalPages}
                       onPageChange={(e, { activePage }) =>
@@ -3012,7 +2928,7 @@ const EditChannel = () => {
                   </div>
                 )}
                 {modelsSyncError && (
-                  <div style={{ color: '#d9534f', marginTop: '8px' }}>
+                  <div className='router-error-text router-error-text-top'>
                     {modelsSyncError}
                   </div>
                 )}
@@ -3021,46 +2937,33 @@ const EditChannel = () => {
             {showStepThree && inputs.protocol !== 'proxy' && (
               <Form.Field>
                 <label>{t('channel.edit.capability_tester.title')}</label>
-                <Message info>
+                <Message info className='router-section-message'>
                   {t('channel.edit.capability_tester.hint')}
                 </Message>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                    marginBottom: '12px',
-                  }}
-                >
-                  <Label basic>
+                <div className='router-toolbar-start router-block-gap-sm'>
+                  <Label basic className='router-tag'>
                     {t('channel.model_types.text')}:
                     {' '}
                     {capabilityModelSummary.text || '-'}
                   </Label>
-                  <Label basic>
+                  <Label basic className='router-tag'>
                     {t('channel.model_types.image')}:
                     {' '}
                     {capabilityModelSummary.image || '-'}
                   </Label>
-                  <Label basic>
+                  <Label basic className='router-tag'>
                     {t('channel.model_types.audio')}:
                     {' '}
                     {capabilityModelSummary.audio || '-'}
                   </Label>
                 </div>
                 <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: isDetailMode ? 'flex-end' : 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    marginBottom: '12px',
-                  }}
+                  className={`${isDetailMode ? 'router-toolbar-end' : 'router-toolbar'} router-block-gap-sm`}
                 >
                   {!isDetailMode && (
                     <Button
                       type='button'
+                      className='router-section-button'
                       color='blue'
                       loading={capabilityTesting}
                       disabled={capabilityTesting || inputs.models.length === 0}
@@ -3070,7 +2973,7 @@ const EditChannel = () => {
                     </Button>
                   )}
                   {capabilityTestedAt > 0 && (
-                    <span style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                    <span className='router-toolbar-meta'>
                       {t('channel.edit.capability_tester.last_tested', {
                         time: new Date(capabilityTestedAt).toLocaleString(),
                       })}
@@ -3078,11 +2981,11 @@ const EditChannel = () => {
                   )}
                 </div>
                 {capabilityTestError && (
-                  <div style={{ color: '#d9534f', marginBottom: '12px' }}>
+                  <div className='router-error-text router-block-gap-sm'>
                     {capabilityTestError}
                   </div>
                 )}
-                <Table celled stackable>
+                <Table celled stackable className='router-detail-table'>
                   <Table.Header>
                     <Table.Row>
                       <Table.HeaderCell>
@@ -3108,7 +3011,7 @@ const EditChannel = () => {
                   <Table.Body>
                     {capabilityResults.length === 0 ? (
                       <Table.Row>
-                        <Table.Cell colSpan='6'>
+                        <Table.Cell className='router-empty-cell' colSpan='6'>
                           {t('channel.edit.capability_tester.empty')}
                         </Table.Cell>
                       </Table.Row>
@@ -3128,7 +3031,7 @@ const EditChannel = () => {
                             <Table.Cell>{item.endpoint || '-'}</Table.Cell>
                             <Table.Cell>{item.model || '-'}</Table.Cell>
                             <Table.Cell>
-                              <Label basic color={labelColor}>
+                              <Label basic color={labelColor} className='router-tag'>
                                 {t(
                                   `channel.edit.capability_tester.status.${item.status}`,
                                 )}
@@ -3151,15 +3054,12 @@ const EditChannel = () => {
             {showStepFour && inputs.protocol !== 'proxy' && (
               <Form.Field>
                 <Form.TextArea
+                  className='router-section-textarea router-code-textarea router-code-textarea-md'
                   label={t('channel.edit.system_prompt')}
                   placeholder={t('channel.edit.system_prompt_placeholder')}
                   name='system_prompt'
                   onChange={handleInputChange}
                   value={inputs.system_prompt}
-                  style={{
-                    minHeight: 150,
-                    fontFamily: 'JetBrains Mono, Consolas',
-                  }}
                   autoComplete='new-password'
                   {...textAreaReadonlyProps}
                 />

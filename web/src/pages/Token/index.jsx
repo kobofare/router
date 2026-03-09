@@ -10,7 +10,7 @@ const Token = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
-          <Card.Header className='header'>{t('token.title')}</Card.Header>
+          <Card.Header className='header router-page-title'>{t('token.title')}</Card.Header>
           <TokensTable />
         </Card.Content>
       </Card>
