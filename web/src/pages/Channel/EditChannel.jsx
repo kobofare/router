@@ -10,6 +10,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Dropdown,
   Form,
   Icon,
   Label,
@@ -155,6 +156,28 @@ const buildProviderOptionText = (item) => {
     return `${name} (${id})`;
   }
   return id;
+};
+
+const normalizeSearchKeyword = (value) =>
+  (value || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[\s/_-]+/g, '');
+
+const filterProviderOptionsByQuery = (options, query) => {
+  const normalizedQuery = normalizeSearchKeyword(query);
+  if (normalizedQuery === '') {
+    return options;
+  }
+  return (Array.isArray(options) ? options : []).filter((option) => {
+    const candidates = [
+      option?.text,
+      option?.value,
+      option?.key,
+    ].map(normalizeSearchKeyword);
+    return candidates.some((candidate) => candidate.includes(normalizedQuery));
+  });
 };
 
 const buildProviderCatalogIndex = (items) => {
@@ -2308,21 +2331,28 @@ const EditChannel = () => {
         </Modal.Header>
         <Modal.Content>
           <Form>
-            <Form.Select
-              className='router-modal-dropdown'
-              label={t('channel.edit.model_selector.append_dialog.provider')}
-              placeholder={t(
-                'channel.edit.model_selector.append_dialog.provider_placeholder',
-              )}
-              options={providerOptions}
-              value={appendProviderForm.provider}
-              onChange={(e, { value }) =>
-                setAppendProviderForm((prev) => ({
-                  ...prev,
-                  provider: (value || '').toString(),
-                }))
-              }
-            />
+            <Form.Field>
+              <label>
+                {t('channel.edit.model_selector.append_dialog.provider')}
+              </label>
+              <Dropdown
+                selection
+                search={filterProviderOptionsByQuery}
+                className='router-modal-dropdown'
+                placeholder={t(
+                  'channel.edit.model_selector.append_dialog.provider_placeholder',
+                )}
+                options={providerOptions}
+                value={appendProviderForm.provider}
+                noResultsMessage={t('common.no_data')}
+                onChange={(e, { value }) =>
+                  setAppendProviderForm((prev) => ({
+                    ...prev,
+                    provider: (value || '').toString(),
+                  }))
+                }
+              />
+            </Form.Field>
             <Form.Input
               className='router-modal-input'
               label={t('channel.edit.model_selector.append_dialog.model')}
@@ -2613,8 +2643,9 @@ const EditChannel = () => {
                   </div>
                   {isDetailMode ? (
                     <div className='router-toolbar-end'>
-                      <Form.Select
-                        className='router-section-dropdown'
+                      <Dropdown
+                        selection
+                        className='router-section-dropdown router-dropdown-min-170'
                         compact
                         options={[
                           {
