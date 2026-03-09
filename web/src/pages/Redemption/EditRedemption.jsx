@@ -53,7 +53,7 @@ const EditRedemption = () => {
     if (isEdit) {
       res = await API.put(`/api/v1/admin/redemption/`, {
         ...localInputs,
-        id: parseInt(redemptionId),
+        id: redemptionId,
       });
     } else {
       res = await API.post(`/api/v1/admin/redemption/`, {

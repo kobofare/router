@@ -27,7 +27,7 @@ const TopUp = () => {
     setIsSubmitting(true);
     try {
       const res = await API.post('/api/v1/public/user/topup', {
-        key: redemptionCode,
+        code: redemptionCode,
       });
       const { success, message, data } = res.data;
       if (success) {

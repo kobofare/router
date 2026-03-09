@@ -74,7 +74,7 @@ func SearchRedemptions(c *gin.Context) {
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
-// @Param id path int true "Redemption ID"
+// @Param id path string true "Redemption ID"
 // @Success 200 {object} docs.StandardResponse
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/redemption/{id} [get]
@@ -145,13 +145,13 @@ func AddRedemption(c *gin.Context) {
 		})
 		return
 	}
-	var keys []string
+	var codes []string
 	for i := 0; i < redemption.Count; i++ {
-		key := random.GetUUID()
+		code := random.GetUUID()
 		cleanRedemption := model.Redemption{
 			UserId:      c.GetString(ctxkey.Id),
 			Name:        redemption.Name,
-			Key:         key,
+			Code:        code,
 			CreatedTime: helper.GetTimestamp(),
 			Quota:       redemption.Quota,
 		}
@@ -160,16 +160,16 @@ func AddRedemption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": err.Error(),
-				"data":    keys,
+				"data":    codes,
 			})
 			return
 		}
-		keys = append(keys, key)
+		codes = append(codes, code)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    keys,
+		"data":    codes,
 	})
 	return
 }
@@ -179,7 +179,7 @@ func AddRedemption(c *gin.Context) {
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
-// @Param id path int true "Redemption ID"
+// @Param id path string true "Redemption ID"
 // @Success 200 {object} docs.StandardResponse
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/redemption/{id} [delete]

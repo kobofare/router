@@ -90,7 +90,7 @@ type AdminManageUserRequest struct {
 }
 
 type UserTopUpRequest struct {
-	Key string `json:"key" example:"redeem-xxxx-xxxx"`
+	Code string `json:"code" example:"redeem-xxxx-xxxx"`
 }
 
 // --- User/public responses ---
@@ -405,7 +405,7 @@ type RedemptionCreateRequest struct {
 }
 
 type RedemptionUpdateRequest struct {
-	ID     int    `json:"id" example:"1"`
+	ID     string `json:"id" example:"2d66a0b2d8c44efda9c7f5f21a4e2c4d"`
 	Name   string `json:"name,omitempty" example:"InviteBonus"`
 	Quota  int64  `json:"quota,omitempty" example:"100000"`
 	Status int    `json:"status,omitempty" example:"1"`

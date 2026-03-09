@@ -261,82 +261,6 @@ definitions:
       timestamp:
         type: integer
     type: object
-  docs.ModelProviderCatalogItem:
-    properties:
-      base_url:
-        example: https://api.openai.com
-        type: string
-      id:
-        example: openai
-        type: string
-      model_details:
-        items:
-          $ref: '#/definitions/docs.ModelProviderModelDetail'
-        type: array
-      models:
-        items:
-          type: string
-        type: array
-      name:
-        example: OpenAI
-        type: string
-      sort_order:
-        example: 10
-        type: integer
-      source:
-        example: manual
-        type: string
-      updated_at:
-        example: 1710000000
-        type: integer
-    type: object
-  docs.ModelProviderCatalogResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/docs.ModelProviderCatalogItem'
-        type: array
-      message:
-        example: ""
-        type: string
-      success:
-        example: true
-        type: boolean
-    type: object
-  docs.ModelProviderCatalogUpdateRequest:
-    properties:
-      providers:
-        items:
-          $ref: '#/definitions/docs.ModelProviderCatalogItem'
-        type: array
-    type: object
-  docs.ModelProviderModelDetail:
-    properties:
-      currency:
-        example: USD
-        type: string
-      input_price:
-        example: 0.00015
-        type: number
-      model:
-        example: gpt-4o-mini
-        type: string
-      output_price:
-        example: 0.0006
-        type: number
-      price_unit:
-        example: per_1k_tokens
-        type: string
-      source:
-        example: default
-        type: string
-      type:
-        example: text
-        type: string
-      updated_at:
-        example: 1710000000
-        type: integer
-    type: object
   docs.OpenAIAudioOutput:
     properties:
       format:
@@ -1193,8 +1117,8 @@ definitions:
   docs.RedemptionUpdateRequest:
     properties:
       id:
-        example: 1
-        type: integer
+        example: 2d66a0b2d8c44efda9c7f5f21a4e2c4d
+        type: string
       name:
         example: InviteBonus
         type: string
@@ -1659,7 +1583,7 @@ definitions:
     type: object
   docs.UserTopUpRequest:
     properties:
-      key:
+      code:
         example: redeem-xxxx-xxxx
         type: string
     type: object
@@ -2203,6 +2127,79 @@ paths:
       summary: Update group channel bindings (admin)
       tags:
       - admin
+  /api/v1/admin/group/{id}/model-configs:
+    get:
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List group model configs (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update group model configs (admin)
+      tags:
+      - admin
+  /api/v1/admin/group/{id}/models:
+    get:
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List group model summaries (admin)
+      tags:
+      - admin
   /api/v1/admin/group/catalog:
     get:
       produces:
@@ -2219,6 +2216,24 @@ paths:
       security:
       - BearerAuth: []
       summary: List groups catalog (admin)
+      tags:
+      - admin
+  /api/v1/admin/group/channel-options:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List group channel candidates (admin)
       tags:
       - admin
   /api/v1/admin/log:
@@ -2417,40 +2432,105 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
+            $ref: '#/definitions/docs.StandardResponse'
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/docs.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get model provider catalog (admin)
+      summary: Get paged model provider catalog (admin)
       tags:
       - admin
-    put:
+    post:
       consumes:
       - application/json
-      parameters:
-      - description: Model provider catalog payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/docs.ModelProviderCatalogUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/docs.ModelProviderCatalogResponse'
+            $ref: '#/definitions/docs.StandardResponse'
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/docs.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update model provider catalog (admin)
+      summary: Create model provider (admin)
+      tags:
+      - admin
+  /api/v1/admin/provider/{id}:
+    delete:
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete model provider (admin)
+      tags:
+      - admin
+    get:
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get model provider detail (admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update model provider (admin)
       tags:
       - admin
   /api/v1/admin/redemption:
@@ -2539,7 +2619,7 @@ paths:
         in: path
         name: id
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
@@ -2562,7 +2642,7 @@ paths:
         in: path
         name: id
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:

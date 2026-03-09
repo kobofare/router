@@ -503,7 +503,7 @@
   },
   "redemption": {
     "title": "Redemption Management",
-    "search": "Search redemption codes by ID and name ...",
+    "search": "Search redemption codes and names ...",
     "table": {
       "id": "ID",
       "name": "Name",
@@ -522,7 +522,7 @@
       "enable": "Enable",
       "disable": "Disable",
       "edit": "Edit",
-      "add": "Add New Code",
+      "add": "Add Code",
       "refresh": "Refresh"
     },
     "status": {

@@ -201,14 +201,6 @@ const RedemptionsTable = () => {
             <Table.HeaderCell
               style={{ cursor: 'pointer' }}
               onClick={() => {
-                sortRedemption('id');
-              }}
-            >
-              {t('redemption.table.id')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
                 sortRedemption('name');
               }}
             >
@@ -260,7 +252,6 @@ const RedemptionsTable = () => {
               if (redemption.deleted) return <></>;
               return (
                 <Table.Row key={redemption.id}>
-                  <Table.Cell>{redemption.id}</Table.Cell>
                   <Table.Cell>
                     {redemption.name ? redemption.name : t('redemption.table.no_name')}
                   </Table.Cell>
@@ -280,11 +271,11 @@ const RedemptionsTable = () => {
                         size={'tiny'}
                         positive
                         onClick={async () => {
-                          if (await copy(redemption.key)) {
+                          if (await copy(redemption.code)) {
                             showSuccess(t('token.messages.copy_success'));
                           } else {
                             showWarning(t('token.messages.copy_failed'));
-                            setSearchKeyword(redemption.key);
+                            setSearchKeyword(redemption.code);
                           }
                         }}
                       >
@@ -340,7 +331,7 @@ const RedemptionsTable = () => {
 
         <Table.Footer>
           <Table.Row>
-            <Table.HeaderCell colSpan='7'>
+            <Table.HeaderCell colSpan='6'>
               <Button
                 size='small'
                 as={Link}

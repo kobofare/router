@@ -1117,7 +1117,8 @@ func EmailBind(c *gin.Context) {
 }
 
 type topUpRequest struct {
-	Key string `json:"key"`
+	Code string `json:"code"`
+	Key  string `json:"key"`
 }
 
 // TopUp godoc
@@ -1142,7 +1143,11 @@ func TopUp(c *gin.Context) {
 		return
 	}
 	id := c.GetString("id")
-	quota, err := usersvc.Redeem(ctx, req.Key, id)
+	code := strings.TrimSpace(req.Code)
+	if code == "" {
+		code = strings.TrimSpace(req.Key)
+	}
+	quota, err := usersvc.Redeem(ctx, code, id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

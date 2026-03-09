@@ -503,7 +503,7 @@
   },
   "redemption": {
     "title": "兑换管理",
-    "search": "搜索兑换码的 ID 和名称 ...",
+    "search": "搜索兑换码和名称 ...",
     "table": {
       "id": "ID",
       "name": "名称",
@@ -522,7 +522,7 @@
       "enable": "启用",
       "disable": "禁用",
       "edit": "编辑",
-      "add": "添加新的兑换码",
+      "add": "新增兑换码",
       "refresh": "刷新"
     },
     "status": {

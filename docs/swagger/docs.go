@@ -722,6 +722,36 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/group/channel-options": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List group channel candidates (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/group/{id}": {
             "delete": {
                 "security": [
@@ -815,6 +845,124 @@ const docTemplate = `{
                     "admin"
                 ],
                 "summary": "Update group channel bindings (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/group/{id}/model-configs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List group model configs (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update group model configs (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/group/{id}/models": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List group model summaries (admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1154,12 +1302,82 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Get model provider catalog (admin)",
+                "summary": "Get paged model provider catalog (admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create model provider (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/provider/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get model provider detail (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
                         }
                     },
                     "401": {
@@ -1185,23 +1403,58 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Update model provider catalog (admin)",
+                "summary": "Update model provider (admin)",
                 "parameters": [
                     {
-                        "description": "Model provider catalog payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogUpdateRequest"
-                        }
+                        "type": "string",
+                        "description": "Provider ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/docs.ModelProviderCatalogResponse"
+                            "$ref": "#/definitions/docs.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/docs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Delete model provider (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/docs.StandardResponse"
                         }
                     },
                     "401": {
@@ -1395,7 +1648,7 @@ const docTemplate = `{
                 "summary": "Get redemption by ID (admin)",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "Redemption ID",
                         "name": "id",
                         "in": "path",
@@ -1432,7 +1685,7 @@ const docTemplate = `{
                 "summary": "Delete redemption (admin)",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "Redemption ID",
                         "name": "id",
                         "in": "path",
@@ -5227,114 +5480,6 @@ const docTemplate = `{
                 }
             }
         },
-        "docs.ModelProviderCatalogItem": {
-            "type": "object",
-            "properties": {
-                "base_url": {
-                    "type": "string",
-                    "example": "https://api.openai.com"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "openai"
-                },
-                "model_details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/docs.ModelProviderModelDetail"
-                    }
-                },
-                "models": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string",
-                    "example": "OpenAI"
-                },
-                "sort_order": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "source": {
-                    "type": "string",
-                    "example": "manual"
-                },
-                "updated_at": {
-                    "type": "integer",
-                    "example": 1710000000
-                }
-            }
-        },
-        "docs.ModelProviderCatalogResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/docs.ModelProviderCatalogItem"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": ""
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "docs.ModelProviderCatalogUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "providers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/docs.ModelProviderCatalogItem"
-                    }
-                }
-            }
-        },
-        "docs.ModelProviderModelDetail": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "input_price": {
-                    "type": "number",
-                    "example": 0.00015
-                },
-                "model": {
-                    "type": "string",
-                    "example": "gpt-4o-mini"
-                },
-                "output_price": {
-                    "type": "number",
-                    "example": 0.0006
-                },
-                "price_unit": {
-                    "type": "string",
-                    "example": "per_1k_tokens"
-                },
-                "source": {
-                    "type": "string",
-                    "example": "default"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "text"
-                },
-                "updated_at": {
-                    "type": "integer",
-                    "example": 1710000000
-                }
-            }
-        },
         "docs.OpenAIAudioOutput": {
             "type": "object",
             "properties": {
@@ -6554,8 +6699,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "integer",
-                    "example": 1
+                    "type": "string",
+                    "example": "2d66a0b2d8c44efda9c7f5f21a4e2c4d"
                 },
                 "name": {
                     "type": "string",
@@ -7206,7 +7351,7 @@ const docTemplate = `{
         "docs.UserTopUpRequest": {
             "type": "object",
             "properties": {
-                "key": {
+                "code": {
                     "type": "string",
                     "example": "redeem-xxxx-xxxx"
                 }
