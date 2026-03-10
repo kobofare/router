@@ -217,11 +217,13 @@ const OFFICIAL_PROVIDER_BASE_URLS = {
   mistral: 'https://api.mistral.ai',
   cohere: 'https://api.cohere.com/compatibility/v1',
   deepseek: 'https://api.deepseek.com',
-  qwen: 'https://dashscope.aliyuncs.com/compatible-mode',
+  baidu: 'https://qianfan.baidubce.com/v2',
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
   hunyuan: 'https://api.hunyuan.cloud.tencent.com/v1',
+  minimax: 'https://api.minimax.io/v1',
+  stepfun: 'https://api.stepfun.com/v1',
   volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
-  minimax: 'https://api.minimax.chat/v1',
 };
 
 const MODEL_TYPE_OPTIONS = [

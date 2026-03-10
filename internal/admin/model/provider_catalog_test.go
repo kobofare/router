@@ -3,8 +3,6 @@ package model
 import (
 	"strings"
 	"testing"
-
-	commonutils "github.com/yeying-community/router/common/utils"
 )
 
 func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
@@ -13,21 +11,27 @@ func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
 		t.Fatalf("expected non-empty provider seeds")
 	}
 
-	hasAudio := false
-	hasImage := false
 	hasText := false
+	hasImage := false
+	hasAudio := false
+	hasVideo := false
 	totalModels := 0
 
 	for _, seed := range seeds {
+		if strings.TrimSpace(seed.OfficialURL) == "" {
+			t.Fatalf("official_url should not be empty for provider %q", seed.Provider)
+		}
 		for _, detail := range seed.ModelDetails {
 			totalModels++
 			switch detail.Type {
-			case ProviderModelTypeAudio:
-				hasAudio = true
-			case ProviderModelTypeImage:
-				hasImage = true
 			case ProviderModelTypeText:
 				hasText = true
+			case ProviderModelTypeImage:
+				hasImage = true
+			case ProviderModelTypeAudio:
+				hasAudio = true
+			case ProviderModelTypeVideo:
+				hasVideo = true
 			default:
 				t.Fatalf("unexpected model type %q for model %q", detail.Type, detail.Model)
 			}
@@ -57,6 +61,9 @@ func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
 	}
 	if !hasAudio {
 		t.Fatalf("expected at least one audio model")
+	}
+	if !hasVideo {
+		t.Fatalf("expected at least one video model")
 	}
 }
 
@@ -96,14 +103,23 @@ func TestBuildDefaultProviderCatalogSeeds_HasUniqueCanonicalProviders(t *testing
 		}
 		seen[seed.Provider] = struct{}{}
 	}
-	if _, ok := seen["xai"]; !ok {
-		t.Fatalf("expected xai provider to exist after canonicalization")
+	if _, ok := seen["anthropic"]; !ok {
+		t.Fatalf("expected anthropic provider to exist")
 	}
-	if _, ok := seen["meta"]; !ok {
-		t.Fatalf("expected meta provider to exist after canonicalization")
+	if _, ok := seen["cohere"]; !ok {
+		t.Fatalf("expected cohere provider to exist")
+	}
+	if _, ok := seen["google"]; !ok {
+		t.Fatalf("expected google provider to exist")
+	}
+	if _, ok := seen["openai"]; !ok {
+		t.Fatalf("expected openai provider to exist")
+	}
+	if _, ok := seen["xai"]; !ok {
+		t.Fatalf("expected xai provider to exist")
 	}
 	if _, ok := seen["mistral"]; !ok {
-		t.Fatalf("expected mistral provider to exist after canonicalization")
+		t.Fatalf("expected mistral provider to exist")
 	}
 }
 
@@ -119,9 +135,6 @@ func TestBuildDefaultProviderCatalogSeeds_StripsSelfPrefixes(t *testing.T) {
 				continue
 			}
 			if commonProvider := strings.ToLower(parts[0]); commonProvider == seed.Provider {
-				t.Fatalf("provider %q still contains self-prefixed model %q", seed.Provider, detail.Model)
-			}
-			if normalizedPrefix := commonutils.NormalizeProvider(parts[0]); normalizedPrefix != "" && normalizedPrefix == seed.Provider {
 				t.Fatalf("provider %q still contains self-prefixed model %q", seed.Provider, detail.Model)
 			}
 		}

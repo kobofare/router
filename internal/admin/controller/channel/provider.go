@@ -25,6 +25,7 @@ type providerCatalogItem struct {
 	Models       []string                    `json:"models"`
 	ModelDetails []model.ProviderModelDetail `json:"model_details,omitempty"`
 	BaseURL      string                      `json:"base_url,omitempty"`
+	OfficialURL  string                      `json:"official_url,omitempty"`
 	SortOrder    int                         `json:"sort_order,omitempty"`
 	Source       string                      `json:"source,omitempty"`
 	UpdatedAt    int64                       `json:"updated_at,omitempty"`
@@ -154,6 +155,7 @@ func buildProviderCatalogItems(rows []model.Provider) ([]providerCatalogItem, er
 			Models:       providerModelNames(details),
 			ModelDetails: details,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
+			OfficialURL:  strings.TrimSpace(row.OfficialURL),
 			SortOrder:    normalizeCatalogSortOrder(row.SortOrder),
 			Source:       strings.TrimSpace(strings.ToLower(row.Source)),
 			UpdatedAt:    row.UpdatedAt,
@@ -170,7 +172,8 @@ func buildProviderListQuery(keyword string) *gorm.DB {
 	}
 	likeKeyword := "%" + normalizedKeyword + "%"
 	return query.Where(
-		`LOWER(id) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(base_url, '')) LIKE ? OR LOWER(source) LIKE ? OR EXISTS (SELECT 1 FROM `+model.ProviderModelsTableName+` pm WHERE pm.provider = providers.id AND LOWER(pm.model) LIKE ?)`,
+		`LOWER(id) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(base_url, '')) LIKE ? OR LOWER(COALESCE(official_url, '')) LIKE ? OR LOWER(source) LIKE ? OR EXISTS (SELECT 1 FROM `+model.ProviderModelsTableName+` pm WHERE pm.provider = providers.id AND LOWER(pm.model) LIKE ?)`,
+		likeKeyword,
 		likeKeyword,
 		likeKeyword,
 		likeKeyword,
@@ -273,6 +276,10 @@ func normalizeProviderUpsertItem(providerID string, item providerCatalogItem, ex
 	if baseURL == "" && existing != nil {
 		baseURL = strings.TrimSpace(existing.BaseURL)
 	}
+	officialURL := strings.TrimSpace(item.OfficialURL)
+	if officialURL == "" && existing != nil {
+		officialURL = strings.TrimSpace(existing.OfficialURL)
+	}
 
 	detailInput := make([]model.ProviderModelDetail, 0, len(item.ModelDetails)+len(item.Models))
 	detailInput = append(detailInput, item.ModelDetails...)
@@ -302,6 +309,7 @@ func normalizeProviderUpsertItem(providerID string, item providerCatalogItem, ex
 		Models:       providerModelNames(details),
 		ModelDetails: details,
 		BaseURL:      baseURL,
+		OfficialURL:  officialURL,
 		SortOrder:    sortOrder,
 		Source:       source,
 		UpdatedAt:    now,
@@ -348,12 +356,13 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 	}
 
 	providerRow := model.Provider{
-		Id:        normalized.ID,
-		Name:      strings.TrimSpace(normalized.Name),
-		BaseURL:   strings.TrimSpace(normalized.BaseURL),
-		SortOrder: normalized.SortOrder,
-		Source:    strings.TrimSpace(strings.ToLower(normalized.Source)),
-		UpdatedAt: normalized.UpdatedAt,
+		Id:          normalized.ID,
+		Name:        strings.TrimSpace(normalized.Name),
+		BaseURL:     strings.TrimSpace(normalized.BaseURL),
+		OfficialURL: strings.TrimSpace(normalized.OfficialURL),
+		SortOrder:   normalized.SortOrder,
+		Source:      strings.TrimSpace(strings.ToLower(normalized.Source)),
+		UpdatedAt:   normalized.UpdatedAt,
 	}
 	if create {
 		if err := tx.Create(&providerRow).Error; err != nil {
@@ -364,11 +373,12 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 		result := tx.Model(&model.Provider{}).
 			Where("id = ?", normalized.ID).
 			Updates(map[string]any{
-				"name":       providerRow.Name,
-				"base_url":   providerRow.BaseURL,
-				"sort_order": providerRow.SortOrder,
-				"source":     providerRow.Source,
-				"updated_at": providerRow.UpdatedAt,
+				"name":         providerRow.Name,
+				"base_url":     providerRow.BaseURL,
+				"official_url": providerRow.OfficialURL,
+				"sort_order":   providerRow.SortOrder,
+				"source":       providerRow.Source,
+				"updated_at":   providerRow.UpdatedAt,
 			})
 		if result.Error != nil {
 			_ = tx.Rollback()

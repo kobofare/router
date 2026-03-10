@@ -35,8 +35,8 @@ type versionedMigration struct {
 func runMainVersionedMigrations(db *gorm.DB) error {
 	migrations := []versionedMigration{
 		{
-			Version:     "202603102345_main_baseline_v24",
-			Description: "baseline: create current main schema, drop legacy channel test payload and channel model test summary columns, add channel model inactive state, and seed current catalogs",
+			Version:     "202603111030_main_baseline_v25",
+			Description: "baseline: create current main schema, sync official provider catalog defaults, add provider official_url, and seed current catalogs",
 			Up: func(tx *gorm.DB) error {
 				return runMainBaselineMigrationWithDB(tx)
 			},

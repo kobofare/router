@@ -5,7 +5,6 @@ import (
 
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
-	commonutils "github.com/yeying-community/router/common/utils"
 	"gorm.io/gorm"
 )
 
@@ -16,19 +15,12 @@ func normalizeProviderSortOrderValue(sortOrder int) int {
 	return 0
 }
 
-func ensureProviderCatalogSeededWithDB(db *gorm.DB) error {
+func syncDefaultProviderCatalogWithDB(db *gorm.DB) error {
 	if err := db.AutoMigrate(&Provider{}, &ProviderModel{}); err != nil {
 		return err
 	}
-	var count int64
-	if err := db.Model(&Provider{}).Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
 	seeds := BuildDefaultProviderCatalogSeeds(helper.GetTimestamp())
-	logger.SysLogf("migration: initialized model provider catalog with %d default providers", len(seeds))
+	logger.SysLogf("migration: synced model provider catalog with %d default providers", len(seeds))
 	return saveProviderCatalogSeedsToTable(db, seeds)
 }
 
@@ -36,28 +28,38 @@ func saveProviderCatalogSeedsToTable(db *gorm.DB, seeds []ProviderCatalogSeed) e
 	now := helper.GetTimestamp()
 	providerRows := make([]Provider, 0, len(seeds))
 	modelRows := make([]ProviderModel, 0)
+	providerIDs := make([]string, 0, len(seeds))
 	for _, seed := range seeds {
-		provider := commonutils.NormalizeProvider(seed.Provider)
+		provider := strings.TrimSpace(strings.ToLower(seed.Provider))
 		if provider == "" {
 			continue
 		}
+		providerIDs = append(providerIDs, provider)
 		details := normalizeDefaultProviderSeedModelDetails(provider, seed.ModelDetails, now)
 		providerRows = append(providerRows, Provider{
-			Id:        provider,
-			Name:      strings.TrimSpace(seed.Name),
-			BaseURL:   strings.TrimSpace(seed.BaseURL),
-			SortOrder: normalizeProviderSortOrderValue(seed.SortOrder),
-			Source:    "default",
-			UpdatedAt: now,
+			Id:          provider,
+			Name:        strings.TrimSpace(seed.Name),
+			BaseURL:     strings.TrimSpace(seed.BaseURL),
+			OfficialURL: strings.TrimSpace(seed.OfficialURL),
+			SortOrder:   normalizeProviderSortOrderValue(seed.SortOrder),
+			Source:      "default",
+			UpdatedAt:   now,
 		})
 		modelRows = append(modelRows, BuildProviderModelRows(provider, details, now)...)
 	}
 	return db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("1 = 1").Delete(&ProviderModel{}).Error; err != nil {
+		existingDefaultProviderIDs := make([]string, 0)
+		if err := tx.Model(&Provider{}).Where("source = ?", "default").Pluck("id", &existingDefaultProviderIDs).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("1 = 1").Delete(&Provider{}).Error; err != nil {
-			return err
+		deleteProviderIDs := mergeProviderIDs(existingDefaultProviderIDs, providerIDs)
+		if len(deleteProviderIDs) > 0 {
+			if err := tx.Where("provider IN ?", deleteProviderIDs).Delete(&ProviderModel{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("id IN ?", deleteProviderIDs).Delete(&Provider{}).Error; err != nil {
+				return err
+			}
 		}
 		if len(providerRows) > 0 {
 			if err := tx.Create(&providerRows).Error; err != nil {
@@ -71,4 +73,32 @@ func saveProviderCatalogSeedsToTable(db *gorm.DB, seeds []ProviderCatalogSeed) e
 		}
 		return nil
 	})
+}
+
+func mergeProviderIDs(left []string, right []string) []string {
+	seen := make(map[string]struct{}, len(left)+len(right))
+	result := make([]string, 0, len(left)+len(right))
+	for _, item := range left {
+		provider := strings.TrimSpace(strings.ToLower(item))
+		if provider == "" {
+			continue
+		}
+		if _, exists := seen[provider]; exists {
+			continue
+		}
+		seen[provider] = struct{}{}
+		result = append(result, provider)
+	}
+	for _, item := range right {
+		provider := strings.TrimSpace(strings.ToLower(item))
+		if provider == "" {
+			continue
+		}
+		if _, exists := seen[provider]; exists {
+			continue
+		}
+		seen[provider] = struct{}{}
+		result = append(result, provider)
+	}
+	return result
 }

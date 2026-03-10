@@ -18,6 +18,8 @@ const (
 	ProviderPriceUnitPer1KChars  = "per_1k_chars"
 	ProviderPriceUnitPerImage    = "per_image"
 	ProviderPriceUnitPerVideo    = "per_video"
+	ProviderPriceUnitPerMinute   = "per_minute"
+	ProviderPriceUnitPerSecond   = "per_second"
 
 	ProviderPriceCurrencyUSD = "USD"
 )
@@ -37,6 +39,7 @@ type ProviderCatalogSeed struct {
 	Provider     string
 	Name         string
 	BaseURL      string
+	OfficialURL  string
 	SortOrder    int
 	ModelDetails []ProviderModelDetail
 }

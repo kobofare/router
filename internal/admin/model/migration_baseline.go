@@ -37,7 +37,7 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 	if err := ensureChannelProtocolCatalogSeededWithDB(tx); err != nil {
 		return err
 	}
-	if err := ensureProviderCatalogSeededWithDB(tx); err != nil {
+	if err := syncDefaultProviderCatalogWithDB(tx); err != nil {
 		return err
 	}
 	return nil
