@@ -16,8 +16,10 @@ func NormalizeProvider(provider string) string {
 		return "google"
 	case "claude", "anthropic":
 		return "anthropic"
-	case "xai", "grok":
+	case "xai", "x-ai", "x.ai", "grok":
 		return "xai"
+	case "meta", "meta-llama", "metallama", "meta_llama":
+		return "meta-llama"
 	case "mistral":
 		return "mistral"
 	case "cohere", "command-r", "commandr":

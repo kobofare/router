@@ -278,9 +278,15 @@ const normalizeProviderIdentifier = (value) => {
     case 'claude':
     case 'anthropic':
       return 'anthropic';
+    case 'x-ai':
     case 'xai':
     case 'grok':
       return 'xai';
+    case 'meta':
+    case 'meta-llama':
+    case 'meta_llama':
+    case 'metallama':
+      return 'meta-llama';
     case 'cohere':
     case 'command-r':
     case 'commandr':

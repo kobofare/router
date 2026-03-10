@@ -33,6 +33,24 @@ func TestCanonicalizeModelNameForProvider(t *testing.T) {
 			model:    "black-forest-labs/flux-1.1-pro",
 			want:     "flux-1.1-pro",
 		},
+		{
+			name:     "strip x-ai alias prefix for xai provider",
+			provider: "xai",
+			model:    "x-ai/grok-beta",
+			want:     "grok-beta",
+		},
+		{
+			name:     "strip meta alias prefix for meta-llama provider",
+			provider: "meta-llama",
+			model:    "meta/llama-2-13b-chat",
+			want:     "llama-2-13b-chat",
+		},
+		{
+			name:     "strip embedded meta prefix after namespace removal",
+			provider: "meta-llama",
+			model:    "meta/meta-llama-3-70b",
+			want:     "llama-3-70b",
+		},
 	}
 
 	for _, tt := range tests {

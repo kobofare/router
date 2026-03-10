@@ -22,6 +22,7 @@ func mustLoadDefaultProviderSeedTemplates() []ProviderCatalogSeed {
 	}
 
 	normalized := make([]ProviderCatalogSeed, 0, len(rows))
+	indexByProvider := make(map[string]int, len(rows))
 	for _, row := range rows {
 		provider := commonutils.NormalizeProvider(row.Provider)
 		if provider == "" || provider == "unknown" {
@@ -34,13 +35,32 @@ func mustLoadDefaultProviderSeedTemplates() []ProviderCatalogSeed {
 		if name == "" {
 			name = provider
 		}
-		normalized = append(normalized, ProviderCatalogSeed{
+		seed := ProviderCatalogSeed{
 			Provider:     provider,
 			Name:         name,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
 			SortOrder:    row.SortOrder,
 			ModelDetails: normalizeDefaultProviderSeedModelDetails(provider, row.ModelDetails, 0),
-		})
+		}
+		if idx, ok := indexByProvider[provider]; ok {
+			existing := normalized[idx]
+			preferCurrent := strings.EqualFold(strings.TrimSpace(row.Provider), provider)
+			if preferCurrent || strings.TrimSpace(existing.Name) == "" || strings.EqualFold(strings.TrimSpace(existing.Name), existing.Provider) {
+				existing.Name = seed.Name
+			}
+			if preferCurrent || strings.TrimSpace(existing.BaseURL) == "" {
+				existing.BaseURL = seed.BaseURL
+			}
+			if seed.SortOrder > 0 && (existing.SortOrder <= 0 || preferCurrent || seed.SortOrder < existing.SortOrder) {
+				existing.SortOrder = seed.SortOrder
+			}
+			existing.ModelDetails = append(existing.ModelDetails, seed.ModelDetails...)
+			existing.ModelDetails = NormalizeProviderModelDetails(existing.ModelDetails)
+			normalized[idx] = existing
+			continue
+		}
+		indexByProvider[provider] = len(normalized)
+		normalized = append(normalized, seed)
 	}
 
 	sort.SliceStable(normalized, func(i, j int) bool {

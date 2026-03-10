@@ -7,30 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var providersUseFlatModelIDs = map[string]struct{}{
-	"openai":            {},
-	"google":            {},
-	"anthropic":         {},
-	"xai":               {},
-	"mistral":           {},
-	"cohere":            {},
-	"deepseek":          {},
-	"qwen":              {},
-	"zhipu":             {},
-	"hunyuan":           {},
-	"volcengine":        {},
-	"minimax":           {},
-	"baidu":             {},
-	"baidu-v2":          {},
-	"moonshot":          {},
-	"baichuan":          {},
-	"lingyiwanwu":       {},
-	"stepfun":           {},
-	"groq":              {},
-	"xunfei":            {},
-	"black-forest-labs": {},
-}
-
 func canonicalizeModelNameForProvider(provider string, modelName string) string {
 	normalizedProvider := commonutils.NormalizeProvider(provider)
 	if normalizedProvider == "" {
@@ -40,15 +16,26 @@ func canonicalizeModelNameForProvider(provider string, modelName string) string 
 	if name == "" {
 		return ""
 	}
-	if _, ok := providersUseFlatModelIDs[normalizedProvider]; !ok {
-		return name
+	if strings.Contains(name, "/") {
+		parts := strings.SplitN(name, "/", 2)
+		if len(parts) == 2 {
+			prefix := commonutils.NormalizeProvider(parts[0])
+			if prefix == "" || prefix == "unknown" {
+				prefix = strings.TrimSpace(strings.ToLower(parts[0]))
+			}
+			if prefix == normalizedProvider {
+				trimmed := strings.TrimSpace(parts[1])
+				if trimmed != "" {
+					name = trimmed
+				}
+			}
+		}
 	}
-	prefix := normalizedProvider + "/"
 	lower := strings.ToLower(name)
-	if strings.HasPrefix(lower, prefix) {
-		trimmed := strings.TrimSpace(name[len(prefix):])
+	if normalizedProvider == "meta-llama" && strings.HasPrefix(lower, "meta-") {
+		trimmed := strings.TrimSpace(name[len("meta-"):])
 		if trimmed != "" {
-			return trimmed
+			name = trimmed
 		}
 	}
 	return name

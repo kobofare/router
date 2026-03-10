@@ -1,6 +1,11 @@
 package model
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	commonutils "github.com/yeying-community/router/common/utils"
+)
 
 func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
 	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
@@ -79,5 +84,43 @@ func TestInferModelTypeAndPriceUnitForVideo(t *testing.T) {
 	}
 	if got := defaultPriceUnitByType("", modelName); got != ProviderPriceUnitPerVideo {
 		t.Fatalf("defaultPriceUnitByType(%q)=%q, want %q", modelName, got, ProviderPriceUnitPerVideo)
+	}
+}
+
+func TestBuildDefaultProviderCatalogSeeds_DeduplicatesCanonicalProviders(t *testing.T) {
+	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+	seen := make(map[string]struct{}, len(seeds))
+	for _, seed := range seeds {
+		if _, ok := seen[seed.Provider]; ok {
+			t.Fatalf("duplicate canonical provider found in seeds: %q", seed.Provider)
+		}
+		seen[seed.Provider] = struct{}{}
+	}
+	if _, ok := seen["xai"]; !ok {
+		t.Fatalf("expected xai provider to exist after canonicalization")
+	}
+	if _, ok := seen["meta-llama"]; !ok {
+		t.Fatalf("expected meta-llama provider to exist after canonicalization")
+	}
+}
+
+func TestBuildDefaultProviderCatalogSeeds_StripsSelfPrefixes(t *testing.T) {
+	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+	for _, seed := range seeds {
+		for _, detail := range seed.ModelDetails {
+			if !strings.Contains(detail.Model, "/") {
+				continue
+			}
+			parts := strings.SplitN(detail.Model, "/", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			if commonProvider := strings.ToLower(parts[0]); commonProvider == seed.Provider {
+				t.Fatalf("provider %q still contains self-prefixed model %q", seed.Provider, detail.Model)
+			}
+			if normalizedPrefix := commonutils.NormalizeProvider(parts[0]); normalizedPrefix != "" && normalizedPrefix == seed.Provider {
+				t.Fatalf("provider %q still contains self-prefixed model %q", seed.Provider, detail.Model)
+			}
+		}
 	}
 }

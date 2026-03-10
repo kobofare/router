@@ -43,3 +43,20 @@ func TestResolveProvider(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeProviderAliases(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: "x-ai", want: "xai"},
+		{input: "x.ai", want: "xai"},
+		{input: "meta", want: "meta-llama"},
+		{input: "Meta_Llama", want: "meta-llama"},
+	}
+	for _, tt := range tests {
+		if got := NormalizeProvider(tt.input); got != tt.want {
+			t.Fatalf("NormalizeProvider(%q)=%q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
