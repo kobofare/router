@@ -32,7 +32,7 @@ func canonicalizeModelNameForProvider(provider string, modelName string) string 
 		}
 	}
 	lower := strings.ToLower(name)
-	if normalizedProvider == "meta-llama" && strings.HasPrefix(lower, "meta-") {
+	if normalizedProvider == "meta" && strings.HasPrefix(lower, "meta-") {
 		trimmed := strings.TrimSpace(name[len("meta-"):])
 		if trimmed != "" {
 			name = trimmed

@@ -87,7 +87,7 @@ func TestInferModelTypeAndPriceUnitForVideo(t *testing.T) {
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_DeduplicatesCanonicalProviders(t *testing.T) {
+func TestBuildDefaultProviderCatalogSeeds_HasUniqueCanonicalProviders(t *testing.T) {
 	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
 	seen := make(map[string]struct{}, len(seeds))
 	for _, seed := range seeds {
@@ -99,8 +99,11 @@ func TestBuildDefaultProviderCatalogSeeds_DeduplicatesCanonicalProviders(t *test
 	if _, ok := seen["xai"]; !ok {
 		t.Fatalf("expected xai provider to exist after canonicalization")
 	}
-	if _, ok := seen["meta-llama"]; !ok {
-		t.Fatalf("expected meta-llama provider to exist after canonicalization")
+	if _, ok := seen["meta"]; !ok {
+		t.Fatalf("expected meta provider to exist after canonicalization")
+	}
+	if _, ok := seen["mistral"]; !ok {
+		t.Fatalf("expected mistral provider to exist after canonicalization")
 	}
 }
 

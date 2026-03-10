@@ -19,8 +19,8 @@ func NormalizeProvider(provider string) string {
 	case "xai", "x-ai", "x.ai", "grok":
 		return "xai"
 	case "meta", "meta-llama", "metallama", "meta_llama":
-		return "meta-llama"
-	case "mistral":
+		return "meta"
+	case "mistral", "mistralai":
 		return "mistral"
 	case "cohere", "command-r", "commandr":
 		return "cohere"
@@ -72,7 +72,14 @@ func ResolveProvider(modelName string) string {
 		return "google"
 	case strings.HasPrefix(lower, "grok-"):
 		return "xai"
-	case strings.HasPrefix(lower, "mistral-"):
+	case strings.HasPrefix(lower, "mistral-"),
+		strings.HasPrefix(lower, "mixtral-"),
+		strings.HasPrefix(lower, "pixtral-"),
+		strings.HasPrefix(lower, "ministral-"),
+		strings.HasPrefix(lower, "codestral-"),
+		strings.HasPrefix(lower, "open-mistral-"),
+		strings.HasPrefix(lower, "devstral-"),
+		strings.HasPrefix(lower, "magistral-"):
 		return "mistral"
 	case strings.HasPrefix(lower, "command-r"),
 		strings.HasPrefix(lower, "cohere-"):
@@ -97,7 +104,7 @@ func ResolveProvider(modelName string) string {
 	case strings.HasPrefix(lower, "ernie-"):
 		return "baidu"
 	case strings.HasPrefix(lower, "llama"):
-		return "meta-llama"
+		return "meta"
 	case strings.HasPrefix(lower, "flux"):
 		return "black-forest-labs"
 	default:

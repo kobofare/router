@@ -286,7 +286,10 @@ const normalizeProviderIdentifier = (value) => {
     case 'meta-llama':
     case 'meta_llama':
     case 'metallama':
-      return 'meta-llama';
+      return 'meta';
+    case 'mistral':
+    case 'mistralai':
+      return 'mistral';
     case 'cohere':
     case 'command-r':
     case 'commandr':
@@ -351,7 +354,18 @@ const resolveProviderIdentifierFromModelName = (modelName) => {
   if (lower.startsWith('claude-')) return 'anthropic';
   if (lower.startsWith('gemini-') || lower.startsWith('veo')) return 'google';
   if (lower.startsWith('grok-')) return 'xai';
-  if (lower.startsWith('mistral-')) return 'mistral';
+  if (
+    lower.startsWith('mistral-') ||
+    lower.startsWith('mixtral-') ||
+    lower.startsWith('pixtral-') ||
+    lower.startsWith('ministral-') ||
+    lower.startsWith('codestral-') ||
+    lower.startsWith('open-mistral-') ||
+    lower.startsWith('devstral-') ||
+    lower.startsWith('magistral-')
+  ) {
+    return 'mistral';
+  }
   if (lower.startsWith('command-r') || lower.startsWith('cohere-')) return 'cohere';
   if (lower.startsWith('deepseek-')) return 'deepseek';
   if (
@@ -368,7 +382,7 @@ const resolveProviderIdentifierFromModelName = (modelName) => {
   if (lower.startsWith('ernie-')) return 'baidu';
   if (lower.startsWith('spark-')) return 'xunfei';
   if (lower.startsWith('moonshot-') || lower.startsWith('kimi-')) return 'moonshot';
-  if (lower.startsWith('llama')) return 'meta-llama';
+  if (lower.startsWith('llama')) return 'meta';
   if (lower.startsWith('flux')) return 'black-forest-labs';
   if (lower.startsWith('baichuan-')) return 'baichuan';
   if (lower.startsWith('yi-')) return 'lingyiwanwu';

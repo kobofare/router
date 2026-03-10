@@ -40,14 +40,14 @@ func TestCanonicalizeModelNameForProvider(t *testing.T) {
 			want:     "grok-beta",
 		},
 		{
-			name:     "strip meta alias prefix for meta-llama provider",
-			provider: "meta-llama",
+			name:     "strip meta alias prefix for meta provider",
+			provider: "meta",
 			model:    "meta/llama-2-13b-chat",
 			want:     "llama-2-13b-chat",
 		},
 		{
 			name:     "strip embedded meta prefix after namespace removal",
-			provider: "meta-llama",
+			provider: "meta",
 			model:    "meta/meta-llama-3-70b",
 			want:     "llama-3-70b",
 		},

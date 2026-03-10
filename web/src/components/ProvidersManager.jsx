@@ -34,8 +34,9 @@ const normalizeProvider = (provider) => {
     case 'meta-llama':
     case 'meta_llama':
     case 'metallama':
-      return 'meta-llama';
+      return 'meta';
     case 'mistral':
+    case 'mistralai':
       return 'mistral';
     case 'cohere':
     case 'command-r':

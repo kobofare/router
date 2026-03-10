@@ -16,12 +16,22 @@ func TestResolveProvider(t *testing.T) {
 		{
 			name:  "llama prefix",
 			model: "llama-3.1-8b-instruct",
-			want:  "meta-llama",
+			want:  "meta",
 		},
 		{
 			name:  "flux prefix",
 			model: "flux-1.1-pro",
 			want:  "black-forest-labs",
+		},
+		{
+			name:  "codestral prefix",
+			model: "codestral-2501",
+			want:  "mistral",
+		},
+		{
+			name:  "mixtral prefix",
+			model: "mixtral-8x22b-instruct",
+			want:  "mistral",
 		},
 		{
 			name:  "veo prefix",
@@ -51,8 +61,9 @@ func TestNormalizeProviderAliases(t *testing.T) {
 	}{
 		{input: "x-ai", want: "xai"},
 		{input: "x.ai", want: "xai"},
-		{input: "meta", want: "meta-llama"},
-		{input: "Meta_Llama", want: "meta-llama"},
+		{input: "meta", want: "meta"},
+		{input: "Meta_Llama", want: "meta"},
+		{input: "mistralai", want: "mistral"},
 	}
 	for _, tt := range tests {
 		if got := NormalizeProvider(tt.input); got != tt.want {
