@@ -34,9 +34,6 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 	if err := syncProviderCatalogWithDB(tx); err != nil {
 		return err
 	}
-	if err := ensureCurrentChannelTestingSchemaWithDB(tx); err != nil {
-		return err
-	}
 	return nil
 }
 

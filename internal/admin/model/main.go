@@ -148,7 +148,7 @@ func InitLogDB() {
 		return
 	}
 
-	logger.SysLog("using secondary database for table logs")
+	logger.SysLog("using secondary database for table event_logs")
 	var err error
 	LOG_DB, err = chooseDB(common.LogSQLDSN)
 	if err != nil {

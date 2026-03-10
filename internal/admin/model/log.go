@@ -2,6 +2,8 @@ package model
 
 import "context"
 
+const EventLogsTableName = "event_logs"
+
 type Log struct {
 	Id                string `json:"id" gorm:"type:char(36);primaryKey"`
 	UserId            string `json:"user_id" gorm:"type:char(36);index"`
@@ -19,6 +21,10 @@ type Log struct {
 	ElapsedTime       int64  `json:"elapsed_time" gorm:"default:0"`
 	IsStream          bool   `json:"is_stream" gorm:"default:false"`
 	SystemPromptReset bool   `json:"system_prompt_reset" gorm:"default:false"`
+}
+
+func (Log) TableName() string {
+	return EventLogsTableName
 }
 
 const (

@@ -9,9 +9,15 @@ import (
 	"github.com/yeying-community/router/common/logger"
 )
 
+const SystemSettingsTableName = "system_settings"
+
 type Option struct {
 	Key   string `json:"key" gorm:"primaryKey"`
 	Value string `json:"value"`
+}
+
+func (Option) TableName() string {
+	return SystemSettingsTableName
 }
 
 func AllOption() ([]*Option, error) {
@@ -72,7 +78,7 @@ func loadOptionsFromDatabase() {
 func SyncOptions(frequency int) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-		logger.SysLog("syncing options from database")
+		logger.SysLog("syncing system settings from database")
 		loadOptionsFromDatabase()
 		if err := syncGroupBillingRatiosRuntimeWithDB(DB); err != nil {
 			logger.SysError("failed to sync group billing ratios from groups table: " + err.Error())

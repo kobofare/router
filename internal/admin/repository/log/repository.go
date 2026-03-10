@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/yeying-community/router/common/config"
@@ -150,7 +151,7 @@ func SearchUser(userId string, keyword string) ([]*model.Log, error) {
 }
 
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel string) int64 {
-	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(quota),0)")
+	tx := model.LOG_DB.Table(model.EventLogsTableName).Select("COALESCE(sum(quota),0)")
 	if username != "" {
 		tx = tx.Where("username = ?", username)
 	}
@@ -175,7 +176,7 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 }
 
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) int {
-	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(prompt_tokens),0) + COALESCE(sum(completion_tokens),0)")
+	tx := model.LOG_DB.Table(model.EventLogsTableName).Select("COALESCE(sum(prompt_tokens),0) + COALESCE(sum(completion_tokens),0)")
 	if username != "" {
 		tx = tx.Where("username = ?", username)
 	}
@@ -197,7 +198,7 @@ func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelNa
 }
 
 func SumUsedQuotaByUserId(logType int, userId string, startTimestamp int64, endTimestamp int64) (int64, error) {
-	tx := model.LOG_DB.Table("logs").Select("COALESCE(sum(quota),0)")
+	tx := model.LOG_DB.Table(model.EventLogsTableName).Select("COALESCE(sum(quota),0)")
 	tx = tx.Where("user_id = ?", userId)
 	if startTimestamp != 0 {
 		tx = tx.Where("created_at >= ?", startTimestamp)
@@ -211,7 +212,7 @@ func SumUsedQuotaByUserId(logType int, userId string, startTimestamp int64, endT
 }
 
 func MinLogTimestampByUserId(userId string, logTypes []int) (int64, error) {
-	tx := model.LOG_DB.Table("logs").Select("COALESCE(min(created_at),0)").
+	tx := model.LOG_DB.Table(model.EventLogsTableName).Select("COALESCE(min(created_at),0)").
 		Where("user_id = ?", userId)
 	if len(logTypes) > 0 {
 		tx = tx.Where("type IN ?", logTypes)
@@ -243,17 +244,17 @@ func selectGroupByGranularity(granularity string) string {
 
 func SearchLogsByPeriodAndModel(userId string, start, end int, granularity string, models []string) ([]*model.LogStatistic, error) {
 	groupSelect := selectGroupByGranularity(granularity)
-	query := `
-		SELECT ` + groupSelect + `,
+	query := fmt.Sprintf(`
+		SELECT `+groupSelect+`,
 		model_name, count(1) as request_count,
 		sum(quota) as quota,
 		sum(prompt_tokens) as prompt_tokens,
 		sum(completion_tokens) as completion_tokens
-		FROM logs
+		FROM %s
 		WHERE type=2
 		AND user_id= ?
 		AND created_at BETWEEN ? AND ?
-	`
+	`, model.EventLogsTableName)
 	args := []interface{}{userId, start, end}
 	if len(models) > 0 {
 		query += " AND model_name IN ?"
@@ -270,7 +271,7 @@ func SearchLogsByPeriodAndModel(userId string, start, end int, granularity strin
 
 func SearchLogModelsByPeriod(userId string, start, end int) ([]string, error) {
 	var models []string
-	err := model.LOG_DB.Table("logs").
+	err := model.LOG_DB.Table(model.EventLogsTableName).
 		Where("type = ? AND user_id = ? AND created_at BETWEEN ? AND ?", model.LogTypeConsume, userId, start, end).
 		Distinct("model_name").
 		Order("model_name").
