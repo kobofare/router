@@ -532,6 +532,7 @@
     }
   },
   "common": {
+    "loading": "Loading...",
     "no_data": "No data",
     "quota": {
       "display": "Equivalent: ${{amount}}",

@@ -747,28 +747,6 @@ const ChannelsTable = () => {
               >
                 {t('channel.buttons.add')}
               </Button>
-              <Button
-                className='router-page-button'
-                color='orange'
-                disabled={actionBusy}
-                onClick={() => {
-                  setSelectionMode(selectionModeDisable);
-                  setSelectedChannelIds([]);
-                }}
-              >
-                {t('channel.buttons.disable_channel')}
-              </Button>
-              <Button
-                className='router-page-button'
-                negative
-                disabled={actionBusy}
-                onClick={() => {
-                  setSelectionMode(selectionModeDelete);
-                  setSelectedChannelIds([]);
-                }}
-              >
-                {t('channel.buttons.delete_channel')}
-              </Button>
             </>
           ) : (
             <>
@@ -998,6 +976,15 @@ const ChannelsTable = () => {
                       to={'/channel/edit/' + channel.id}
                     >
                       {t('channel.buttons.edit')}
+                    </Button>
+                    <Button
+                      className='router-inline-button'
+                      negative
+                      onClick={() => {
+                        manageChannel(channel.id, 'delete', idx);
+                      }}
+                    >
+                      {t('channel.buttons.delete')}
                     </Button>
                   </div>
                 </Table.Cell>

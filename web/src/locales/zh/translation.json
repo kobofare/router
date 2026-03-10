@@ -532,6 +532,7 @@
     }
   },
   "common": {
+    "loading": "加载中...",
     "no_data": "暂无数据",
     "quota": {
       "display": "等价金额：${{amount}}",
