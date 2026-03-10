@@ -114,6 +114,9 @@ func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelC
 	}
 	channelByID := make(map[string]Channel, len(channels))
 	for _, channel := range channels {
+		if channel.Status != ChannelStatusEnabled {
+			continue
+		}
 		channelByID[channel.Id] = channel
 	}
 
@@ -167,6 +170,7 @@ func listGroupModelConfigChannelsWithDB(db *gorm.DB, groupID string) ([]GroupMod
 	channels := make([]Channel, 0)
 	if err := db.
 		Select("id", "name", "protocol", "status", "created_time").
+		Where("status = ?", ChannelStatusEnabled).
 		Order("created_time desc").
 		Find(&channels).Error; err != nil {
 		return nil, err
@@ -339,35 +343,9 @@ func loadGroupModelConfigChannelsByIDWithDB(db *gorm.DB, groupID string, channel
 		return []string{}, map[string]*Channel{}, nil
 	}
 
-	channels := make([]Channel, 0)
-	if err := db.
-		Select("id", "name", "protocol", "status", "priority", "created_time").
-		Where("id IN ?", allowedChannelIDs).
-		Find(&channels).Error; err != nil {
+	channelsByID, err := loadEnabledChannelsByIDWithDB(db, allowedChannelIDs)
+	if err != nil {
 		return nil, nil, err
-	}
-	channelRefs := make([]*Channel, 0, len(channels))
-	for i := range channels {
-		channelRefs = append(channelRefs, &channels[i])
-	}
-	if err := HydrateChannelsWithModels(db, channelRefs); err != nil {
-		return nil, nil, err
-	}
-
-	channelsByID := make(map[string]*Channel, len(channels))
-	for i := range channels {
-		channel := &channels[i]
-		channelsByID[channel.Id] = channel
-	}
-	if len(channelsByID) != len(allowedChannelIDs) {
-		missing := make([]string, 0)
-		for _, channelID := range allowedChannelIDs {
-			if _, ok := channelsByID[channelID]; !ok {
-				missing = append(missing, channelID)
-			}
-		}
-		sort.Strings(missing)
-		return nil, nil, fmt.Errorf("渠道不存在: %s", strings.Join(missing, ", "))
 	}
 	return allowedChannelIDs, channelsByID, nil
 }

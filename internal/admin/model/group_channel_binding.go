@@ -19,27 +19,30 @@ type GroupChannelBindingItem struct {
 }
 
 func ListGroupChannelBindingCandidates() ([]GroupChannelBindingItem, error) {
-	return listGroupChannelBindingsWithDB(DB, "")
+	return listGroupChannelBindingsWithDB(DB, "", true)
 }
 
 func ListGroupChannelBindings(groupID string) ([]GroupChannelBindingItem, error) {
 	if strings.TrimSpace(groupID) == "" {
 		return nil, fmt.Errorf("分组 ID 不能为空")
 	}
-	return listGroupChannelBindingsWithDB(DB, groupID)
+	return listGroupChannelBindingsWithDB(DB, groupID, false)
 }
 
-func listGroupChannelBindingsWithDB(db *gorm.DB, groupID string) ([]GroupChannelBindingItem, error) {
+func listGroupChannelBindingsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]GroupChannelBindingItem, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database handle is nil")
 	}
 	groupID = strings.TrimSpace(groupID)
 
 	channels := make([]Channel, 0)
-	if err := db.
+	query := db.
 		Select("id", "name", "protocol", "status", "created_time").
-		Order("created_time desc").
-		Find(&channels).Error; err != nil {
+		Order("created_time desc")
+	if enabledOnly {
+		query = query.Where("status = ?", ChannelStatusEnabled)
+	}
+	if err := query.Find(&channels).Error; err != nil {
 		return nil, err
 	}
 	channelRefs := make([]*Channel, 0, len(channels))
@@ -110,32 +113,12 @@ func replaceGroupChannelBindingsWithDB(db *gorm.DB, groupID string, channelIDs [
 
 	channelsByID := make(map[string]Channel, len(normalizedChannelIDs))
 	if len(normalizedChannelIDs) > 0 {
-		channels := make([]Channel, 0)
-		if err := db.
-			Select("id", "name", "status", "priority").
-			Where("id IN ?", normalizedChannelIDs).
-			Find(&channels).Error; err != nil {
+		enabledChannels, err := loadEnabledChannelsByIDWithDB(db, normalizedChannelIDs)
+		if err != nil {
 			return err
 		}
-		channelRefs := make([]*Channel, 0, len(channels))
-		for i := range channels {
-			channelRefs = append(channelRefs, &channels[i])
-		}
-		if err := HydrateChannelsWithModels(db, channelRefs); err != nil {
-			return err
-		}
-		for _, channel := range channels {
-			channelsByID[channel.Id] = channel
-		}
-		if len(channelsByID) != len(normalizedChannelIDs) {
-			missing := make([]string, 0)
-			for _, id := range normalizedChannelIDs {
-				if _, ok := channelsByID[id]; !ok {
-					missing = append(missing, id)
-				}
-			}
-			sort.Strings(missing)
-			return fmt.Errorf("渠道不存在: %s", strings.Join(missing, ", "))
+		for channelID, channel := range enabledChannels {
+			channelsByID[channelID] = *channel
 		}
 	}
 
@@ -168,6 +151,58 @@ func replaceGroupChannelBindingsWithDB(db *gorm.DB, groupID string, channelIDs [
 		return nil
 	}
 	return db.Create(&abilities).Error
+}
+
+func loadEnabledChannelsByIDWithDB(db *gorm.DB, channelIDs []string) (map[string]*Channel, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelIDs := normalizeChannelIDList(channelIDs)
+	if len(normalizedChannelIDs) == 0 {
+		return map[string]*Channel{}, nil
+	}
+
+	channels := make([]Channel, 0, len(normalizedChannelIDs))
+	if err := db.
+		Select("id", "name", "protocol", "status", "priority", "created_time").
+		Where("id IN ?", normalizedChannelIDs).
+		Find(&channels).Error; err != nil {
+		return nil, err
+	}
+
+	channelsByID := make(map[string]*Channel, len(channels))
+	disabled := make([]string, 0)
+	for i := range channels {
+		channel := &channels[i]
+		channelsByID[channel.Id] = channel
+		if channel.Status != ChannelStatusEnabled {
+			disabled = append(disabled, channel.Id)
+		}
+	}
+
+	if len(channelsByID) != len(normalizedChannelIDs) {
+		missing := make([]string, 0)
+		for _, channelID := range normalizedChannelIDs {
+			if _, ok := channelsByID[channelID]; !ok {
+				missing = append(missing, channelID)
+			}
+		}
+		sort.Strings(missing)
+		return nil, fmt.Errorf("渠道不存在: %s", strings.Join(missing, ", "))
+	}
+	if len(disabled) > 0 {
+		sort.Strings(disabled)
+		return nil, fmt.Errorf("渠道未启用，不能绑定到分组: %s", strings.Join(disabled, ", "))
+	}
+
+	channelRefs := make([]*Channel, 0, len(channels))
+	for i := range channels {
+		channelRefs = append(channelRefs, &channels[i])
+	}
+	if err := HydrateChannelsWithModels(db, channelRefs); err != nil {
+		return nil, err
+	}
+	return channelsByID, nil
 }
 
 func normalizeChannelIDList(ids []string) []string {

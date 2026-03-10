@@ -41,15 +41,17 @@ const buildFormFromRow = (row) => ({
 });
 
 const toChannelOptions = (items) =>
-  (Array.isArray(items) ? items : []).map((item) => ({
-    key: item.id,
-    text: item.name || item.id,
-    value: item.id,
-  }));
+  (Array.isArray(items) ? items : [])
+    .filter((item) => Number(item?.status || 0) === 1)
+    .map((item) => ({
+      key: item.id,
+      text: item.name || item.id,
+      value: item.id,
+    }));
 
 const toBoundChannelIDs = (items) =>
   (Array.isArray(items) ? items : [])
-    .filter((item) => !!item.bound)
+    .filter((item) => !!item.bound && Number(item?.status || 0) === 1)
     .map((item) => item.id);
 
 const toBoundChannelRows = (items) =>
