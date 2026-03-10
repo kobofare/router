@@ -266,7 +266,7 @@ func fetchModelsByConfiguredChannelDetailed(key, baseURL, providerFilter string)
 			Model:         id,
 			UpstreamModel: id,
 			Type:          inferUpstreamModelCardType(item),
-			Selected:      true,
+			Selected:      false,
 		})
 	}
 	if len(modelRows) == 0 {

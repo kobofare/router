@@ -283,8 +283,10 @@
         "verify_in_progress": "Verifying connection and syncing models...",
         "verify_ready": "Connection verified. You can submit now.",
         "verify_stale": "Connection changed. Please verify and fetch models again.",
+        "search_placeholder": "Search model, alias, type, provider...",
         "empty": "No models available yet. Click \"Fetch Models\" or check your configuration.",
         "empty_filtered": "No models match the current filter",
+        "empty_search": "No matching models",
         "last_synced": "Last synced at: {{time}}"
       },
       "model_tester": {

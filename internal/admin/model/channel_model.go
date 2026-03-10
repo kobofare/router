@@ -569,6 +569,9 @@ func BuildFetchedChannelModelConfigs(existingRows []ChannelModel, fetchedRows []
 		row, ok := existingByUpstream[upstreamModel]
 		if !ok {
 			row = fetchedRow
+			if !selectAll {
+				row.Selected = false
+			}
 		} else {
 			if strings.TrimSpace(row.Model) == "" && strings.TrimSpace(fetchedRow.Model) != "" {
 				row.Model = strings.TrimSpace(fetchedRow.Model)

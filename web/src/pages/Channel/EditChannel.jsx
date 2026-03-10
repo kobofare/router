@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -175,7 +176,7 @@ const TEXT_MODEL_ENDPOINT_OPTIONS = [
   { key: 'chat', value: '/v1/chat/completions', text: '/v1/chat/completions' },
 ];
 
-const CHANNEL_DETAIL_MODEL_PAGE_SIZE = 20;
+const CHANNEL_MODEL_PAGE_SIZE = 10;
 
 const buildProviderOptionText = (item) => {
   const id = (item?.id || item?.provider || '').toString().trim();
@@ -804,11 +805,13 @@ const EditChannel = () => {
     model: '',
     type: 'text',
   });
+  const [modelSearchKeyword, setModelSearchKeyword] = useState('');
   const [detailModelFilter, setDetailModelFilter] = useState('all');
   const [detailModelPage, setDetailModelPage] = useState(1);
   const fetchingModelsRef = useRef(false);
   const draftChannelIdRef = useRef(draftIdFromQuery);
   const draftStepProvidedRef = useRef(false);
+  const deferredModelSearchKeyword = useDeferredValue(modelSearchKeyword);
   const currentProtocolOption = useMemo(() => {
     const normalizedProtocol = (inputs.protocol || '').toString().trim().toLowerCase();
     if (normalizedProtocol === '') {
@@ -949,6 +952,10 @@ const EditChannel = () => {
     (row) => inferAssignableProviderForRowWithOptions(row, providerOptions),
     [providerOptions],
   );
+  const canSelectChannelModel = useCallback(
+    (row) => getProviderOwnersForModel(row).length > 0,
+    [getProviderOwnersForModel],
+  );
   const detailModelStats = useMemo(() => {
     return visibleModelConfigs.reduce(
       (acc, row) => {
@@ -995,25 +1002,39 @@ const EditChannel = () => {
     isDetailMode,
     visibleModelConfigs,
   ]);
-  const detailModelTotalPages = useMemo(() => {
-    if (!isDetailMode) {
-      return 1;
-    }
-    return Math.max(
-      1,
-      Math.ceil(detailFilteredModelConfigs.length / CHANNEL_DETAIL_MODEL_PAGE_SIZE),
-    );
-  }, [detailFilteredModelConfigs.length, isDetailMode]);
-  const renderedModelConfigs = useMemo(() => {
-    if (!isDetailMode) {
+  const searchedModelConfigs = useMemo(() => {
+    const keyword = normalizeSearchKeyword(deferredModelSearchKeyword);
+    if (keyword === '') {
       return detailFilteredModelConfigs;
     }
-    const offset = (detailModelPage - 1) * CHANNEL_DETAIL_MODEL_PAGE_SIZE;
-    return detailFilteredModelConfigs.slice(
-      offset,
-      offset + CHANNEL_DETAIL_MODEL_PAGE_SIZE,
+    return detailFilteredModelConfigs.filter((row) => {
+      const providerOwners = getProviderOwnersForModel(row).join(' ');
+      const candidates = [
+        row?.upstream_model,
+        row?.model,
+        row?.type,
+        providerOwners,
+      ].map(normalizeSearchKeyword);
+      return candidates.some((candidate) => candidate.includes(keyword));
+    });
+  }, [
+    deferredModelSearchKeyword,
+    detailFilteredModelConfigs,
+    getProviderOwnersForModel,
+  ]);
+  const detailModelTotalPages = useMemo(() => {
+    return Math.max(
+      1,
+      Math.ceil(searchedModelConfigs.length / CHANNEL_MODEL_PAGE_SIZE),
     );
-  }, [detailFilteredModelConfigs, detailModelPage, isDetailMode]);
+  }, [searchedModelConfigs.length]);
+  const renderedModelConfigs = useMemo(() => {
+    const offset = (detailModelPage - 1) * CHANNEL_MODEL_PAGE_SIZE;
+    return searchedModelConfigs.slice(
+      offset,
+      offset + CHANNEL_MODEL_PAGE_SIZE,
+    );
+  }, [searchedModelConfigs, detailModelPage]);
   const autoAssignableRows = useMemo(() => {
     return visibleModelConfigs.filter((row) => {
       const owners = getProviderOwnersForModel(row);
@@ -2126,14 +2147,14 @@ const EditChannel = () => {
         buildNextInputsWithModelConfigs(
           prev,
           visibleModelConfigs.map((row) =>
-            row.upstream_model === upstreamModel
+            row.upstream_model === upstreamModel && canSelectChannelModel(row)
               ? { ...row, selected: !!checked }
               : row,
           ),
         ),
       );
     },
-    [visibleModelConfigs],
+    [canSelectChannelModel, visibleModelConfigs],
   );
 
   const updateModelConfigField = useCallback(
@@ -2182,10 +2203,13 @@ const EditChannel = () => {
     setInputs((prev) =>
       buildNextInputsWithModelConfigs(
         prev,
-        visibleModelConfigs.map((row) => ({ ...row, selected: true })),
+        visibleModelConfigs.map((row) => ({
+          ...row,
+          selected: canSelectChannelModel(row),
+        })),
       ),
     );
-  }, [visibleModelConfigs]);
+  }, [canSelectChannelModel, visibleModelConfigs]);
 
   const clearSelectedModels = useCallback(() => {
     setInputs((prev) =>
@@ -2423,21 +2447,15 @@ const EditChannel = () => {
   }, [loadProviderCatalogIndex, showStepTwo]);
 
   useEffect(() => {
-    if (!isDetailMode) {
-      return;
-    }
     if (detailModelPage <= detailModelTotalPages) {
       return;
     }
     setDetailModelPage(detailModelTotalPages);
-  }, [detailModelPage, detailModelTotalPages, isDetailMode]);
+  }, [detailModelPage, detailModelTotalPages]);
 
   useEffect(() => {
-    if (!isDetailMode) {
-      return;
-    }
     setDetailModelPage(1);
-  }, [detailModelFilter, isDetailMode]);
+  }, [detailModelFilter, modelSearchKeyword]);
 
   useEffect(() => {
     if (modelTestRows.length === 0) {
@@ -2875,6 +2893,18 @@ const EditChannel = () => {
                       >
                         {t('channel.edit.model_selector.auto_assign')}
                       </Button>
+                      <Form.Input
+                        className='router-inline-input router-search-form-sm'
+                        icon='search'
+                        iconPosition='left'
+                        placeholder={t(
+                          'channel.edit.model_selector.search_placeholder',
+                        )}
+                        value={modelSearchKeyword}
+                        onChange={(e, { value }) =>
+                          setModelSearchKeyword(value || '')
+                        }
+                      />
                     </div>
                   ) : (
                     <div className='router-toolbar-end'>
@@ -2910,6 +2940,18 @@ const EditChannel = () => {
                       >
                         {t('channel.edit.buttons.clear')}
                       </Button>
+                      <Form.Input
+                        className='router-inline-input router-search-form-sm'
+                        icon='search'
+                        iconPosition='left'
+                        placeholder={t(
+                          'channel.edit.model_selector.search_placeholder',
+                        )}
+                        value={modelSearchKeyword}
+                        onChange={(e, { value }) =>
+                          setModelSearchKeyword(value || '')
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -2954,10 +2996,12 @@ const EditChannel = () => {
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
-                    {detailFilteredModelConfigs.length === 0 ? (
+                    {searchedModelConfigs.length === 0 ? (
                       <Table.Row>
                         <Table.Cell className='router-empty-cell' colSpan={isDetailMode ? 9 : 8}>
-                          {isDetailMode && visibleModelConfigs.length > 0
+                          {modelSearchKeyword.trim() !== ''
+                            ? t('channel.edit.model_selector.empty_search')
+                            : isDetailMode && visibleModelConfigs.length > 0
                             ? t('channel.edit.model_selector.empty_filtered')
                             : t('channel.edit.model_selector.empty')}
                         </Table.Cell>
@@ -2966,6 +3010,7 @@ const EditChannel = () => {
                       renderedModelConfigs.map((row) => {
                         const providerOwners = getProviderOwnersForModel(row);
                         const isUnassigned = providerOwners.length === 0;
+                        const canSelectRow = providerOwners.length > 0;
                         return (
                           <Table.Row key={`${row.upstream_model}-${row.model}`}>
                             <Table.Cell
@@ -2974,7 +3019,11 @@ const EditChannel = () => {
                             >
                               <Checkbox
                                 checked={!!row.selected}
-                                disabled={isDetailMode}
+                                disabled={
+                                  isDetailMode ||
+                                  providerCatalogLoading ||
+                                  (!canSelectRow && !row.selected)
+                                }
                                 onChange={(e, { checked }) =>
                                   toggleModelSelection(
                                     row.upstream_model,
@@ -3136,7 +3185,7 @@ const EditChannel = () => {
                     )}
                   </Table.Body>
                 </Table>
-                {isDetailMode && detailModelTotalPages > 1 && (
+                {detailModelTotalPages > 1 && (
                   <div className='router-pagination-wrap'>
                     <Pagination
                       className='router-section-pagination'

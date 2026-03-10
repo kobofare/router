@@ -283,8 +283,10 @@
         "verify_in_progress": "正在验证连接并同步模型...",
         "verify_ready": "连接已验证，可以提交。",
         "verify_stale": "连接参数已变更，请重新验证并获取模型。",
+        "search_placeholder": "搜索模型、别名、类型、供应商...",
         "empty": "暂无可选模型，请先点击“获取模型”或检查配置。",
         "empty_filtered": "当前筛选条件下暂无模型",
+        "empty_search": "没有匹配的模型",
         "last_synced": "最近同步时间：{{time}}"
       },
       "model_tester": {

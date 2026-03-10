@@ -65,7 +65,7 @@ func TestBuildFetchedChannelModelConfigsPreservesExistingSelectionsAndRemovesMis
 	if rows[1].Model != "gpt-image-1" {
 		t.Fatalf("rows[1].Model = %q, want gpt-image-1", rows[1].Model)
 	}
-	if !rows[1].Selected {
-		t.Fatalf("rows[1].Selected = false, want true")
+	if rows[1].Selected {
+		t.Fatalf("rows[1].Selected = true, want false")
 	}
 }
