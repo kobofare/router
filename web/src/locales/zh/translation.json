@@ -55,7 +55,6 @@
       "response_time": "响应时间",
       "balance": "余额",
       "priority": "优先级",
-      "test_model": "单测模型",
       "actions": "操作",
       "no_name": "无",
       "status_enabled": "已启用",
@@ -67,15 +66,11 @@
       "status_unknown": "未知状态",
       "not_tested": "未测试",
       "priority_tip": "渠道选择优先级，越高越优先",
-      "select_test_model": "请选择单测模型",
       "click_to_update": "点击更新",
       "balance_not_supported": "-"
     },
     "buttons": {
       "test": "测试",
-      "test_models": "测试模型",
-      "test_model": "测模型",
-      "test_channel": "测试渠道",
       "disable_channel": "禁用渠道",
       "delete_channel": "删除渠道",
       "delete": "删除",
@@ -91,12 +86,6 @@
       "refresh": "刷新"
     },
     "messages": {
-      "test_models_success": "渠道 {{name}} 模型测试成功，耗时 {{time}} 秒，结果：{{message}}",
-      "test_model_success": "渠道 {{name}} 模型测试成功，测试模型 {{model}}，耗时 {{time}} 秒，结果：{{message}}",
-      "test_all_started": "已成功开始测试渠道，请刷新页面查看结果。",
-      "batch_test_select_required": "请先选择至少一个渠道。",
-      "batch_test_done": "批量模型测试完成：成功 {{success}}，失败 {{failed}}。",
-      "select_model_test_required": "请先选择一个单测模型。",
       "batch_disable_select_required": "请先选择至少一个待禁用渠道。",
       "batch_disable_done": "批量禁用完成：成功 {{success}}，失败 {{failed}}。",
       "batch_delete_select_required": "请先选择至少一个待删除渠道。",

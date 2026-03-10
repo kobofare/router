@@ -1628,28 +1628,6 @@ info:
   version: v1
 paths:
   /api/v1/admin/channel:
-    get:
-      parameters:
-      - description: Page index
-        in: query
-        name: p
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/docs.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/docs.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List channels (admin)
-      tags:
-      - admin
     post:
       consumes:
       - application/json
@@ -2049,6 +2027,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Update channel balance (admin)
+      tags:
+      - admin
+  /api/v1/admin/channels:
+    get:
+      parameters:
+      - description: Page (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/docs.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/docs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List channels with pagination (admin)
       tags:
       - admin
   /api/v1/admin/group:

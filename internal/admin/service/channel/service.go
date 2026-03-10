@@ -9,6 +9,10 @@ func GetAll(start, num int, status string) ([]*model.Channel, error) {
 	return channelrepo.GetAll(start, num, status)
 }
 
+func ListPage(page int, pageSize int, keyword string) ([]*model.Channel, int64, error) {
+	return channelrepo.ListPage(page, pageSize, keyword)
+}
+
 func Search(keyword string) ([]*model.Channel, error) {
 	return channelrepo.Search(keyword)
 }

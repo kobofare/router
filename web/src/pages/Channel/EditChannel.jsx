@@ -1777,11 +1777,7 @@ const EditChannel = () => {
               ? loadedModelTestSignature
               : ''
           );
-          setModelTestTargetModels(
-            modelState.modelConfigs
-              .filter((row) => row.selected)
-              .map((row) => row.model)
-          );
+          setModelTestTargetModels([]);
         }
         setConfig((prev) => ({
           ...prev,
@@ -2651,11 +2647,7 @@ const EditChannel = () => {
     }
     setModelTestTargetModels((prev) => {
       const available = modelTestRows.map((row) => row.model);
-      const next = prev.filter((item) => available.includes(item));
-      if (next.length > 0) {
-        return next;
-      }
-      return available;
+      return prev.filter((item) => available.includes(item));
     });
   }, [modelTestRows]);
 

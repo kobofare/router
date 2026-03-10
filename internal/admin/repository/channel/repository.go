@@ -30,6 +30,45 @@ func init() {
 	})
 }
 
+func buildChannelListQuery(db *gorm.DB, keyword string) *gorm.DB {
+	query := db.Model(&model.Channel{})
+	normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))
+	if normalizedKeyword == "" {
+		return query
+	}
+	likeKeyword := "%" + normalizedKeyword + "%"
+	return query.Where(
+		"LOWER(name) LIKE ? OR LOWER(protocol) LIKE ? OR LOWER(COALESCE(base_url, '')) LIKE ?",
+		likeKeyword,
+		likeKeyword,
+		likeKeyword,
+	)
+}
+
+func ListPage(page int, pageSize int, keyword string) ([]*model.Channel, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = config.ItemsPerPage
+	}
+	total := int64(0)
+	query := buildChannelListQuery(model.DB, keyword)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	channels := make([]*model.Channel, 0, pageSize)
+	if err := query.
+		Order("created_time desc").
+		Limit(pageSize).
+		Offset((page - 1) * pageSize).
+		Omit("key").
+		Find(&channels).Error; err != nil {
+		return nil, 0, err
+	}
+	return channels, total, nil
+}
+
 func GetAll(startIdx int, num int, status string) ([]*model.Channel, error) {
 	var channels []*model.Channel
 	var err error
