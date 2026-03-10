@@ -32,6 +32,7 @@ func ListGroupModelSummaries(groupID string) ([]GroupModelSummaryItem, error) {
 	groupCol := `"group"`
 	if err := DB.
 		Where(groupCol+" = ?", groupCatalog.Id).
+		Where("enabled = ?", true).
 		Order("model asc, priority desc, channel_id asc").
 		Find(&abilities).Error; err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func ListGroupModelSummaries(groupID string) ([]GroupModelSummaryItem, error) {
 		if err := DB.
 			Select("id", "name", "protocol", "status").
 			Where("id IN ?", channelIDs).
+			Where("status = ?", ChannelStatusEnabled).
 			Find(&channels).Error; err != nil {
 			return nil, err
 		}

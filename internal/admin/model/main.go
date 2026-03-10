@@ -128,6 +128,12 @@ func InitDB() {
 	if err = SyncModelPricingCatalogWithDB(DB); err != nil {
 		logger.SysError("failed to sync model pricing catalog: " + err.Error())
 	}
+	rowsAffected, cleanupErr := CleanupDanglingAbilityChannels()
+	if cleanupErr != nil {
+		logger.SysError("failed to cleanup dangling group abilities: " + cleanupErr.Error())
+	} else if rowsAffected > 0 {
+		logger.SysLogf("cleaned dangling group abilities: %d", rowsAffected)
+	}
 }
 
 func migrateDB() error {

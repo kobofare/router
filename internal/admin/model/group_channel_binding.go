@@ -26,7 +26,7 @@ func ListGroupChannelBindings(groupID string) ([]GroupChannelBindingItem, error)
 	if strings.TrimSpace(groupID) == "" {
 		return nil, fmt.Errorf("分组 ID 不能为空")
 	}
-	return listGroupChannelBindingsWithDB(DB, groupID, false)
+	return listGroupChannelBindingsWithDB(DB, groupID, true)
 }
 
 func listGroupChannelBindingsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]GroupChannelBindingItem, error) {
@@ -56,10 +56,13 @@ func listGroupChannelBindingsWithDB(db *gorm.DB, groupID string, enabledOnly boo
 	boundIDs := make([]string, 0)
 	if groupID != "" {
 		groupCol := `"group"`
-		if err := db.Model(&Ability{}).
+		query := db.Model(&Ability{}).
 			Distinct("channel_id").
-			Where(groupCol+" = ?", groupID).
-			Pluck("channel_id", &boundIDs).Error; err != nil {
+			Where(groupCol+" = ?", groupID)
+		if enabledOnly {
+			query = query.Where("enabled = ?", true)
+		}
+		if err := query.Pluck("channel_id", &boundIDs).Error; err != nil {
 			return nil, err
 		}
 	}

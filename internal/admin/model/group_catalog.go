@@ -227,6 +227,7 @@ func hydrateGroupCatalogChannelsWithDB(db *gorm.DB, rows []GroupCatalog) error {
 		Select(groupCol+" as \"group\", channel_id").
 		Distinct().
 		Where(groupCol+" IN ?", groupIDs).
+		Where("enabled = ?", true).
 		Where("channel_id <> ''").
 		Find(&abilityRows).Error; err != nil {
 		return err
@@ -257,6 +258,7 @@ func hydrateGroupCatalogChannelsWithDB(db *gorm.DB, rows []GroupCatalog) error {
 	if err := db.
 		Select("id", "name", "protocol", "status", "created_time").
 		Where("id IN ?", channelIDs).
+		Where("status = ?", ChannelStatusEnabled).
 		Find(&channels).Error; err != nil {
 		return err
 	}

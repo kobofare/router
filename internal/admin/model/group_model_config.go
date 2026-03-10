@@ -82,6 +82,7 @@ func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelC
 	groupCol := `"group"`
 	if err := db.
 		Where(groupCol+" = ?", groupCatalog.Id).
+		Where("enabled = ?", true).
 		Order("model asc, channel_id asc").
 		Find(&abilities).Error; err != nil {
 		return nil, err
@@ -299,6 +300,7 @@ func listGroupBoundChannelIDsWithDB(db *gorm.DB, groupID string) ([]string, erro
 	if err := db.Model(&Ability{}).
 		Distinct("channel_id").
 		Where(groupCol+" = ?", groupCatalog.Id).
+		Where("enabled = ?", true).
 		Pluck("channel_id", &boundIDs).Error; err != nil {
 		return nil, err
 	}
