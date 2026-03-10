@@ -23,7 +23,6 @@ import (
 	"github.com/yeying-community/router/internal/relay"
 	openaiadaptor "github.com/yeying-community/router/internal/relay/adaptor/openai"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
-	relaycontroller "github.com/yeying-community/router/internal/relay/controller"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
 	"github.com/yeying-community/router/internal/transport/http/middleware"
@@ -73,6 +72,20 @@ type openAIModelsResponse struct {
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
+}
+
+type previewModelFetchTrace struct {
+	ModelsURL       string
+	RequestPayload  string
+	ResponsePayload string
+}
+
+type previewModelTestExecution struct {
+	LatencyMs     int64
+	Message       string
+	InputPayload  string
+	OutputPayload string
+	Err           error
 }
 
 const (
@@ -189,44 +202,49 @@ func inferUpstreamModelCardType(item openAIModelCard) string {
 	return fallback
 }
 
-func fetchModelsByConfiguredChannelDetailed(key, baseURL, providerFilter string) ([]model.ChannelModel, string, error) {
+func fetchModelsByConfiguredChannelDetailed(key, baseURL, providerFilter string) ([]model.ChannelModel, previewModelFetchTrace, error) {
+	trace := previewModelFetchTrace{}
 	trimmedKey := strings.TrimSpace(key)
 	if trimmedKey == "" {
-		return nil, "", fmt.Errorf("请先填写 Key")
+		return nil, trace, fmt.Errorf("请先填写 Key")
 	}
 	trimmedBaseURL := strings.TrimSpace(baseURL)
 	if trimmedBaseURL == "" {
-		return nil, "", fmt.Errorf("请先填写 Base URL")
+		return nil, trace, fmt.Errorf("请先填写 Base URL")
 	}
 
 	modelsURL := resolveModelsURL(trimmedBaseURL)
+	trace.ModelsURL = modelsURL
 	httpReq, err := http.NewRequest(http.MethodGet, modelsURL, nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("创建请求失败")
+		return nil, trace, fmt.Errorf("创建请求失败")
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+trimmedKey)
+	trace.RequestPayload = buildHTTPRequestPayloadForLog(httpReq.Method, modelsURL, httpReq.Header, nil)
 
 	resp, err := client.HTTPClient.Do(httpReq)
 	if err != nil {
-		return nil, "", fmt.Errorf("请求模型列表失败")
+		return nil, trace, fmt.Errorf("请求模型列表失败")
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", fmt.Errorf("读取模型列表失败")
+		trace.ResponsePayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
+		return nil, trace, fmt.Errorf("读取模型列表失败")
 	}
+	trace.ResponsePayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 
 	var parsed openAIModelsResponse
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, "", fmt.Errorf("解析模型列表失败")
+		return nil, trace, fmt.Errorf("解析模型列表失败")
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		message := fmt.Sprintf("模型列表请求失败（HTTP %d）", resp.StatusCode)
 		if parsed.Error != nil && strings.TrimSpace(parsed.Error.Message) != "" {
 			message = parsed.Error.Message
 		}
-		return nil, modelsURL, fmt.Errorf("%s", message)
+		return nil, trace, fmt.Errorf("%s", message)
 	}
 
 	provider := commonutils.NormalizeProvider(providerFilter)
@@ -253,11 +271,11 @@ func fetchModelsByConfiguredChannelDetailed(key, baseURL, providerFilter string)
 	}
 	if len(modelRows) == 0 {
 		if provider != "" {
-			return nil, modelsURL, fmt.Errorf("未找到符合所选供应商的模型")
+			return nil, trace, fmt.Errorf("未找到符合所选供应商的模型")
 		}
-		return nil, modelsURL, fmt.Errorf("未返回可用模型")
+		return nil, trace, fmt.Errorf("未返回可用模型")
 	}
-	return modelRows, modelsURL, nil
+	return modelRows, trace, nil
 }
 
 func resolvePreviewBaseURL(protocol string, baseURL string) string {
@@ -416,7 +434,7 @@ func resolvePreviewTargetModels(channel *model.Channel, mode string, requestedMo
 	return result
 }
 
-func buildPreviewChannelTestResult(row model.ChannelModel, latencyMs int64, message string, err error) model.ChannelTest {
+func buildPreviewChannelTestResult(row model.ChannelModel, execution previewModelTestExecution) model.ChannelTest {
 	modelType := resolveSelectionModelType(row)
 	endpoint := model.NormalizeChannelModelEndpoint(modelType, row.Endpoint)
 	result := model.ChannelTest{
@@ -424,18 +442,20 @@ func buildPreviewChannelTestResult(row model.ChannelModel, latencyMs int64, mess
 		UpstreamModel: strings.TrimSpace(row.UpstreamModel),
 		Type:          modelType,
 		Endpoint:      endpoint,
-		LatencyMs:     latencyMs,
-		Message:       strings.TrimSpace(message),
+		LatencyMs:     execution.LatencyMs,
+		Message:       strings.TrimSpace(execution.Message),
+		InputPayload:  execution.InputPayload,
+		OutputPayload: execution.OutputPayload,
 	}
 	if result.UpstreamModel == "" {
 		result.UpstreamModel = result.Model
 	}
-	if err == nil {
+	if execution.Err == nil {
 		result.Status = model.ChannelTestStatusSupported
 		result.Supported = true
 		return result
 	}
-	errMessage := strings.TrimSpace(err.Error())
+	errMessage := strings.TrimSpace(execution.Err.Error())
 	if errMessage == "" {
 		errMessage = "模型测试失败"
 	}
@@ -453,32 +473,32 @@ func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) m
 
 	switch modelType {
 	case model.ProviderModelTypeImage:
-		latencyMs, message, execErr := executePreviewImageModelTest(channel, row.Model)
+		execution := executePreviewImageModelTest(channel, row.Model)
 		return buildPreviewChannelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
 			Endpoint:      model.ChannelModelEndpointImages,
-		}, latencyMs, message, execErr)
+		}, execution)
 	case model.ProviderModelTypeAudio:
-		latencyMs, message, execErr := executePreviewAudioModelTest(channel, row.Model)
+		execution := executePreviewAudioModelTest(channel, row.Model)
 		return buildPreviewChannelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
 			Endpoint:      model.ChannelModelEndpointAudio,
-		}, latencyMs, message, execErr)
+		}, execution)
 	case model.ProviderModelTypeVideo:
-		latencyMs, message, execErr := executePreviewVideoModelTest(channel, row.Model)
+		execution := executePreviewVideoModelTest(channel, row.Model)
 		return buildPreviewChannelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
 			Endpoint:      model.ChannelModelEndpointVideos,
-		}, latencyMs, message, execErr)
+		}, execution)
 	default:
 		if endpoint == model.ChannelModelEndpointChat {
-			latencyMs, message, execErr := executePreviewTextModelTest(channel, endpoint, &relaymodel.GeneralOpenAIRequest{
+			execution := executePreviewTextModelTest(channel, endpoint, &relaymodel.GeneralOpenAIRequest{
 				Model: row.Model,
 				Messages: []relaymodel.Message{{
 					Role:    "user",
@@ -490,9 +510,9 @@ func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) m
 				UpstreamModel: row.UpstreamModel,
 				Type:          modelType,
 				Endpoint:      endpoint,
-			}, latencyMs, message, execErr)
+			}, execution)
 		}
-		latencyMs, message, execErr := executePreviewTextModelTest(channel, model.ChannelModelEndpointResponses, &relaymodel.GeneralOpenAIRequest{
+		execution := executePreviewTextModelTest(channel, model.ChannelModelEndpointResponses, &relaymodel.GeneralOpenAIRequest{
 			Model: row.Model,
 			Input: []relaymodel.Message{{
 				Role:    "user",
@@ -504,7 +524,7 @@ func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) m
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
 			Endpoint:      model.ChannelModelEndpointResponses,
-		}, latencyMs, message, execErr)
+		}, execution)
 	}
 }
 
@@ -601,73 +621,104 @@ func parsePreviewUpstreamError(statusCode int, body []byte) error {
 	return fmt.Errorf("http status code: %d, error message: %s", statusCode, message)
 }
 
-func executePreviewTextModelTest(channel *model.Channel, path string, request *relaymodel.GeneralOpenAIRequest) (int64, string, error) {
+func executePreviewTextModelTest(channel *model.Channel, path string, request *relaymodel.GeneralOpenAIRequest) previewModelTestExecution {
+	execution := previewModelTestExecution{}
 	if request == nil {
-		return 0, "", fmt.Errorf("请求不能为空")
+		execution.Err = fmt.Errorf("请求不能为空")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	c, relayMeta, err := newPreviewRelayContext(path, channel)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	adaptor := relay.GetAdaptor(relayMeta.APIType)
 	if adaptor == nil {
-		return 0, "", fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.Err = fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	adaptor.Init(relayMeta)
 	request.Model = resolvePreviewModelName(channel, request.Model)
 	if request.Model == "" {
-		return 0, "", fmt.Errorf("未找到可用于测试的模型")
+		execution.Err = fmt.Errorf("未找到可用于测试的模型")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	relayMeta.OriginModelName = request.Model
 	relayMeta.ActualModelName = request.Model
 	convertedRequest, err := adaptor.ConvertRequest(c, relayMeta.Mode, request)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	requestBody, err := json.Marshal(convertedRequest)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
+	requestURL := resolvePreviewEndpointURL(resolvePreviewBaseURL(channel.GetProtocol(), channel.GetBaseURL()), path)
+	requestHeader := http.Header{}
+	requestHeader.Set("Content-Type", "application/json")
+	execution.InputPayload = buildHTTPRequestPayloadForLog(http.MethodPost, requestURL, requestHeader, requestBody)
+
 	startedAt := time.Now()
 	resp, err := adaptor.DoRequest(c, relayMeta, bytes.NewBuffer(requestBody))
-	latencyMs := time.Since(startedAt).Milliseconds()
+	execution.LatencyMs = time.Since(startedAt).Milliseconds()
 	if err != nil {
-		return latencyMs, "", err
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		relayErr := relaycontroller.RelayErrorHandler(resp)
-		if relayErr != nil && strings.TrimSpace(relayErr.Error.Message) != "" {
-			return latencyMs, "", fmt.Errorf("http status code: %d, error message: %s", resp.StatusCode, relayErr.Error.Message)
-		}
-		return latencyMs, "", fmt.Errorf("http status code: %d", resp.StatusCode)
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return latencyMs, "", err
+		execution.Err = err
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
+		return execution
 	}
-	if err := resp.Body.Close(); err != nil {
-		return latencyMs, "", err
+	if closeErr := resp.Body.Close(); closeErr != nil {
+		execution.Err = closeErr
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+		return execution
 	}
-	message, err := parseTextModelTestResponse(string(body))
-	if err != nil {
-		return latencyMs, "", err
+	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		execution.Err = parsePreviewUpstreamError(resp.StatusCode, body)
+		return execution
 	}
-	return latencyMs, message, nil
+	message, parseErr := parseTextModelTestResponse(string(body))
+	if parseErr != nil {
+		execution.Err = parseErr
+		return execution
+	}
+	execution.Message = message
+	return execution
 }
 
-func executePreviewImageModelTest(channel *model.Channel, modelName string) (int64, string, error) {
+func executePreviewImageModelTest(channel *model.Channel, modelName string) previewModelTestExecution {
+	execution := previewModelTestExecution{}
 	c, relayMeta, err := newPreviewRelayContext("/v1/images/generations", channel)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	adaptor := relay.GetAdaptor(relayMeta.APIType)
 	if adaptor == nil {
-		return 0, "", fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.Err = fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	adaptor.Init(relayMeta)
 	actualModelName := resolvePreviewModelName(channel, modelName)
 	if actualModelName == "" {
-		return 0, "", fmt.Errorf("未找到可用于图片模型测试的模型")
+		execution.Err = fmt.Errorf("未找到可用于图片模型测试的模型")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	relayMeta.OriginModelName = strings.TrimSpace(modelName)
 	relayMeta.ActualModelName = actualModelName
@@ -679,56 +730,78 @@ func executePreviewImageModelTest(channel *model.Channel, modelName string) (int
 	}
 	convertedRequest, err := adaptor.ConvertImageRequest(imageRequest)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	requestBody, err := json.Marshal(convertedRequest)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
+	requestURL := resolvePreviewEndpointURL(resolvePreviewBaseURL(channel.GetProtocol(), channel.GetBaseURL()), "/v1/images/generations")
+	requestHeader := http.Header{}
+	requestHeader.Set("Content-Type", "application/json")
+	execution.InputPayload = buildHTTPRequestPayloadForLog(http.MethodPost, requestURL, requestHeader, requestBody)
 	startedAt := time.Now()
 	resp, err := adaptor.DoRequest(c, relayMeta, bytes.NewBuffer(requestBody))
-	latencyMs := time.Since(startedAt).Milliseconds()
+	execution.LatencyMs = time.Since(startedAt).Milliseconds()
 	if err != nil {
-		return latencyMs, "", err
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		relayErr := relaycontroller.RelayErrorHandler(resp)
-		if relayErr != nil && strings.TrimSpace(relayErr.Error.Message) != "" {
-			return latencyMs, "", fmt.Errorf("http status code: %d, error message: %s", resp.StatusCode, relayErr.Error.Message)
-		}
-		return latencyMs, "", fmt.Errorf("http status code: %d", resp.StatusCode)
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return latencyMs, "", err
+		execution.Err = err
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
+		return execution
 	}
-	if err := resp.Body.Close(); err != nil {
-		return latencyMs, "", err
+	if closeErr := resp.Body.Close(); closeErr != nil {
+		execution.Err = closeErr
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+		return execution
+	}
+	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		execution.Err = parsePreviewUpstreamError(resp.StatusCode, body)
+		return execution
 	}
 	preview := "图片接口返回成功"
 	imageResponse := openaiadaptor.ImageResponse{}
 	if err := json.Unmarshal(body, &imageResponse); err == nil && len(imageResponse.Data) > 0 {
 		preview = fmt.Sprintf("返回 %d 个图片结果", len(imageResponse.Data))
 	}
-	return latencyMs, preview, nil
+	execution.Message = preview
+	return execution
 }
 
-func executePreviewAudioModelTest(channel *model.Channel, modelName string) (int64, string, error) {
+func executePreviewAudioModelTest(channel *model.Channel, modelName string) previewModelTestExecution {
+	execution := previewModelTestExecution{}
 	actualModelName := resolvePreviewModelName(channel, modelName)
 	if actualModelName == "" {
-		return 0, "", fmt.Errorf("未找到可用于音频模型测试的模型")
+		execution.Err = fmt.Errorf("未找到可用于音频模型测试的模型")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	if strings.Contains(strings.ToLower(actualModelName), "whisper") {
-		return 0, "", fmt.Errorf("当前音频模型更像转录模型，暂不自动探测")
+		execution.Err = fmt.Errorf("当前音频模型更像转录模型，暂不自动探测")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	c, relayMeta, err := newPreviewRelayContext("/v1/audio/speech", channel)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	c.Request.Header.Set("Accept", "audio/mpeg")
 	adaptor := relay.GetAdaptor(relayMeta.APIType)
 	if adaptor == nil {
-		return 0, "", fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.Err = fmt.Errorf("invalid api type: %d", relayMeta.APIType)
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	adaptor.Init(relayMeta)
 	relayMeta.OriginModelName = strings.TrimSpace(modelName)
@@ -740,86 +813,121 @@ func executePreviewAudioModelTest(channel *model.Channel, modelName string) (int
 		ResponseFormat: "mp3",
 	})
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
+	requestURL := resolvePreviewEndpointURL(resolvePreviewBaseURL(channel.GetProtocol(), channel.GetBaseURL()), "/v1/audio/speech")
+	requestHeader := http.Header{}
+	requestHeader.Set("Content-Type", "application/json")
+	requestHeader.Set("Accept", "audio/mpeg")
+	execution.InputPayload = buildHTTPRequestPayloadForLog(http.MethodPost, requestURL, requestHeader, requestBody)
 	startedAt := time.Now()
 	resp, err := adaptor.DoRequest(c, relayMeta, bytes.NewBuffer(requestBody))
-	latencyMs := time.Since(startedAt).Milliseconds()
+	execution.LatencyMs = time.Since(startedAt).Milliseconds()
 	if err != nil {
-		return latencyMs, "", err
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		relayErr := relaycontroller.RelayErrorHandler(resp)
-		if relayErr != nil && strings.TrimSpace(relayErr.Error.Message) != "" {
-			return latencyMs, "", fmt.Errorf("http status code: %d, error message: %s", resp.StatusCode, relayErr.Error.Message)
-		}
-		return latencyMs, "", fmt.Errorf("http status code: %d", resp.StatusCode)
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return latencyMs, "", err
+		execution.Err = err
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
+		return execution
 	}
-	if err := resp.Body.Close(); err != nil {
-		return latencyMs, "", err
+	if closeErr := resp.Body.Close(); closeErr != nil {
+		execution.Err = closeErr
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+		return execution
+	}
+	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		execution.Err = parsePreviewUpstreamError(resp.StatusCode, body)
+		return execution
 	}
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
 	if contentType == "" {
 		contentType = "audio payload"
 	}
 	if len(body) == 0 {
-		return latencyMs, "", fmt.Errorf("响应为空")
+		execution.Err = fmt.Errorf("响应为空")
+		return execution
 	}
-	return latencyMs, fmt.Sprintf("返回 %d bytes (%s)", len(body), contentType), nil
+	execution.Message = fmt.Sprintf("返回 %d bytes (%s)", len(body), contentType)
+	return execution
 }
 
-func executePreviewVideoModelTest(channel *model.Channel, modelName string) (int64, string, error) {
+func executePreviewVideoModelTest(channel *model.Channel, modelName string) previewModelTestExecution {
+	execution := previewModelTestExecution{}
 	actualModelName := resolvePreviewModelName(channel, modelName)
 	if actualModelName == "" {
-		return 0, "", fmt.Errorf("未找到可用于视频模型测试的模型")
+		execution.Err = fmt.Errorf("未找到可用于视频模型测试的模型")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	if channel == nil {
-		return 0, "", fmt.Errorf("渠道不能为空")
+		execution.Err = fmt.Errorf("渠道不能为空")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 	baseURL := resolvePreviewBaseURL(channel.GetProtocol(), channel.GetBaseURL())
 	if strings.TrimSpace(baseURL) == "" {
-		return 0, "", fmt.Errorf("未找到可用于视频模型测试的 Base URL")
+		execution.Err = fmt.Errorf("未找到可用于视频模型测试的 Base URL")
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
+		return execution
 	}
 
 	bodyBuffer := &bytes.Buffer{}
 	writer := multipart.NewWriter(bodyBuffer)
 	if err := writer.WriteField("model", actualModelName); err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	if err := writer.WriteField("prompt", "A short blue sphere morphing into a cube."); err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	if err := writer.Close(); err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 
 	requestURL := resolvePreviewEndpointURL(baseURL, "/v1/videos")
 	httpReq, err := http.NewRequest(http.MethodPost, requestURL, bodyBuffer)
 	if err != nil {
-		return 0, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+strings.TrimSpace(channel.Key))
 	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
 	httpReq.Header.Set("Accept", "application/json")
+	execution.InputPayload = buildHTTPRequestPayloadForLog(httpReq.Method, requestURL, httpReq.Header, bodyBuffer.Bytes())
 
 	startedAt := time.Now()
 	resp, err := client.HTTPClient.Do(httpReq)
-	latencyMs := time.Since(startedAt).Milliseconds()
+	execution.LatencyMs = time.Since(startedAt).Milliseconds()
 	if err != nil {
-		return latencyMs, "", err
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return latencyMs, "", err
+		execution.Err = err
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
+		return execution
 	}
+	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return latencyMs, "", parsePreviewUpstreamError(resp.StatusCode, body)
+		execution.Err = parsePreviewUpstreamError(resp.StatusCode, body)
+		return execution
 	}
 
 	type previewVideoResponse struct {
@@ -829,16 +937,20 @@ func executePreviewVideoModelTest(channel *model.Channel, modelName string) (int
 	parsed := previewVideoResponse{}
 	if err := json.Unmarshal(body, &parsed); err == nil {
 		if strings.TrimSpace(parsed.ID) != "" && strings.TrimSpace(parsed.Status) != "" {
-			return latencyMs, fmt.Sprintf("返回任务 %s（%s）", strings.TrimSpace(parsed.ID), strings.TrimSpace(parsed.Status)), nil
+			execution.Message = fmt.Sprintf("返回任务 %s（%s）", strings.TrimSpace(parsed.ID), strings.TrimSpace(parsed.Status))
+			return execution
 		}
 		if strings.TrimSpace(parsed.ID) != "" {
-			return latencyMs, fmt.Sprintf("返回任务 %s", strings.TrimSpace(parsed.ID)), nil
+			execution.Message = fmt.Sprintf("返回任务 %s", strings.TrimSpace(parsed.ID))
+			return execution
 		}
 		if strings.TrimSpace(parsed.Status) != "" {
-			return latencyMs, fmt.Sprintf("视频任务状态：%s", strings.TrimSpace(parsed.Status)), nil
+			execution.Message = fmt.Sprintf("视频任务状态：%s", strings.TrimSpace(parsed.Status))
+			return execution
 		}
 	}
-	return latencyMs, "视频接口返回成功", nil
+	execution.Message = "视频接口返回成功"
+	return execution
 }
 
 func persistPreviewChannelTests(channelID string, rows []model.ChannelModel, results []model.ChannelTest) error {
@@ -905,16 +1017,34 @@ func PreviewChannelModels(c *gin.Context) {
 		return
 	}
 	baseURL := resolvePreviewBaseURL(previewChannel.GetProtocol(), previewChannel.GetBaseURL())
-	fetchedRows, modelsURL, err := fetchModelsByConfiguredChannelDetailed(previewChannel.Key, baseURL, "")
+	fetchedRows, fetchTrace, err := fetchModelsByConfiguredChannelDetailed(previewChannel.Key, baseURL, "")
 	if err != nil {
-		logChannelAdminWarn(c, "preview_models", stringField("source", keySource), stringField("draft_id", strings.TrimSpace(req.DraftID)), stringField("models_url", modelsURL), stringField("reason", err.Error()))
+		logChannelAdminWarn(
+			c,
+			"preview_models",
+			stringField("source", keySource),
+			stringField("draft_id", strings.TrimSpace(req.DraftID)),
+			stringField("models_url", fetchTrace.ModelsURL),
+			quotedField("request_payload", fetchTrace.RequestPayload),
+			quotedField("response_payload", fetchTrace.ResponsePayload),
+			stringField("reason", err.Error()),
+		)
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
 		return
 	}
-	logChannelAdminInfo(c, "preview_models", stringField("source", keySource), stringField("draft_id", draftID), stringField("models_url", modelsURL), intField("count", len(fetchedRows)))
+	logChannelAdminInfo(
+		c,
+		"preview_models",
+		stringField("source", keySource),
+		stringField("draft_id", draftID),
+		stringField("models_url", fetchTrace.ModelsURL),
+		quotedField("request_payload", fetchTrace.RequestPayload),
+		quotedField("response_payload", fetchTrace.ResponsePayload),
+		intField("count", len(fetchedRows)),
+	)
 	if err := model.SyncFetchedChannelModelConfigsFromBaseWithDB(model.DB, draftID, previewChannel.GetModelConfigs(), fetchedRows); err != nil {
 		logChannelAdminWarn(c, "preview_models_save", stringField("draft_id", draftID), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
@@ -960,7 +1090,7 @@ func PreviewChannelModels(c *gin.Context) {
 			"source":     "channel",
 			"key_source": keySource,
 			"draft_id":   draftID,
-			"models_url": modelsURL,
+			"models_url": fetchTrace.ModelsURL,
 			"count":      len(modelConfigs),
 		},
 	})

@@ -52,6 +52,14 @@ func stringField(key string, value string) string {
 	return fmt.Sprintf("%s=%s", key, normalized)
 }
 
+func quotedField(key string, value string) string {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s=%q", key, normalized)
+}
+
 func intField(key string, value int) string {
 	return fmt.Sprintf("%s=%d", key, value)
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/yeying-community/router/common/client"
@@ -135,20 +136,47 @@ func GetResponseBody(method, url string, channel *model.Channel, headers http.He
 	for k := range headers {
 		req.Header.Add(k, headers.Get(k))
 	}
+	channelID := ""
+	channelName := ""
+	if channel != nil {
+		channelID = strings.TrimSpace(channel.Id)
+		channelName = strings.TrimSpace(channel.DisplayName())
+	}
+	requestPayload := buildHTTPRequestPayloadForLog(method, url, req.Header, nil)
 	res, err := client.HTTPClient.Do(req)
 	if err != nil {
+		logger.Info(req.Context(), fmt.Sprintf(
+			"[channel-billing] stage=request channel_id=%s name=%s request_payload=%q error=%q",
+			channelID,
+			channelName,
+			requestPayload,
+			err.Error(),
+		))
 		return nil, err
 	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status code: %d", res.StatusCode)
-	}
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
+		logger.Info(req.Context(), fmt.Sprintf(
+			"[channel-billing] stage=response channel_id=%s name=%s request_payload=%q response_payload=%q error=%q",
+			channelID,
+			channelName,
+			requestPayload,
+			buildHTTPResponsePayloadForLog(res.StatusCode, res.Header, nil),
+			err.Error(),
+		))
 		return nil, err
 	}
-	err = res.Body.Close()
-	if err != nil {
-		return nil, err
+	responsePayload := buildHTTPResponsePayloadForLog(res.StatusCode, res.Header, body)
+	logger.Info(req.Context(), fmt.Sprintf(
+		"[channel-billing] stage=response channel_id=%s name=%s request_payload=%q response_payload=%q",
+		channelID,
+		channelName,
+		requestPayload,
+		responsePayload,
+	))
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status code: %d", res.StatusCode)
 	}
 	return body, nil
 }
