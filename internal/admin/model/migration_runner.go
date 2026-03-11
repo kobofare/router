@@ -41,6 +41,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return runMainBaselineMigrationWithDB(tx)
 			},
 		},
+		{
+			Version:     "202603111950_main_provider_catalog_dalle3",
+			Description: "sync default provider catalog to add openai dall-e-3",
+			Up: func(tx *gorm.DB) error {
+				return syncDefaultProviderCatalogWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
