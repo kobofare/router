@@ -880,9 +880,18 @@
         "title": "通用设置",
         "server_address": "服务器地址",
         "server_address_placeholder": "例如：https://yourdomain.com",
+        "system_name": "系统名称",
+        "logo": "Logo 地址",
         "buttons": {
           "update": "更新服务器地址"
         }
+      },
+      "top_up_link": "充值链接",
+      "chat_link": "聊天链接",
+      "notice": "站点公告",
+      "notice_placeholder": "支持 Markdown",
+      "buttons": {
+        "save": "保存"
       },
       "login": {
         "title": "配置登录注册",

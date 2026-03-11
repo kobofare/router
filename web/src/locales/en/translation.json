@@ -880,9 +880,18 @@
         "title": "General Settings",
         "server_address": "Server Address",
         "server_address_placeholder": "e.g.: https://yourdomain.com",
+        "system_name": "System Name",
+        "logo": "Logo URL",
         "buttons": {
           "update": "Update Server Address"
         }
+      },
+      "top_up_link": "Top-up Link",
+      "chat_link": "Chat Link",
+      "notice": "Site Announcement",
+      "notice_placeholder": "Supports Markdown",
+      "buttons": {
+        "save": "Save"
       },
       "login": {
         "title": "Login & Registration Settings",
