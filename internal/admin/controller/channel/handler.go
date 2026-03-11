@@ -266,7 +266,7 @@ func GetChannel(c *gin.Context) {
 		return
 	}
 	var err error
-	channel, err := channelsvc.GetBasicByID(id)
+	channel, err := channelsvc.GetByID(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
