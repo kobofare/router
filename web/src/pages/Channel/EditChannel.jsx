@@ -617,6 +617,39 @@ const fetchChannelTests = async (channelId) => {
   };
 };
 
+const fetchActiveChannelTasks = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return [];
+  }
+  const res = await API.get('/api/v1/admin/tasks', {
+    params: {
+      page: 1,
+      page_size: 100,
+      channel_id: normalizedChannelId,
+      status: 'pending,running',
+    },
+  });
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel tasks failed');
+  }
+  return normalizeAsyncTasks(data?.items);
+};
+
+const fetchTaskById = async (taskId) => {
+  const normalizedTaskId = (taskId || '').toString().trim();
+  if (normalizedTaskId === '') {
+    throw new Error('fetch task failed');
+  }
+  const res = await API.get(`/api/v1/admin/tasks/${normalizedTaskId}`);
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch task failed');
+  }
+  return normalizeAsyncTasks([data])[0] || null;
+};
+
 const validateModelConfigs = (modelConfigs, t) => {
   const seen = new Set();
   for (const row of Array.isArray(modelConfigs) ? modelConfigs : []) {
@@ -697,6 +730,46 @@ const normalizeModelTestResults = (results) => {
       message: item.message || '',
       latency_ms: Number(item.latency_ms || 0),
       tested_at: Number(item.tested_at || 0),
+    }));
+};
+
+const normalizeAsyncTaskStatus = (value) => {
+  const normalized = (value || '').toString().trim().toLowerCase();
+  switch (normalized) {
+    case 'pending':
+    case 'running':
+    case 'succeeded':
+    case 'failed':
+    case 'canceled':
+      return normalized;
+    default:
+      return 'pending';
+  }
+};
+
+const isActiveAsyncTaskStatus = (value) => {
+  const normalized = normalizeAsyncTaskStatus(value);
+  return normalized === 'pending' || normalized === 'running';
+};
+
+const normalizeAsyncTasks = (items) => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      id: (item.id || '').toString().trim(),
+      type: (item.type || '').toString().trim(),
+      status: normalizeAsyncTaskStatus(item.status),
+      channel_id: (item.channel_id || '').toString().trim(),
+      channel_name: (item.channel_name || '').toString().trim(),
+      model: (item.model || '').toString().trim(),
+      endpoint: (item.endpoint || '').toString().trim(),
+      error_message: (item.error_message || '').toString().trim(),
+      result: (item.result || '').toString().trim(),
+      created_at: Number(item.created_at || 0),
+      finished_at: Number(item.finished_at || 0),
     }));
 };
 
@@ -867,6 +940,26 @@ const EditChannel = () => {
   const handleCancel = () => {
     navigate('/admin/channel');
   };
+  const openChannelTaskView = useCallback(
+    (extraParams = {}) => {
+      const targetChannelId = ((channelId || creatingChannelId) || '')
+        .toString()
+        .trim();
+      const query = new URLSearchParams();
+      if (targetChannelId !== '') {
+        query.set('channel_id', targetChannelId);
+      }
+      Object.entries(extraParams || {}).forEach(([key, value]) => {
+        const normalizedValue = (value || '').toString().trim();
+        if (normalizedValue !== '') {
+          query.set(key, normalizedValue);
+        }
+      });
+      const search = query.toString();
+      navigate(`/admin/task${search ? `?${search}` : ''}`);
+    },
+    [channelId, creatingChannelId, navigate]
+  );
   const openEditPage = useCallback(() => {
     if (!channelId) {
       return;
@@ -886,6 +979,7 @@ const EditChannel = () => {
   const [modelTesting, setModelTesting] = useState(false);
   const [modelTestingScope, setModelTestingScope] = useState('');
   const [modelTestingTargets, setModelTestingTargets] = useState([]);
+  const [channelTasks, setChannelTasks] = useState([]);
   const [modelTestError, setModelTestError] = useState('');
   const [modelTestedAt, setModelTestedAt] = useState(0);
   const [modelTestedSignature, setModelTestedSignature] = useState('');
@@ -910,6 +1004,8 @@ const EditChannel = () => {
   const creatingChannelIdRef = useRef(creatingChannelIdFromQuery);
   const creatingStepProvidedRef = useRef(false);
   const skipNextCreatingReloadRef = useRef('');
+  const pendingRefreshTaskIdRef = useRef('');
+  const pendingRefreshSignatureRef = useRef('');
   const deferredModelSearchKeyword = useDeferredValue(modelSearchKeyword);
   const currentProtocolOption = useMemo(() => {
     const normalizedProtocol = (inputs.protocol || '')
@@ -1047,6 +1143,40 @@ const EditChannel = () => {
   const modelTestingTargetSet = useMemo(
     () => new Set(modelTestingTargets),
     [modelTestingTargets]
+  );
+  const activeChannelTasksByModel = useMemo(() => {
+    const index = new Map();
+    normalizeAsyncTasks(channelTasks)
+      .filter(
+        (item) =>
+          item.type === 'channel_model_test' && isActiveAsyncTaskStatus(item.status)
+      )
+      .forEach((item) => {
+        if (!item.model) {
+          return;
+        }
+        const existing = index.get(item.model);
+        if (!existing || existing.status === 'pending') {
+          index.set(item.model, item);
+        }
+      });
+    return index;
+  }, [channelTasks]);
+  const activeRefreshModelsTask = useMemo(
+    () =>
+      normalizeAsyncTasks(channelTasks).find(
+        (item) =>
+          item.type === 'channel_refresh_models' &&
+          isActiveAsyncTaskStatus(item.status)
+      ) || null,
+    [channelTasks]
+  );
+  const selectedModelTestHasActiveTasks = useMemo(
+    () =>
+      modelTestTargetModels.some((modelName) =>
+        activeChannelTasksByModel.has(modelName)
+      ),
+    [activeChannelTasksByModel, modelTestTargetModels]
   );
   const getProviderOwnersForModel = useCallback(
     (row) => {
@@ -1748,17 +1878,76 @@ const EditChannel = () => {
     [t]
   );
 
+  const loadChannelTasksFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchActiveChannelTasks(targetChannelId);
+      } catch (error) {
+        throw new Error(error?.message || 'fetch channel tasks failed');
+      }
+    },
+    []
+  );
+
+  const refreshChannelRuntimeState = useCallback(
+    async (targetChannelId) => {
+      const normalizedChannelId = (targetChannelId || '').toString().trim();
+      if (normalizedChannelId === '') {
+        return;
+      }
+      const [nextModelConfigs, nextTests, nextTasks] = await Promise.all([
+        loadChannelModelConfigsFromServer(normalizedChannelId),
+        loadChannelTestsFromServer(normalizedChannelId),
+        loadChannelTasksFromServer(normalizedChannelId),
+      ]);
+      const nextInputs = buildNextInputsWithModelConfigs(inputs, nextModelConfigs);
+      const nextSignature = buildChannelModelTestSignature({
+        protocol: inputs.protocol,
+        key: effectivePreviewKey,
+        baseURL: inputs.base_url,
+        channelID: normalizedChannelId,
+        models: nextInputs.models,
+        modelConfigs: nextInputs.model_configs,
+      });
+      setInputs(nextInputs);
+      setModelTestResults(normalizeModelTestResults(nextTests.items));
+      setModelTestError('');
+      setModelTestedAt(
+        Number(nextTests.lastTestedAt || 0) > 0
+          ? Number(nextTests.lastTestedAt) * 1000
+          : 0
+      );
+      setModelTestedSignature(
+        Number(nextTests.lastTestedAt || 0) > 0 ? nextSignature : ''
+      );
+      setChannelTasks(normalizeAsyncTasks(nextTasks));
+    },
+    [
+      effectivePreviewKey,
+      inputs,
+      inputs.base_url,
+      inputs.protocol,
+      loadChannelModelConfigsFromServer,
+      loadChannelTasksFromServer,
+      loadChannelTestsFromServer,
+    ]
+  );
+
   const loadChannelById = useCallback(
     async (targetId, forCopy = false, fromCreating = false) => {
       try {
         let res = await API.get(`/api/v1/admin/channel/${targetId}`);
         const { success, message, data } = res.data;
         if (success) {
-          const [remoteModelConfigs, channelTestsData] = await Promise.all([
+          const [remoteModelConfigs, channelTestsData, activeTasks] =
+            await Promise.all([
             loadChannelModelConfigsFromServer(data.id || targetId),
             forCopy
               ? Promise.resolve({ items: [], lastTestedAt: 0 })
               : loadChannelTestsFromServer(data.id || targetId),
+            forCopy
+              ? Promise.resolve([])
+              : loadChannelTasksFromServer(data.id || targetId),
           ]);
           const storedModelTestResults = normalizeModelTestResults(
             channelTestsData.items
@@ -1783,6 +1972,8 @@ const EditChannel = () => {
           });
 
           if (forCopy) {
+            pendingRefreshTaskIdRef.current = '';
+            pendingRefreshSignatureRef.current = '';
             setInputs({
               id: '',
               name: '',
@@ -1800,7 +1991,10 @@ const EditChannel = () => {
             setModelTestedAt(0);
             setModelTestedSignature('');
             setModelTestTargetModels([]);
+            setChannelTasks([]);
           } else {
+            pendingRefreshTaskIdRef.current = '';
+            pendingRefreshSignatureRef.current = '';
             setInputs({
               id: data.id,
               name: data.name || '',
@@ -1825,6 +2019,7 @@ const EditChannel = () => {
                 : ''
             );
             setModelTestTargetModels([]);
+            setChannelTasks(normalizeAsyncTasks(activeTasks));
           }
           setConfig((prev) => ({
             ...prev,
@@ -1852,7 +2047,12 @@ const EditChannel = () => {
         setLoading(false);
       }
     },
-    [hasChannelID, loadChannelModelConfigsFromServer, loadChannelTestsFromServer]
+    [
+      hasChannelID,
+      loadChannelModelConfigsFromServer,
+      loadChannelTasksFromServer,
+      loadChannelTestsFromServer,
+    ]
   );
 
   const handleFetchModels = useCallback(
@@ -1895,7 +2095,7 @@ const EditChannel = () => {
         const res = await API.post(
           `/api/v1/admin/channel/${targetChannelId}/refresh`
         );
-        const { success, message } = res.data || {};
+        const { success, message, data } = res.data || {};
         if (!success) {
           const errorMessage =
             message || t('channel.edit.messages.fetch_models_failed');
@@ -1906,24 +2106,25 @@ const EditChannel = () => {
           }
           return false;
         }
-        const nextConfigs = await loadChannelModelConfigsFromServer(
-          targetChannelId
-        );
-        if (nextConfigs.length === 0) {
-          const message = t('channel.edit.messages.models_empty');
-          setModelsSyncError(message);
+        const refreshTask = normalizeAsyncTasks([data?.task])[0];
+        if (!refreshTask?.id) {
+          const errorMessage = t('channel.edit.messages.fetch_models_failed');
+          setModelsSyncError(errorMessage);
           setVerifiedModelSignature('');
           if (!silent) {
-            showInfo(message);
+            showError(errorMessage);
           }
           return false;
         }
-        const nextInputs = buildNextInputsWithModelConfigs(inputs, nextConfigs);
-
-        setInputs(nextInputs);
+        setChannelTasks((prev) =>
+          normalizeAsyncTasks([
+            ...normalizeAsyncTasks(prev),
+            refreshTask,
+          ])
+        );
+        pendingRefreshTaskIdRef.current = refreshTask.id;
+        pendingRefreshSignatureRef.current = requestSignature;
         setModelsSyncError('');
-        setModelsLastSyncedAt(Date.now());
-        setVerifiedModelSignature(requestSignature);
         if (!silent) {
           showSuccess(t('channel.messages.operation_success'));
         }
@@ -1950,6 +2151,7 @@ const EditChannel = () => {
       inputs.protocol,
       isCreateMode,
       loadChannelModelConfigsFromServer,
+      loadChannelTasksFromServer,
       persistWorkingChannel,
       previewChannelID,
       t,
@@ -2223,56 +2425,29 @@ const EditChannel = () => {
             target_models: normalizedTargets,
           }
         );
-        const { success, message, data } = res.data || {};
+        const { success, message, data, meta } = res.data || {};
         if (!success) {
           const errorMessage =
             message || t('channel.edit.model_tester.test_failed');
-          setModelTestResults([]);
           setModelTestError(errorMessage);
-          setModelTestedAt(0);
-          setModelTestedSignature('');
           showError(errorMessage);
           return;
         }
-        const nextResults = normalizeModelTestResults(data?.results);
-        let nextModelConfigs = visibleModelConfigs;
-        try {
-          const refreshedModelConfigs = await loadChannelModelConfigsFromServer(
-            targetChannelId
-          );
-          if (refreshedModelConfigs.length > 0) {
-            nextModelConfigs = refreshedModelConfigs;
-          }
-        } catch {
-          nextModelConfigs = visibleModelConfigs;
-        }
-        const nextInputs = buildNextInputsWithModelConfigs(
-          inputs,
-          nextModelConfigs
-        );
-        const nextSignature = buildChannelModelTestSignature({
-          protocol: inputs.protocol,
-          key: effectivePreviewKey,
-          baseURL: inputs.base_url,
-          channelID: targetChannelId,
-          models: nextInputs.models,
-          modelConfigs: nextInputs.model_configs,
-        });
-        setInputs(nextInputs);
-        setModelTestResults((previousResults) =>
-          mergeModelTestResults(previousResults, nextResults)
+        const nextTasks = normalizeAsyncTasks(data?.tasks);
+        setChannelTasks((prev) =>
+          normalizeAsyncTasks([...normalizeAsyncTasks(prev), ...nextTasks])
         );
         setModelTestError('');
-        setModelTestedAt(Date.now());
-        setModelTestedSignature(nextSignature);
-        showSuccess(t('channel.edit.model_tester.test_success'));
+        showSuccess(
+          t('channel.edit.model_tester.task_created', {
+            count: Number(meta?.created || nextTasks.length || 0),
+            reused: Number(meta?.reused || 0),
+          })
+        );
       } catch (error) {
         const errorMessage =
           error?.message || t('channel.edit.model_tester.test_failed');
-        setModelTestResults([]);
         setModelTestError(errorMessage);
-        setModelTestedAt(0);
-        setModelTestedSignature('');
         showError(errorMessage);
       } finally {
         setModelTesting(false);
@@ -2292,8 +2467,6 @@ const EditChannel = () => {
       persistWorkingChannel,
       previewChannelID,
       t,
-      loadChannelModelConfigsFromServer,
-      visibleModelConfigs,
     ]
   );
 
@@ -2485,6 +2658,75 @@ const EditChannel = () => {
     hasChannelID,
     loadChannelById,
     restoreCreateChannelCache,
+  ]);
+
+  useEffect(() => {
+    const targetChannelId = (
+      (hasChannelID ? channelId : creatingChannelId) || ''
+    )
+      .toString()
+      .trim();
+    if (targetChannelId === '') {
+      return undefined;
+    }
+    const hasActiveTasks = channelTasks.some((item) =>
+      isActiveAsyncTaskStatus(item?.status)
+    );
+    if (!hasActiveTasks) {
+      return undefined;
+    }
+    const timer = window.setInterval(async () => {
+      try {
+        const nextTasks = await loadChannelTasksFromServer(targetChannelId);
+        const stillActive = nextTasks.some((item) =>
+          isActiveAsyncTaskStatus(item?.status)
+        );
+        setChannelTasks(normalizeAsyncTasks(nextTasks));
+        if (!stillActive) {
+          const refreshTaskId = pendingRefreshTaskIdRef.current;
+          let completedRefreshTask = null;
+          if (refreshTaskId !== '') {
+            try {
+              completedRefreshTask = await fetchTaskById(refreshTaskId);
+            } catch {
+              completedRefreshTask = null;
+            }
+          }
+          await refreshChannelRuntimeState(targetChannelId);
+          if (refreshTaskId !== '') {
+            pendingRefreshTaskIdRef.current = '';
+            if (
+              completedRefreshTask &&
+              normalizeAsyncTaskStatus(completedRefreshTask.status) ===
+                'succeeded'
+            ) {
+              setModelsSyncError('');
+              setModelsLastSyncedAt(Date.now());
+              if (pendingRefreshSignatureRef.current !== '') {
+                setVerifiedModelSignature(pendingRefreshSignatureRef.current);
+              }
+            } else {
+              setVerifiedModelSignature('');
+              setModelsSyncError(
+                completedRefreshTask?.error_message ||
+                  t('channel.edit.messages.fetch_models_failed')
+              );
+            }
+            pendingRefreshSignatureRef.current = '';
+          }
+        }
+      } catch {
+        // keep current local state and retry on next tick
+      }
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [
+    channelId,
+    channelTasks,
+    creatingChannelId,
+    hasChannelID,
+    loadChannelTasksFromServer,
+    refreshChannelRuntimeState,
   ]);
 
   useEffect(() => {
@@ -3187,9 +3429,10 @@ const EditChannel = () => {
                         type='button'
                         className='router-page-button'
                         color='green'
-                        loading={fetchModelsLoading}
+                        loading={fetchModelsLoading || !!activeRefreshModelsTask}
                         disabled={
                           fetchModelsLoading ||
+                          !!activeRefreshModelsTask ||
                           (requiresConnectionVerification &&
                             !hasModelPreviewCredentials)
                         }
@@ -3546,7 +3789,9 @@ const EditChannel = () => {
                         color='blue'
                         loading={modelTesting && modelTestingScope === 'batch'}
                         disabled={
-                          modelTesting || modelTestTargetModels.length === 0
+                          modelTesting ||
+                          modelTestTargetModels.length === 0 ||
+                          selectedModelTestHasActiveTasks
                         }
                         onClick={() =>
                           handleRunModelTests({
@@ -3565,6 +3810,38 @@ const EditChannel = () => {
                       </Label>
                     </>
                   )}
+                  <Button
+                    type='button'
+                    className='router-page-button'
+                    basic
+                    onClick={() => openChannelTaskView()}
+                  >
+                    {t('task.title')}
+                  </Button>
+                  <Button
+                    type='button'
+                    className='router-page-button'
+                    basic
+                    onClick={() =>
+                      openChannelTaskView({
+                        type: 'channel_model_test',
+                      })
+                    }
+                  >
+                    {t('task.buttons.model_tests')}
+                  </Button>
+                  <Button
+                    type='button'
+                    className='router-page-button'
+                    basic
+                    onClick={() =>
+                      openChannelTaskView({
+                        status: 'pending,running',
+                      })
+                    }
+                  >
+                    {t('task.buttons.running')}
+                  </Button>
                   {modelTestedAt > 0 && (
                     <span className='router-toolbar-meta'>
                       {t('channel.edit.model_tester.last_tested', {
@@ -3629,10 +3906,18 @@ const EditChannel = () => {
                     ) : (
                       modelTestRows.map((row) => {
                         const item = modelTestResultsByModel.get(row.model);
+                        const activeTask =
+                          activeChannelTasksByModel.get(row.model) || null;
+                        const effectiveStatus =
+                          activeTask?.status || item?.status || 'unsupported';
                         const labelColor =
-                          item?.status === 'supported'
+                          effectiveStatus === 'running'
+                            ? 'blue'
+                            : effectiveStatus === 'pending'
+                            ? 'orange'
+                            : effectiveStatus === 'supported'
                             ? 'green'
-                            : item?.status === 'skipped'
+                            : effectiveStatus === 'skipped'
                             ? 'grey'
                             : 'red';
                         return (
@@ -3677,7 +3962,7 @@ const EditChannel = () => {
                               >
                                 {t(
                                   `channel.edit.model_tester.status.${
-                                    item?.status || 'unsupported'
+                                    effectiveStatus
                                   }`
                                 )}
                               </Label>
@@ -3695,11 +3980,15 @@ const EditChannel = () => {
                                   className='router-inline-button'
                                   basic
                                   loading={
-                                    modelTesting &&
-                                    modelTestingScope === 'single' &&
-                                    modelTestingTargetSet.has(row.model)
+                                    (modelTesting &&
+                                      modelTestingScope === 'single' &&
+                                      modelTestingTargetSet.has(row.model)) ||
+                                    !!activeTask
                                   }
-                                  disabled={modelTesting}
+                                  disabled={
+                                    modelTesting ||
+                                    activeChannelTasksByModel.has(row.model)
+                                  }
                                   onClick={() =>
                                     handleRunModelTests({
                                       targetModels: [row.model],

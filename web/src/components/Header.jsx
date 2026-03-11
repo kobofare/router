@@ -52,6 +52,11 @@ const ADMIN_HEADER_BUTTONS = [
     icon: 'book',
   },
   {
+    name: 'header.task',
+    to: '/admin/task',
+    icon: 'tasks',
+  },
+  {
     name: 'header.setting',
     to: '/admin/setting',
     icon: 'setting',

@@ -18,6 +18,8 @@ import (
 
 	"github.com/yeying-community/router/common/client"
 	"github.com/yeying-community/router/common/config"
+	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/common/helper"
 	commonutils "github.com/yeying-community/router/common/utils"
 	"github.com/yeying-community/router/internal/admin/model"
 	channelsvc "github.com/yeying-community/router/internal/admin/service/channel"
@@ -993,7 +995,7 @@ func executeChannelVideoModelTest(channel *model.Channel, modelName string) chan
 	return execution
 }
 
-func persistChannelModelTests(channelID string, rows []model.ChannelModel, results []model.ChannelTest) error {
+func persistChannelModelTests(channelID string, results []model.ChannelTest) error {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
 		return nil
@@ -1007,11 +1009,15 @@ func persistChannelModelTests(channelID string, rows []model.ChannelModel, resul
 	}
 	targetModels = model.NormalizeChannelModelIDsPreserveOrder(targetModels)
 	return model.DB.Transaction(func(tx *gorm.DB) error {
+		currentRows, err := model.ListChannelModelRowsByChannelIDWithDB(tx, normalizedChannelID)
+		if err != nil {
+			return err
+		}
 		insertedResults, err := model.AppendChannelTestsForModelsWithDB(tx, normalizedChannelID, targetModels, results)
 		if err != nil {
 			return err
 		}
-		if err := model.ReplaceChannelModelConfigsWithDB(tx, normalizedChannelID, model.ApplyChannelTestResultsToModelConfigs(rows, insertedResults)); err != nil {
+		if err := model.ReplaceChannelModelConfigsWithDB(tx, normalizedChannelID, model.ApplyChannelTestResultsToModelConfigs(currentRows, insertedResults)); err != nil {
 			return err
 		}
 		return model.EnsureChannelTestModelWithDB(tx, normalizedChannelID)
@@ -1174,7 +1180,7 @@ func RefreshChannelModels(c *gin.Context) {
 		})
 		return
 	}
-	runtimeChannel, keySource, err := loadChannelRuntimeState("", "", "", channelID, nil, nil, nil, "")
+	taskRow, reused, err := CreateChannelRefreshModelsTask(channelID, c.GetString(ctxkey.Id), c.GetString(helper.TraceIDKey))
 	if err != nil {
 		logChannelAdminWarn(c, "refresh_models", stringField("channel_id", channelID), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
@@ -1183,70 +1189,16 @@ func RefreshChannelModels(c *gin.Context) {
 		})
 		return
 	}
-	baseURL := resolveChannelBaseURL(runtimeChannel.GetProtocol(), runtimeChannel.GetBaseURL())
-	fetchedRows, fetchTrace, err := fetchChannelModelsDetailed(runtimeChannel.Key, baseURL, "")
-	if err != nil {
-		logChannelAdminWarn(
-			c,
-			"refresh_models",
-			stringField("source", keySource),
-			stringField("channel_id", channelID),
-			stringField("models_url", fetchTrace.ModelsURL),
-			structuredPayloadField("request_payload", fetchTrace.RequestPayload),
-			structuredPayloadField("response_payload", fetchTrace.ResponsePayload),
-			stringField("reason", err.Error()),
-		)
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	logChannelAdminInfo(
-		c,
-		"refresh_models",
-		stringField("source", keySource),
-		stringField("channel_id", channelID),
-		stringField("models_url", fetchTrace.ModelsURL),
-		structuredPayloadField("request_payload", fetchTrace.RequestPayload),
-		structuredPayloadField("response_payload", fetchTrace.ResponsePayload),
-		intField("count", len(fetchedRows)),
-	)
-	if err := model.SyncFetchedChannelModelConfigsFromBaseWithDB(model.DB, channelID, runtimeChannel.GetModelConfigs(), fetchedRows); err != nil {
-		logChannelAdminWarn(c, "refresh_models_save", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "保存渠道模型失败",
-		})
-		return
-	}
-	if err := model.EnsureChannelTestModelWithDB(model.DB, channelID); err != nil {
-		logChannelAdminWarn(c, "refresh_models_test_model_sync", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "保存测试模型失败",
-		})
-		return
-	}
-	data, err := buildChannelModelListData(channelID, 0, defaultChannelModelPageSize, "")
-	if err != nil {
-		logChannelAdminWarn(c, "refresh_models_reload", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "读取渠道模型失败",
-		})
-		return
-	}
+	logChannelAdminInfo(c, "refresh_models", stringField("channel_id", channelID), stringField("task_id", taskRow.Id), stringField("status", taskRow.Status))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    data,
+		"data": gin.H{
+			"task": taskRow,
+		},
 		"meta": gin.H{
-			"source":     "channel",
-			"key_source": keySource,
 			"channel_id": channelID,
-			"models_url": fetchTrace.ModelsURL,
-			"count":      len(fetchedRows),
+			"reused":     reused,
 		},
 	})
 }
@@ -1281,7 +1233,7 @@ func TestChannelModels(c *gin.Context) {
 		})
 		return
 	}
-	runtimeChannel, keySource, err := loadChannelRuntimeState("", "", "", channelID, nil, nil, nil, strings.TrimSpace(req.TestModel))
+	tasks, createdCount, reusedCount, err := CreateChannelModelTestTasks(channelID, c.GetString(ctxkey.Id), strings.TrimSpace(req.TestModel), req.TargetModels, c.GetString(helper.TraceIDKey))
 	if err != nil {
 		logChannelAdminWarn(c, "test_models", stringField("channel_id", channelID), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
@@ -1290,43 +1242,17 @@ func TestChannelModels(c *gin.Context) {
 		})
 		return
 	}
-	testMode := channelModelTestModeBatch
-	if len(req.TargetModels) == 1 || strings.TrimSpace(req.TestModel) != "" {
-		testMode = channelModelTestModeSingle
-	}
-	results, err := runChannelModelTests(c, runtimeChannel, testMode, req.TestModel, req.TargetModels)
-	if err != nil {
-		logChannelAdminWarn(c, "test_models", stringField("source", keySource), stringField("channel_id", channelID), stringField("base_url", runtimeChannel.GetBaseURL()), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	if err := persistChannelModelTests(channelID, runtimeChannel.GetModelConfigs(), results); err != nil {
-		logChannelAdminWarn(c, "test_models_save", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "保存模型测试结果失败",
-		})
-		return
-	}
-	savedChannel, getErr := channelsvc.GetByID(channelID)
-	if getErr != nil {
-		logChannelAdminWarn(c, "test_models_reload", stringField("channel_id", channelID), stringField("reason", getErr.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "读取渠道测试结果失败",
-		})
-		return
-	}
-	results = savedChannel.Tests
-	logChannelAdminInfo(c, "test_models", stringField("source", keySource), stringField("channel_id", channelID), stringField("base_url", runtimeChannel.GetBaseURL()), intField("results", len(results)))
+	logChannelAdminInfo(c, "test_models", stringField("channel_id", channelID), intField("created", createdCount), intField("reused", reusedCount))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data": gin.H{
-			"results": results,
+			"tasks": tasks,
+		},
+		"meta": gin.H{
+			"channel_id": channelID,
+			"created":    createdCount,
+			"reused":     reusedCount,
 		},
 	})
 }

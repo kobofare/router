@@ -26,6 +26,33 @@ import {
 } from '../helpers/helper';
 import { renderNumber } from '../helpers/render';
 
+const normalizeAsyncTaskStatus = (value) => {
+  const normalized = (value || '').toString().trim().toLowerCase();
+  switch (normalized) {
+    case 'pending':
+    case 'running':
+    case 'succeeded':
+    case 'failed':
+    case 'canceled':
+      return normalized;
+    default:
+      return 'pending';
+  }
+};
+
+async function fetchTaskById(taskId) {
+  const normalizedTaskId = (taskId || '').toString().trim();
+  if (normalizedTaskId === '') {
+    throw new Error('fetch task failed');
+  }
+  const res = await API.get(`/api/v1/admin/tasks/${normalizedTaskId}`);
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch task failed');
+  }
+  return data || null;
+}
+
 function renderTimestamp(timestamp) {
   return <>{timestamp2string(timestamp)}</>;
 }
@@ -233,8 +260,28 @@ const ChannelsTable = () => {
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDisabling, setBatchDisabling] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState([]);
+  const [balanceRefreshTasks, setBalanceRefreshTasks] = useState({});
   const [protocolMap, setProtocolMap] = useState(() =>
     buildProtocolMap(getChannelProtocolOptions(), t)
+  );
+
+  const openChannelTasksPage = useCallback(
+    (channelId, extraParams = {}) => {
+      const normalizedChannelId = (channelId || '').toString().trim();
+      const query = new URLSearchParams();
+      if (normalizedChannelId !== '') {
+        query.set('channel_id', normalizedChannelId);
+      }
+      Object.entries(extraParams || {}).forEach(([key, value]) => {
+        const normalizedValue = (value || '').toString().trim();
+        if (normalizedValue !== '') {
+          query.set(key, normalizedValue);
+        }
+      });
+      const search = query.toString();
+      navigate(`/admin/task${search ? `?${search}` : ''}`);
+    },
+    [navigate]
   );
 
   const processChannelData = useCallback((channel) => {
@@ -315,6 +362,76 @@ const ChannelsTable = () => {
     const validIds = new Set(channels.map((channel) => channel.id));
     setSelectedChannelIds((prev) => prev.filter((id) => validIds.has(id)));
   }, [selectionMode, channels]);
+
+  useEffect(() => {
+    const taskEntries = Object.entries(balanceRefreshTasks || {});
+    if (taskEntries.length === 0) {
+      return undefined;
+    }
+    const hasActiveTasks = taskEntries.some(([, task]) =>
+      ['pending', 'running'].includes(normalizeAsyncTaskStatus(task?.status))
+    );
+    if (!hasActiveTasks) {
+      return undefined;
+    }
+    const timer = window.setInterval(async () => {
+      const updates = await Promise.all(
+        taskEntries.map(async ([channelId, task]) => {
+          const status = normalizeAsyncTaskStatus(task?.status);
+          if (!['pending', 'running'].includes(status)) {
+            return { channelId, task };
+          }
+          try {
+            const latestTask = await fetchTaskById(task.id);
+            return { channelId, task: latestTask || task };
+          } catch {
+            return { channelId, task };
+          }
+        })
+      );
+      const nextTaskMap = {};
+      const finishedTasks = [];
+      updates.forEach(({ channelId, task }) => {
+        const status = normalizeAsyncTaskStatus(task?.status);
+        if (['pending', 'running'].includes(status)) {
+          nextTaskMap[channelId] = task;
+        } else {
+          finishedTasks.push({ channelId, task });
+        }
+      });
+      setBalanceRefreshTasks(nextTaskMap);
+      if (finishedTasks.length === 0) {
+        return;
+      }
+      const succeeded = finishedTasks.filter(
+        ({ task }) => normalizeAsyncTaskStatus(task?.status) === 'succeeded'
+      );
+      if (succeeded.length > 0) {
+        setLoading(true);
+        await loadChannels({ page: activePage, keyword: searchKeyword });
+      }
+      finishedTasks.forEach(({ channelId, task }) => {
+        const targetChannel = channels.find((item) => item.id === channelId);
+        const channelName = getChannelDisplayName(targetChannel);
+        if (normalizeAsyncTaskStatus(task?.status) === 'succeeded') {
+          showSuccess(t('channel.messages.balance_update_success', { name: channelName }));
+          return;
+        }
+        showError(
+          task?.error_message ||
+            t('channel.messages.balance_update_failed', { name: channelName })
+        );
+      });
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [
+    activePage,
+    balanceRefreshTasks,
+    channels,
+    loadChannels,
+    searchKeyword,
+    t,
+  ]);
 
   const manageChannel = async (id, action, idx, value) => {
     const normalizedID = (id || '').toString().trim();
@@ -442,17 +559,31 @@ const ChannelsTable = () => {
   };
 
   const updateChannelBalance = async (id, name, idx) => {
-    const res = await API.get(`/api/v1/admin/channel/update_balance/${id}/`);
-    const { success, message, balance } = res.data;
-    if (success) {
-      let newChannels = [...channels];
-      let realIdx = idx;
-      newChannels[realIdx].balance = balance;
-      newChannels[realIdx].balance_updated_time = Date.now() / 1000;
-      setChannels(newChannels);
-      showSuccess(t('channel.messages.balance_update_success', { name }));
-    } else {
-      showError(message);
+    try {
+      const res = await API.get(`/api/v1/admin/channel/update_balance/${id}/`);
+      const { success, message, data, meta } = res.data || {};
+      if (!success) {
+        showError(message);
+        return;
+      }
+      const task = data?.task;
+      if (!task?.id) {
+        showError(t('channel.messages.balance_update_submit_failed'));
+        return;
+      }
+      setBalanceRefreshTasks((prev) => ({
+        ...prev,
+        [id]: task,
+      }));
+      showSuccess(
+        meta?.reused
+          ? t('channel.messages.balance_update_reused', { name })
+          : t('channel.messages.balance_update_submitted', { name })
+      );
+    } catch (error) {
+      showError(
+        error?.message || t('channel.messages.balance_update_submit_failed')
+      );
     }
   };
 
@@ -908,6 +1039,9 @@ const ChannelsTable = () => {
                     trigger={
                       <span
                         onClick={() => {
+                          if (balanceRefreshTasks[channel.id]) {
+                            return;
+                          }
                           updateChannelBalance(
                             channel.id,
                             getChannelDisplayName(channel),
@@ -916,7 +1050,14 @@ const ChannelsTable = () => {
                         }}
                         className='router-row-clickable'
                       >
-                        {renderBalance(channel.protocol, channel.balance, t)}
+                        {balanceRefreshTasks[channel.id] ? (
+                          <>
+                            <Icon loading name='spinner' />
+                            {renderBalance(channel.protocol, channel.balance, t)}
+                          </>
+                        ) : (
+                          renderBalance(channel.protocol, channel.balance, t)
+                        )}
                       </span>
                     }
                     content={t('channel.table.click_to_update')}
@@ -976,6 +1117,15 @@ const ChannelsTable = () => {
                       to={'/channel/edit/' + channel.id}
                     >
                       {t('channel.buttons.edit')}
+                    </Button>
+                    <Button
+                      className='router-inline-button'
+                      type='button'
+                      onClick={() => {
+                        openChannelTasksPage(channel.id);
+                      }}
+                    >
+                      {t('channel.buttons.tasks')}
                     </Button>
                     <Button
                       className='router-inline-button'

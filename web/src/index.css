@@ -514,6 +514,60 @@ code {
     font-size: 0.9em !important;
 }
 
+.router-detail-section {
+    margin-top: 18px;
+}
+
+.router-detail-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    color: rgba(0, 0, 0, 0.68);
+    margin-bottom: 8px;
+}
+
+.router-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.router-detail-item {
+    border: 1px solid rgba(34, 36, 38, 0.08);
+    border-radius: 10px;
+    background: #fafbfc;
+    padding: 10px 12px;
+}
+
+.router-detail-label {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: rgba(0, 0, 0, 0.58);
+    margin-bottom: 4px;
+}
+
+.router-detail-value,
+.router-detail-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #1f2937;
+}
+
+.router-detail-pre {
+    border: 1px solid rgba(34, 36, 38, 0.08);
+    border-radius: 10px;
+    background: #f7f9fb;
+    padding: 12px;
+    overflow-x: auto;
+}
+
 .ui.selection.dropdown.router-inline-dropdown,
 .ui.selection.dropdown.router-inline-dropdown > .text,
 .ui.selection.dropdown.router-inline-dropdown > .default.text,

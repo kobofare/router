@@ -128,7 +128,7 @@ func executeChannelModelTest(ctx context.Context, channel *model.Channel, option
 		return nil, false, err.Error(), 0, modelName, nil, 0, err
 	}
 	if options.PersistResults {
-		if err := persistChannelModelTests(channel.Id, channel.GetModelConfigs(), results); err != nil {
+		if err := persistChannelModelTests(channel.Id, results); err != nil {
 			modelName := testModel
 			if modelName == "" {
 				modelName = strings.TrimSpace(targetChannel.TestModel)

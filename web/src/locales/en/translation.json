@@ -10,6 +10,7 @@
     "user": "User",
     "dashboard": "Dashboard",
     "log": "Log",
+    "task": "Tasks",
     "setting": "Settings",
     "about": "About",
     "chat": "Chat",
@@ -91,8 +92,9 @@
       "enable": "Enable",
       "disable": "Disable",
       "edit": "Edit",
-      "copy": "Copy",
-      "add": "Add New Channel",
+    "copy": "Copy",
+    "tasks": "Tasks",
+    "add": "Add New Channel",
       "test_all": "Test All Channels",
       "refresh": "Refresh"
     },
@@ -102,6 +104,10 @@
       "batch_delete_select_required": "Please select at least one channel to delete.",
       "batch_delete_done": "Batch deletion finished: {{success}} succeeded, {{failed}} failed.",
       "balance_update_success": "Channel {{name}} balance updated successfully!",
+      "balance_update_submitted": "Balance refresh task submitted for channel {{name}}.",
+      "balance_update_reused": "An active balance refresh task already exists for channel {{name}}.",
+      "balance_update_failed": "Failed to refresh balance for channel {{name}}.",
+      "balance_update_submit_failed": "Failed to submit balance refresh task.",
       "all_balance_updated": "All enabled channel balances have been updated!",
       "operation_success": "Operation completed successfully!"
     },
@@ -296,14 +302,17 @@
         "hint": "Shows the models selected in step 2 and lets you choose the real upstream endpoint for each model. Text models default to /v1/responses and can be switched to /v1/chat/completions. Other model types use fixed endpoints. Supports both single-row and bulk testing.",
         "button": "Test Selected Models",
         "single": "Test",
+        "task_created": "{{count}} test tasks submitted, {{reused}} active tasks reused.",
         "selection": "Selected {{selected}} / {{total}}",
         "verify_required": "Please finish the current model tests before continuing.",
         "empty": "No testable models yet. Please select models in step 2 first.",
         "last_tested": "Last tested at: {{time}}",
-        "test_success": "Model tests completed",
+        "test_success": "Model test tasks submitted",
         "test_failed": "Model test failed",
         "stale": "Connection info, model selection, or endpoint changed. Please run model tests again.",
         "status": {
+          "pending": "Pending",
+          "running": "Running",
           "supported": "Supported",
           "unsupported": "Unsupported",
           "skipped": "Skipped"
@@ -645,6 +654,63 @@
       "query": "Action",
       "submit": "Query",
       "refresh": "Refresh"
+    }
+  },
+  "task": {
+    "title": "Tasks",
+    "empty": "No tasks yet",
+    "summary": "{{total}} tasks",
+  "filters": {
+    "type_all": "All types",
+    "status_all": "All statuses",
+    "channel_id": "Filter by channel ID",
+    "quick_all": "All"
+  },
+    "types": {
+      "channel_model_test": "Model Test",
+      "channel_refresh_models": "Refresh Models",
+      "channel_refresh_balance": "Refresh Balance"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "table": {
+      "type": "Type",
+      "channel": "Channel",
+      "model": "Model",
+      "status": "Status",
+      "created_at": "Created At",
+      "finished_at": "Finished At",
+      "message": "Result",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "refresh": "Refresh",
+      "model_tests": "Test Tasks",
+      "running": "Running",
+      "retry": "Retry",
+      "cancel": "Cancel"
+    },
+  "detail": {
+    "buttons": {
+      "back": "Back",
+      "channel": "View Channel"
+    },
+    "endpoint": "Endpoint",
+    "payload": "Task Payload",
+    "result": "Execution Result",
+      "error": "Error Message"
+    },
+    "messages": {
+      "load_failed": "Failed to load tasks",
+      "retry_success": "Task requeued",
+      "retry_failed": "Failed to retry task",
+      "cancel_success": "Task canceled",
+      "cancel_failed": "Failed to cancel task"
     }
   },
   "user": {

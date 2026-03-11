@@ -34,6 +34,8 @@ import Chat from './pages/Chat';
 import Dashboard from './pages/Dashboard';
 import Providers from './pages/Providers';
 import Group from './pages/Group';
+import Task from './pages/Task';
+import TaskDetail from './pages/Task/Detail';
 import AdminLayout from './layouts/AdminLayout';
 import UserLayout from './layouts/UserLayout';
 
@@ -393,6 +395,18 @@ function App() {
         <Route
           path='/admin/log'
           element={<Log />}
+        />
+        <Route
+          path='/admin/task'
+          element={<Task />}
+        />
+        <Route
+          path='/admin/task/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <TaskDetail />
+            </Suspense>
+          }
         />
         <Route
           path='/admin/setting'

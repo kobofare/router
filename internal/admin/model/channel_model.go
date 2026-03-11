@@ -425,6 +425,10 @@ func ListChannelModelRowsPageWithDB(db *gorm.DB, channelID string, page int, pag
 	return rows, total, nil
 }
 
+func ListChannelModelRowsByChannelIDWithDB(db *gorm.DB, channelID string) ([]ChannelModel, error) {
+	return listChannelModelRowsByChannelIDWithDB(db, channelID)
+}
+
 func buildChannelModelListQueryWithDB(db *gorm.DB, channelID string, keyword string) *gorm.DB {
 	query := db.Model(&ChannelModel{}).Where("channel_id = ?", strings.TrimSpace(channelID))
 	normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))

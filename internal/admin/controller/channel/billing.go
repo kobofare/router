@@ -12,6 +12,8 @@ import (
 
 	"github.com/yeying-community/router/common/client"
 	"github.com/yeying-community/router/common/config"
+	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/internal/admin/model"
 	"github.com/yeying-community/router/internal/admin/monitor"
@@ -416,8 +418,7 @@ func UpdateChannelBalance(c *gin.Context) {
 		})
 		return
 	}
-	var err error
-	channel, err := channelsvc.GetByID(id)
+	taskRow, reused, err := CreateChannelRefreshBalanceTask(id, c.GetString(ctxkey.Id), c.GetString(helper.TraceIDKey))
 	if err != nil {
 		logChannelAdminWarn(c, "refresh_balance", stringField("channel_id", id), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
@@ -426,20 +427,16 @@ func UpdateChannelBalance(c *gin.Context) {
 		})
 		return
 	}
-	balance, err := updateChannelBalance(channel)
-	if err != nil {
-		logChannelAdminWarn(c, "refresh_balance", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	logChannelAdminInfo(c, "refresh_balance", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), floatField("balance", balance))
+	logChannelAdminInfo(c, "refresh_balance", stringField("channel_id", taskRow.ChannelId), stringField("task_id", taskRow.Id), stringField("status", taskRow.Status))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"balance": balance,
+		"data": gin.H{
+			"task": taskRow,
+		},
+		"meta": gin.H{
+			"reused": reused,
+		},
 	})
 	return
 }
