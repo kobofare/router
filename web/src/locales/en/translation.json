@@ -255,7 +255,7 @@
         "cancel": "Cancel",
         "save": "Save",
         "submit": "Submit",
-        "edit_basic": "Edit Basic Info",
+        "edit_basic": "Edit",
         "sync_models": "Sync Models",
         "previous_step": "Previous",
         "next_step": "Next",
@@ -486,8 +486,8 @@
       "model_search_placeholder": "Search model or channel",
       "supported_models": "Supported Models",
       "empty_models": "No supported models",
-      "bound_channels": "Bound Channels",
-      "empty_channels": "No bound channels"
+      "bound_channels": "Related Channels",
+      "empty_channels": "No related channels"
     },
     "edit": {
       "model_configs": "Group Model Mappings",

@@ -299,6 +299,27 @@ code {
     border-radius: 8px !important;
 }
 
+.ui.selection.dropdown.router-section-dropdown.router-readonly-dropdown {
+    height: auto !important;
+    min-height: 38px !important;
+    padding: 0.24rem 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 0 !important;
+}
+
+.ui.selection.dropdown.router-section-dropdown.router-readonly-dropdown > .label {
+    cursor: pointer !important;
+}
+
+.router-readonly-dropdown-empty {
+    color: rgba(0, 0, 0, 0.45);
+    padding: 0.38rem 0.12rem;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
 .ui.form .field .ui.input.router-section-input input,
 .ui.input.router-section-input > input {
     font-size: 14px !important;

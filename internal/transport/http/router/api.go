@@ -262,6 +262,7 @@ func SetApiRouter(engine *gin.Engine) {
 		adminGroupRoute := adminRouter.Group("/group")
 		adminGroupRoute.Use(middleware.AdminAuth())
 		{
+			adminGroupRoute.GET("/:id", group.GetGroup)
 			adminGroupRoute.POST("/", group.CreateGroup)
 			adminGroupRoute.PUT("/", group.UpdateGroup)
 			adminGroupRoute.DELETE("/:id", group.DeleteGroup)

@@ -65,6 +65,7 @@ const LogDetail = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
   const { id } = useParams();
   const isAdminPage = location.pathname.startsWith('/admin/');
   const [loading, setLoading] = useState(true);
@@ -157,6 +158,7 @@ const LogDetail = () => {
                           className='router-tag'
                           as={Link}
                           to={`/channel/detail/${log.channel}`}
+                          state={{ from: currentPagePath }}
                         >
                           {log?.channel_name || log?.channel}
                         </Label>

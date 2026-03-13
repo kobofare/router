@@ -139,6 +139,7 @@ const TaskDetail = () => {
         ? 'admin'
         : 'user';
   const isUserScope = scope === 'user';
+  const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
   const [loading, setLoading] = useState(true);
   const [task, setTask] = useState(null);
 
@@ -308,7 +309,13 @@ const TaskDetail = () => {
             <Button
               className='router-page-button'
               disabled={!channelDetailPath}
-              onClick={() => navigate(channelDetailPath)}
+              onClick={() =>
+                navigate(channelDetailPath, {
+                  state: {
+                    from: currentPagePath,
+                  },
+                })
+              }
             >
               {t('task.detail.buttons.channel')}
             </Button>

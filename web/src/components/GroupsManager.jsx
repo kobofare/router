@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Form, Icon, Label, Modal, Table } from 'semantic-ui-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 
 const MODE_LIST = 'list';
@@ -131,8 +132,10 @@ const channelStatusColor = (status) => {
   return 'grey';
 };
 
-const GroupsManager = () => {
+const GroupsManager = ({ detailGroupId = '' }) => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mode, setMode] = useState(MODE_LIST);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -157,6 +160,14 @@ const GroupsManager = () => {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const normalizedDetailGroupId = (detailGroupId || '').toString().trim();
+  const isDetailRoute = normalizedDetailGroupId !== '';
+
+  const currentPagePath = useMemo(
+    () => `${location.pathname}${location.search}${location.hash}`,
+    [location.hash, location.pathname, location.search]
+  );
 
   const formModelChannelLookup = useMemo(
     () => buildChannelLookup(formModelChannels),
@@ -206,8 +217,11 @@ const GroupsManager = () => {
   }, [fetchAllGroups]);
 
   useEffect(() => {
+    if (isDetailRoute) {
+      return;
+    }
     loadCatalog().then();
-  }, [loadCatalog]);
+  }, [isDetailRoute, loadCatalog]);
 
   const visibleRows = useMemo(() => {
     const keyword = typeof searchKeyword === 'string' ? searchKeyword.trim().toLowerCase() : '';
@@ -363,6 +377,41 @@ const GroupsManager = () => {
     }
   }, [t]);
 
+  const loadGroupDetail = useCallback(
+    async (groupID) => {
+      const normalizedGroupID = (groupID || '').toString().trim();
+      if (normalizedGroupID === '') {
+        navigate('/admin/group', { replace: true });
+        return;
+      }
+      setLoading(true);
+      try {
+        const encodedID = encodeURIComponent(normalizedGroupID);
+        const res = await API.get(`/api/v1/admin/group/${encodedID}`);
+        const { success, message, data } = res.data || {};
+        if (!success || !data?.id) {
+          showError(
+            message || `${t('group_manage.messages.load_failed')}: ${normalizedGroupID}`,
+          );
+          navigate('/admin/group', { replace: true });
+          return;
+        }
+        setMode(MODE_VIEW);
+        setActiveGroup(data);
+        resetFormState();
+        resetDetailState();
+        loadViewChannelRows(data.id || '').then();
+        loadViewModelRows(data.id || '').then();
+      } catch (error) {
+        showError(error?.message || error);
+        navigate('/admin/group', { replace: true });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadViewChannelRows, loadViewModelRows, navigate, t]
+  );
+
   const resetToList = () => {
     setMode(MODE_LIST);
     setActiveGroup(null);
@@ -372,6 +421,10 @@ const GroupsManager = () => {
 
   const backToList = () => {
     if (submitting) return;
+    if (isDetailRoute) {
+      navigate('/admin/group');
+      return;
+    }
     resetToList();
   };
 
@@ -384,8 +437,15 @@ const GroupsManager = () => {
     fetchCreateChannelOptions().then();
   };
 
-  const openViewPanel = (row) => {
+  const openViewPanel = (row, options = {}) => {
     if (!row || submitting) return;
+    const { syncRoute = true, replace = false } = options;
+    if (syncRoute) {
+      navigate(`/admin/group/detail/${encodeURIComponent(row.id || '')}`, {
+        replace,
+      });
+      return;
+    }
     setMode(MODE_VIEW);
     setActiveGroup(row);
     resetFormState();
@@ -406,6 +466,21 @@ const GroupsManager = () => {
     setEditModelSearchKeyword('');
     loadEditModelConfigs(row.id || '').then();
   };
+
+  const openChannelDetailFromCurrentPage = useCallback(
+    (channelID) => {
+      const normalizedChannelID = (channelID || '').toString().trim();
+      if (normalizedChannelID === '') {
+        return;
+      }
+      navigate(`/channel/detail/${normalizedChannelID}`, {
+        state: {
+          from: currentPagePath,
+        },
+      });
+    },
+    [currentPagePath, navigate]
+  );
 
   const submitCreate = async () => {
     const name = (form.name || '').trim();
@@ -582,29 +657,6 @@ const GroupsManager = () => {
       </Label>
     );
 
-  const renderChannelStatus = (status) => {
-    const normalized = Number(status || 0);
-    if (normalized === 1) {
-      return (
-        <Label basic color='green' className='router-tag'>
-          {t('channel.table.status_enabled')}
-        </Label>
-      );
-    }
-    if (normalized === 4) {
-      return (
-        <Label basic color='blue' className='router-tag'>
-          {t('channel.table.status_creating')}
-        </Label>
-      );
-    }
-    return (
-      <Label basic color='grey' className='router-tag'>
-        {t('channel.table.status_disabled')}
-      </Label>
-    );
-  };
-
   const renderList = () => (
     <>
       <div
@@ -725,44 +777,35 @@ const GroupsManager = () => {
     </>
   );
 
-  const renderBoundChannelsTable = (items, loadingState) => (
-    <div className='router-block-top-sm'>
-      <div className='router-toolbar-title router-block-gap-xs'>
-        {t('group_manage.detail.bound_channels')}
+  const renderBoundChannelsField = (items, loadingState) => (
+    <Form.Field className='router-block-top-sm'>
+      <label>{t('group_manage.detail.bound_channels')}</label>
+      <div className='ui fluid multiple selection dropdown router-section-dropdown router-readonly-dropdown'>
+        {loadingState ? (
+          <div className='router-readonly-dropdown-empty'>
+            {t('group_manage.messages.loading')}
+          </div>
+        ) : items.length === 0 ? (
+          <div className='router-readonly-dropdown-empty'>
+            {t('group_manage.detail.empty_channels')}
+          </div>
+        ) : (
+          items.map((item) => (
+            <Label
+              as='a'
+              key={item.id}
+              className='router-tag'
+              onClick={(event) => {
+                event.preventDefault();
+                openChannelDetailFromCurrentPage(item.id);
+              }}
+            >
+              {formatChannelDisplayName(item)}
+            </Label>
+          ))
+        )}
       </div>
-      <Table compact celled className='router-detail-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>{t('channel.table.id')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('channel.table.type')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('channel.table.status')}</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {loadingState ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan={3} textAlign='center'>
-                {t('group_manage.messages.loading')}
-              </Table.Cell>
-            </Table.Row>
-          ) : items.length === 0 ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan={3} textAlign='center'>
-                {t('group_manage.detail.empty_channels')}
-              </Table.Cell>
-            </Table.Row>
-          ) : (
-            items.map((item) => (
-              <Table.Row key={item.id}>
-                <Table.Cell>{item.name || '-'}</Table.Cell>
-                <Table.Cell>{item.protocol || '-'}</Table.Cell>
-                <Table.Cell>{renderChannelStatus(item.status)}</Table.Cell>
-              </Table.Row>
-            ))
-          )}
-        </Table.Body>
-      </Table>
-    </div>
+    </Form.Field>
   );
 
   const renderModelSummaryTable = (items, loadingState) => {
@@ -830,10 +873,15 @@ const GroupsManager = () => {
                       <div className='router-tag-group'>
                         {item.channels.map((channel) => (
                           <Label
+                            as='a'
                             key={`${item.model}-${channel.id}`}
                             className='router-tag'
                             basic
                             color={channelStatusColor(channel.status)}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              openChannelDetailFromCurrentPage(channel.id);
+                            }}
                           >
                             {formatChannelDisplayName(channel)}
                             {` · ${channel.protocol || '-'}`}
@@ -1134,8 +1182,8 @@ const GroupsManager = () => {
             />
           </Form.Group>
         </Form>
+        {renderBoundChannelsField(detailChannelRows, detailChannelLoading)}
         {renderModelSummaryTable(detailModelRows, detailModelLoading)}
-        {renderBoundChannelsTable(detailChannelRows, detailChannelLoading)}
       </div>
     );
   };
@@ -1222,6 +1270,28 @@ const GroupsManager = () => {
       {renderEditModelConfigTable()}
     </div>
   );
+
+  useEffect(() => {
+    if (!isDetailRoute) {
+      if (mode === MODE_VIEW && activeGroup) {
+        resetToList();
+      }
+      return;
+    }
+    if (
+      mode === MODE_VIEW &&
+      (activeGroup?.id || '').toString().trim() === normalizedDetailGroupId
+    ) {
+      return;
+    }
+    loadGroupDetail(normalizedDetailGroupId).then();
+  }, [
+    activeGroup,
+    isDetailRoute,
+    loadGroupDetail,
+    mode,
+    normalizedDetailGroupId,
+  ]);
 
   const renderCreate = () => (
     <div>

@@ -10,7 +10,7 @@ import {
   Popup,
   Table,
 } from 'semantic-ui-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   API,
   showError,
@@ -249,6 +249,7 @@ function readStoredCreatingStep(channelId) {
 
 const ChannelsTable = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const navigate = useNavigate();
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +261,7 @@ const ChannelsTable = () => {
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDisabling, setBatchDisabling] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState([]);
+  const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
   const [balanceRefreshTasks, setBalanceRefreshTasks] = useState({});
   const [protocolMap, setProtocolMap] = useState(() =>
     buildProtocolMap(getChannelProtocolOptions(), t)
@@ -708,7 +710,11 @@ const ChannelsTable = () => {
       );
       return;
     }
-    navigate(`/channel/detail/${channel.id}`);
+    navigate(`/channel/detail/${channel.id}`, {
+      state: {
+        from: currentPagePath,
+      },
+    });
   };
 
   const stopRowClick = (event) => {

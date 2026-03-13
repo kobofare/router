@@ -255,7 +255,7 @@
         "cancel": "取消",
         "save": "保存",
         "submit": "提交",
-        "edit_basic": "编辑基础信息",
+        "edit_basic": "编辑",
         "sync_models": "模型同步",
         "previous_step": "上一步",
         "next_step": "下一步",
@@ -486,8 +486,8 @@
       "model_search_placeholder": "搜索模型或渠道",
       "supported_models": "支持模型",
       "empty_models": "暂无支持模型",
-      "bound_channels": "已绑定渠道",
-      "empty_channels": "暂无绑定渠道"
+      "bound_channels": "关联渠道",
+      "empty_channels": "暂无关联渠道"
     },
     "edit": {
       "model_configs": "分组模型映射",

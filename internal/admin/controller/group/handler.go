@@ -97,6 +97,39 @@ func GetGroups(c *gin.Context) {
 	})
 }
 
+// GetGroup godoc
+// @Summary Get group detail by ID (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/group/{id} [get]
+func GetGroup(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "分组 ID 不能为空",
+		})
+		return
+	}
+	row, err := groupsvc.Get(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    row,
+	})
+}
+
 // CreateGroup godoc
 // @Summary Create group (admin)
 // @Tags admin

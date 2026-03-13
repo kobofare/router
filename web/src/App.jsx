@@ -83,7 +83,11 @@ function PrefixRedirect({ from, to }) {
     : '';
   const targetPath = `${to}${suffix}`;
   return (
-    <Navigate to={`${targetPath}${location.search}${location.hash}`} replace />
+    <Navigate
+      to={`${targetPath}${location.search}${location.hash}`}
+      state={location.state}
+      replace
+    />
   );
 }
 
@@ -95,6 +99,7 @@ function ChannelEditRedirect() {
   return (
     <Navigate
       to={`/admin/channel/detail/${suffix}${location.search}${location.hash}`}
+      state={location.state}
       replace
     />
   );
@@ -109,6 +114,7 @@ function UserEditRedirect() {
   return (
     <Navigate
       to={`${targetPath}${location.search}${location.hash}`}
+      state={location.state}
       replace
     />
   );
@@ -333,6 +339,7 @@ function App() {
         />
         <Route path='/admin/provider' element={<Providers />} />
         <Route path='/admin/group' element={<Group />} />
+        <Route path='/admin/group/detail/:id' element={<Group />} />
         <Route path='/admin/redemption' element={<Redemption />} />
         <Route
           path='/admin/redemption/edit/:id'
@@ -435,6 +442,10 @@ function App() {
       <Route
         path='/provider/*'
         element={<PrefixRedirect from='/provider' to='/admin/provider' />}
+      />
+      <Route
+        path='/group/*'
+        element={<PrefixRedirect from='/group' to='/admin/group' />}
       />
       <Route
         path='/redemption/*'

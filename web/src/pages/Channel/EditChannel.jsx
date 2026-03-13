@@ -1057,6 +1057,14 @@ const EditChannel = () => {
   const isDetailMode =
     hasChannelID && location.pathname.includes('/channel/detail/');
   const isCreateMode = !hasChannelID;
+  const returnPath = useMemo(() => {
+    const from = location.state?.from;
+    if (typeof from !== 'string') {
+      return '';
+    }
+    const normalized = from.trim();
+    return normalized.startsWith('/') ? normalized : '';
+  }, [location.state]);
   const copyFromId = useMemo(() => {
     if (hasChannelID) return '';
     const query = new URLSearchParams(location.search);
@@ -1079,6 +1087,10 @@ const EditChannel = () => {
   );
   const [channelKeySet, setChannelKeySet] = useState(false);
   const handleCancel = () => {
+    if (isDetailMode && returnPath !== '') {
+      navigate(-1);
+      return;
+    }
     navigate('/admin/channel');
   };
   const openChannelTaskView = useCallback(
