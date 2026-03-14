@@ -91,11 +91,14 @@ type channelTestListData struct {
 }
 
 type channelModelTestExecution struct {
-	LatencyMs     int64
-	Message       string
-	InputPayload  string
-	OutputPayload string
-	Err           error
+	LatencyMs          int64
+	Message            string
+	InputPayload       string
+	OutputPayload      string
+	ResponseStatusCode int
+	ResponseHeader     http.Header
+	ResponseBody       []byte
+	Err                error
 }
 
 const (
@@ -237,7 +240,10 @@ func fetchChannelModelsDetailed(key, baseURL, providerFilter string) ([]model.Ch
 
 	resp, err := client.HTTPClient.Do(httpReq)
 	if err != nil {
-		return nil, trace, fmt.Errorf("请求模型列表失败")
+		trace.ResponsePayload = marshalJSONForLog(map[string]any{
+			"error": err.Error(),
+		})
+		return nil, trace, fmt.Errorf("请求模型列表失败: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -602,6 +608,12 @@ func runChannelModelTests(c *gin.Context, channel *model.Channel, mode string, r
 		if strings.TrimSpace(testResult.ChannelId) == "" {
 			testResult.ChannelId = channelID
 		}
+		persistChannelTestArtifactForExecution(
+			context.Background(),
+			fmt.Sprintf("manual-%s-%s", sanitizeArtifactFilenamePart(channelID), sanitizeArtifactFilenamePart(testResult.Model)),
+			&testResult,
+			&execution,
+		)
 		logChannelModelTestExecution(c, channelID, testResult, execution)
 		results = append(results, testResult)
 	}
@@ -818,6 +830,9 @@ func executeChannelTextModelTest(ctx context.Context, channel *model.Channel, pa
 		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 		return execution
 	}
+	execution.ResponseStatusCode = resp.StatusCode
+	execution.ResponseHeader = resp.Header.Clone()
+	execution.ResponseBody = append([]byte(nil), body...)
 	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		execution.Err = parseChannelUpstreamError(resp.StatusCode, body)
@@ -894,6 +909,9 @@ func executeChannelImageResponsesModelTest(ctx context.Context, channel *model.C
 		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 		return execution
 	}
+	execution.ResponseStatusCode = resp.StatusCode
+	execution.ResponseHeader = resp.Header.Clone()
+	execution.ResponseBody = append([]byte(nil), body...)
 	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		execution.Err = parseChannelUpstreamError(resp.StatusCode, body)
@@ -972,6 +990,9 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 		return execution
 	}
+	execution.ResponseStatusCode = resp.StatusCode
+	execution.ResponseHeader = resp.Header.Clone()
+	execution.ResponseBody = append([]byte(nil), body...)
 	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		execution.Err = parseChannelUpstreamError(resp.StatusCode, body)
@@ -1059,6 +1080,9 @@ func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channe
 		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, nil)
 		return execution
 	}
+	execution.ResponseStatusCode = resp.StatusCode
+	execution.ResponseHeader = resp.Header.Clone()
+	execution.ResponseBody = append([]byte(nil), body...)
 	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		execution.Err = parseChannelUpstreamError(resp.StatusCode, body)
@@ -1137,6 +1161,9 @@ func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, m
 		execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 		return execution
 	}
+	execution.ResponseStatusCode = resp.StatusCode
+	execution.ResponseHeader = resp.Header.Clone()
+	execution.ResponseBody = append([]byte(nil), body...)
 	execution.OutputPayload = buildHTTPResponsePayloadForLog(resp.StatusCode, resp.Header, body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		execution.Err = parseChannelUpstreamError(resp.StatusCode, body)

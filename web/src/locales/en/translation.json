@@ -240,6 +240,8 @@
       "group_addition": "You can add a group in Group Management:",
       "models": "Models",
       "models_placeholder": "Please select models supported by this channel",
+      "detail_basic_title": "Basic Info",
+      "detail_models_title": "Model Selection",
       "system_prompt": "System Prompt",
       "system_prompt_placeholder": "Optional, used to force set system prompt. Use with custom model & model mapping. First create a unique custom model name above, then map it to a natively supported model",
       "proxy_url": "Address",
@@ -251,15 +253,18 @@
       "buttons": {
         "back": "Back",
         "cancel": "Cancel",
-        "submit": "Submit",
+        "save": "Confirm",
+        "submit": "Confirm",
+        "edit_basic": "Edit",
+        "sync_models": "Sync Models",
         "previous_step": "Previous",
         "next_step": "Next",
         "fetch_models": "Fetch Models",
         "verify_and_fetch_models": "Verify & Fetch Models",
-        "select_all": "Select All",
+        "select_all": "Enable All",
         "fill_models": "Fill Related Models",
         "fill_all": "Fill All Models",
-        "clear": "Clear All Models",
+        "clear": "Disable All",
         "add_custom": "Add",
         "custom_placeholder": "Enter custom model name"
       },
@@ -278,10 +283,10 @@
         },
         "filters": {
           "all": "All Models",
-          "unassigned": "Unassigned Only",
-          "manual": "Manual Assignment Only"
+          "enabled": "Enabled",
+          "disabled": "Disabled"
         },
-        "assignment_summary": "Assigned {{assigned}}, unassigned {{unassigned}}, auto-importable {{auto}}, manual {{manual}}",
+        "assignment_summary": "Assigned {{assigned}}, unassigned {{unassigned}}",
         "auto_assign": "Auto Import",
         "auto_assign_empty": "No models can be auto-imported right now",
         "auto_assign_success": "Imported {{success}} models, failed {{failed}}",
@@ -350,6 +355,8 @@
         "last_tested": "Last tested at: {{time}}",
         "test_success": "Model test tasks submitted",
         "test_failed": "Model test failed",
+        "download_failed": "Failed to download the test artifact",
+        "download_unavailable": "No downloadable artifact is available for this test result",
         "stale": "Connection info, model selection, or endpoint changed. Please run model tests again.",
         "untested": "The current endpoint has not been tested yet.",
         "status": {
@@ -473,14 +480,15 @@
       "bind_channels_title": "Configure Channels for Group {{id}}"
     },
     "detail": {
+      "title": "Group Detail",
       "model": "Model",
       "channel_count": "Channel Count",
       "model_channels": "Channels",
       "model_search_placeholder": "Search model or channel",
       "supported_models": "Supported Models",
       "empty_models": "No supported models",
-      "bound_channels": "Bound Channels",
-      "empty_channels": "No bound channels"
+      "bound_channels": "Related Channels",
+      "empty_channels": "No related channels"
     },
     "edit": {
       "model_configs": "Group Model Mappings",
@@ -546,6 +554,12 @@
       "add": "Add New Token",
       "refresh": "Refresh"
     },
+    "detail": {
+      "title": "Token Detail",
+      "buttons": {
+        "back": "Back"
+      }
+    },
     "edit": {
       "title_edit": "Update Token Information",
       "title_create": "Create New Token",
@@ -574,7 +588,7 @@
         "expire_1_minute": "Expire in 1 Minute",
         "unlimited_quota": "Set Unlimited Quota",
         "cancel_unlimited": "Cancel Unlimited Quota",
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       },
       "messages": {
@@ -606,6 +620,7 @@
   "common": {
     "loading": "Loading...",
     "no_data": "No data",
+    "download": "Download",
     "quota": {
       "display": "Equivalent: ${{amount}}",
       "display_short": "${{amount}}",
@@ -652,12 +667,14 @@
       "count": "Generate Count",
       "count_placeholder": "Please enter number of codes to generate",
       "buttons": {
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       }
     },
     "detail": {
+      "title": "Redemption Detail",
       "code": "Code",
+      "redeemed_by": "Redeemed By",
       "buttons": {
         "back": "Back"
       }
@@ -714,6 +731,35 @@
       "query": "Action",
       "submit": "Query",
       "refresh": "Refresh"
+    },
+    "messages": {
+      "load_failed": "Failed to load log detail"
+    },
+    "detail": {
+      "title": "Log Detail",
+      "buttons": {
+        "back": "Back"
+      },
+      "sections": {
+        "basic": "Basic Info",
+        "content": "Detail Content"
+      },
+      "fields": {
+        "id": "Log ID",
+        "time": "Time",
+        "type": "Type",
+        "channel": "Channel",
+        "model": "Model",
+        "username": "Username",
+        "token_name": "Token Name",
+        "trace_id": "Trace ID",
+        "prompt_tokens": "Prompt Tokens",
+        "completion_tokens": "Completion Tokens",
+        "quota": "Quota",
+        "elapsed_time": "Elapsed Time",
+        "is_stream": "Stream Output",
+        "system_prompt_reset": "System Prompt Reset"
+      }
     }
   },
   "task": {
@@ -767,6 +813,7 @@
       "cancel": "Cancel"
     },
     "detail": {
+      "title": "Task Detail",
       "buttons": {
         "back": "Back",
         "channel": "View Channel"
@@ -790,6 +837,12 @@
   },
   "user": {
     "title": "User Management",
+    "detail": {
+      "title": "User Detail",
+      "buttons": {
+        "back": "Back"
+      }
+    },
     "edit": {
       "title": "Update User Information",
       "username": "Username",
@@ -807,10 +860,10 @@
       "github_id_placeholder": "Read-only, user must link through personal settings page, cannot be modified directly",
       "wechat_id": "Linked WeChat Account",
       "wechat_id_placeholder": "Read-only, user must link through personal settings page, cannot be modified directly",
-      "email": "Linked Email Account",
-      "email_placeholder": "Read-only, user must link through personal settings page, cannot be modified directly",
+      "email": "Email",
+      "email_placeholder": "Not set",
       "buttons": {
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       }
     },
@@ -821,6 +874,7 @@
       "update_success": "User information updated successfully!",
       "create_success": "User account created successfully!",
       "operation_success": "Operation completed successfully!",
+      "operation_failed": "Operation failed",
       "wallet_copy_success": "Wallet address copied",
       "wallet_copy_failed": "Copy failed, please copy manually"
     },
@@ -863,6 +917,7 @@
       "delete_user": "Delete User",
       "enable": "Enable",
       "disable": "Disable",
+      "detail": "Detail",
       "edit": "Edit",
       "promote": "Promote",
       "demote": "Demote"

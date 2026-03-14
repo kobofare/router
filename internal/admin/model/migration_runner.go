@@ -41,6 +41,54 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return runMainBaselineMigrationWithDB(tx)
 			},
 		},
+		{
+			Version:     "202603131030_openai_gpt51_provider_catalog",
+			Description: "sync default provider catalog to add openai gpt-5.1 and gpt-5.1-codex pricing rows",
+			Up: func(tx *gorm.DB) error {
+				return syncDefaultProviderCatalogWithDB(tx)
+			},
+		},
+		{
+			Version:     "202603131600_channel_test_artifacts",
+			Description: "add persisted artifact metadata columns for channel model test downloads",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelTest{})
+			},
+		},
+		{
+			Version:     "202603131830_redemption_redeemed_by_user",
+			Description: "add redeemed_by_user_id column for redemption detail tracking",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Redemption{})
+			},
+		},
+		{
+			Version:     "202603131930_fix_channel_test_task_status",
+			Description: "mark unsupported channel model test tasks as failed",
+			Up: func(tx *gorm.DB) error {
+				rows := make([]AsyncTask, 0)
+				if err := tx.
+					Where("type = ? AND status = ?", AsyncTaskTypeChannelModelTest, AsyncTaskStatusSucceeded).
+					Find(&rows).Error; err != nil {
+					return err
+				}
+				for _, row := range rows {
+					status, message, ok := ResolveAsyncTaskBusinessOutcome(row.Type, row.Result)
+					if !ok || status == AsyncTaskStatusSucceeded {
+						continue
+					}
+					if err := tx.Model(&AsyncTask{}).
+						Where("id = ?", row.Id).
+						Updates(map[string]any{
+							"status":        status,
+							"error_message": strings.TrimSpace(message),
+						}).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

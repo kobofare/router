@@ -7,7 +7,7 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import NotFound from './pages/NotFound';
 import Setting from './pages/Setting';
-import EditUser from './pages/User/EditUser';
+import UserDetail from './pages/User/EditUser';
 import AddUser from './pages/User/AddUser';
 import {
   API,
@@ -30,6 +30,7 @@ import EditRedemption from './pages/Redemption/EditRedemption';
 import RedemptionDetail from './pages/Redemption/RedemptionDetail';
 import TopUp from './pages/TopUp';
 import Log from './pages/Log';
+import LogDetail from './pages/Log/Detail';
 import Chat from './pages/Chat';
 import Dashboard from './pages/Dashboard';
 import Providers from './pages/Providers';
@@ -82,7 +83,74 @@ function PrefixRedirect({ from, to }) {
     : '';
   const targetPath = `${to}${suffix}`;
   return (
-    <Navigate to={`${targetPath}${location.search}${location.hash}`} replace />
+    <Navigate
+      to={`${targetPath}${location.search}${location.hash}`}
+      state={location.state}
+      replace
+    />
+  );
+}
+
+function ChannelEditRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.startsWith('/admin/channel/edit/')
+    ? location.pathname.slice('/admin/channel/edit/'.length)
+    : '';
+  return (
+    <Navigate
+      to={`/admin/channel/detail/${suffix}${location.search}${location.hash}`}
+      state={location.state}
+      replace
+    />
+  );
+}
+
+function UserEditRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.startsWith('/admin/user/edit/')
+    ? location.pathname.slice('/admin/user/edit/'.length)
+    : '';
+  const targetPath = suffix ? `/admin/user/detail/${suffix}` : '/admin/user';
+  return (
+    <Navigate
+      to={`${targetPath}${location.search}${location.hash}`}
+      state={location.state}
+      replace
+    />
+  );
+}
+
+function RedemptionEditRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.startsWith('/admin/redemption/edit/')
+    ? location.pathname.slice('/admin/redemption/edit/'.length)
+    : '';
+  const nextSearchParams = new URLSearchParams(location.search);
+  nextSearchParams.set('edit', '1');
+  const search = nextSearchParams.toString();
+  return (
+    <Navigate
+      to={`/admin/redemption/${suffix}${search ? `?${search}` : ''}${location.hash}`}
+      state={location.state}
+      replace
+    />
+  );
+}
+
+function TokenEditRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.startsWith('/workspace/token/edit/')
+    ? location.pathname.slice('/workspace/token/edit/'.length)
+    : '';
+  const nextSearchParams = new URLSearchParams(location.search);
+  nextSearchParams.set('edit', '1');
+  const search = nextSearchParams.toString();
+  return (
+    <Navigate
+      to={`/workspace/token/${suffix}${search ? `?${search}` : ''}${location.hash}`}
+      state={location.state}
+      replace
+    />
   );
 }
 
@@ -217,10 +285,18 @@ function App() {
       >
         <Route path='/workspace/token' element={<Token />} />
         <Route
-          path='/workspace/token/edit/:id'
+          path='/workspace/token/:id'
           element={
             <Suspense fallback={<Loading />}>
               <EditToken />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/workspace/token/edit/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <TokenEditRedirect />
             </Suspense>
           }
         />
@@ -241,6 +317,14 @@ function App() {
           }
         />
         <Route path='/workspace/log' element={<Log />} />
+        <Route
+          path='/workspace/log/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <LogDetail />
+            </Suspense>
+          }
+        />
         <Route path='/workspace/task' element={<Task />} />
         <Route
           path='/workspace/task/:id'
@@ -275,7 +359,7 @@ function App() {
           path='/admin/channel/edit/:id'
           element={
             <Suspense fallback={<Loading />}>
-              <EditChannel />
+              <ChannelEditRedirect />
             </Suspense>
           }
         />
@@ -297,12 +381,13 @@ function App() {
         />
         <Route path='/admin/provider' element={<Providers />} />
         <Route path='/admin/group' element={<Group />} />
+        <Route path='/admin/group/detail/:id' element={<Group />} />
         <Route path='/admin/redemption' element={<Redemption />} />
         <Route
           path='/admin/redemption/edit/:id'
           element={
             <Suspense fallback={<Loading />}>
-              <EditRedemption />
+              <RedemptionEditRedirect />
             </Suspense>
           }
         />
@@ -324,10 +409,10 @@ function App() {
         />
         <Route path='/admin/user' element={<User />} />
         <Route
-          path='/admin/user/edit/:id'
+          path='/admin/user/detail/:id'
           element={
             <Suspense fallback={<Loading />}>
-              <EditUser />
+              <UserDetail />
             </Suspense>
           }
         />
@@ -335,7 +420,15 @@ function App() {
           path='/admin/user/edit'
           element={
             <Suspense fallback={<Loading />}>
-              <EditUser />
+              <UserEditRedirect />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/user/edit/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <UserEditRedirect />
             </Suspense>
           }
         />
@@ -349,6 +442,14 @@ function App() {
         />
         <Route path='/admin/dashboard' element={<Dashboard />} />
         <Route path='/admin/log' element={<Log />} />
+        <Route
+          path='/admin/log/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <LogDetail />
+            </Suspense>
+          }
+        />
         <Route path='/admin/task' element={<Task />} />
         <Route
           path='/admin/task/:id'
@@ -383,6 +484,10 @@ function App() {
       <Route
         path='/provider/*'
         element={<PrefixRedirect from='/provider' to='/admin/provider' />}
+      />
+      <Route
+        path='/group/*'
+        element={<PrefixRedirect from='/group' to='/admin/group' />}
       />
       <Route
         path='/redemption/*'

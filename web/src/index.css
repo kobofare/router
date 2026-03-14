@@ -285,12 +285,39 @@ code {
     padding: 0.8rem 0.96rem !important;
 }
 
+.ui.selection.dropdown.router-detail-filter-dropdown > .text,
+.ui.selection.dropdown.router-detail-filter-dropdown > .default.text,
+.ui.selection.dropdown.router-detail-filter-dropdown .menu > .item {
+    font-weight: 400 !important;
+}
+
 .ui.multiple.selection.dropdown.router-section-dropdown > .label {
     font-size: 12px !important;
     font-weight: 500 !important;
     margin: 0.22rem 0.36rem 0.22rem 0 !important;
     padding: 0.46em 0.7em !important;
     border-radius: 8px !important;
+}
+
+.ui.selection.dropdown.router-section-dropdown.router-readonly-dropdown {
+    height: auto !important;
+    min-height: 38px !important;
+    padding: 0.24rem 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 0 !important;
+}
+
+.ui.selection.dropdown.router-section-dropdown.router-readonly-dropdown > .label {
+    cursor: pointer !important;
+}
+
+.router-readonly-dropdown-empty {
+    color: rgba(0, 0, 0, 0.45);
+    padding: 0.38rem 0.12rem;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 .ui.form .field .ui.input.router-section-input input,
@@ -926,6 +953,11 @@ code {
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.router-toolbar-start > .field,
+.router-toolbar-end > .field {
+    margin-bottom: 0 !important;
 }
 
 .router-toolbar-end {
