@@ -1278,9 +1278,10 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       }
       return;
     }
+    const activeGroupID = (activeGroup?.id || '').toString().trim();
     if (
-      mode === MODE_VIEW &&
-      (activeGroup?.id || '').toString().trim() === normalizedDetailGroupId
+      activeGroupID === normalizedDetailGroupId &&
+      (mode === MODE_VIEW || mode === MODE_EDIT)
     ) {
       return;
     }

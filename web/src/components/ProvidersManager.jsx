@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Button,
   Form,
+  Header,
   Icon,
   Label,
   Modal,
@@ -2051,6 +2052,9 @@ const ProvidersManager = () => {
     if (!viewRow) return null;
     return (
       <div>
+        <Header as='h2' className='router-page-title'>
+          {t('channel.providers.dialog.title_detail')}
+        </Header>
         <div className='router-toolbar-start router-block-gap-sm'>
           <Button
             type='button'

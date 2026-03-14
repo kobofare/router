@@ -207,7 +207,7 @@
         "model_details": "模型明细",
         "model_details_placeholder": "[{\"model\":\"gpt-4o-mini\",\"type\":\"text\",\"input_price\":0.00015,\"output_price\":0.0006,\"price_unit\":\"per_1k_tokens\",\"currency\":\"USD\"}]",
         "pricing_detail_title": "复杂计费详情",
-        "cancel": "回退",
+        "cancel": "返回",
         "cancel_create": "取消",
         "confirm": "确认"
       },
@@ -253,8 +253,8 @@
       "buttons": {
         "back": "返回",
         "cancel": "取消",
-        "save": "保存",
-        "submit": "提交",
+        "save": "确认",
+        "submit": "确认",
         "edit_basic": "编辑",
         "sync_models": "模型同步",
         "previous_step": "上一步",
@@ -480,6 +480,7 @@
       "bind_channels_title": "配置分组 {{id}} 的渠道"
     },
     "detail": {
+      "title": "分组详情",
       "model": "模型",
       "channel_count": "渠道数",
       "model_channels": "渠道",
@@ -587,7 +588,7 @@
         "expire_1_minute": "一分钟后过期",
         "unlimited_quota": "设为无限额度",
         "cancel_unlimited": "取消无限额度",
-        "submit": "提交",
+        "submit": "确认",
         "cancel": "取消"
       },
       "messages": {
@@ -666,7 +667,7 @@
       "count": "生成数量",
       "count_placeholder": "请输入生成数量",
       "buttons": {
-        "submit": "提交",
+        "submit": "确认",
         "cancel": "取消"
       }
     },
@@ -735,6 +736,7 @@
       "load_failed": "加载日志详情失败"
     },
     "detail": {
+      "title": "日志详情",
       "buttons": {
         "back": "返回"
       },
@@ -811,6 +813,7 @@
       "cancel": "取消"
     },
     "detail": {
+      "title": "任务详情",
       "buttons": {
         "back": "返回",
         "channel": "查看渠道"
@@ -860,7 +863,7 @@
       "email": "邮箱",
       "email_placeholder": "未设置",
       "buttons": {
-        "submit": "提交",
+        "submit": "确认",
         "cancel": "取消"
       }
     },

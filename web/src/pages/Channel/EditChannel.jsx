@@ -3606,15 +3606,12 @@ const EditChannel = () => {
       <Card fluid className='chart-card'>
         <Card.Content>
           {isDetailMode && (
+            <Card.Header className='header router-page-title'>
+              {t('channel.edit.title_detail')}
+            </Card.Header>
+          )}
+          {isDetailMode && (
             <div className='router-toolbar-start router-block-gap-sm'>
-              <Button
-                type='button'
-                className='router-page-button'
-                onClick={handleCancel}
-              >
-                <Icon name='undo' />
-                {t('channel.edit.buttons.back')}
-              </Button>
               {detailBasicEditing ? (
                 <>
                   <Button
@@ -3637,15 +3634,25 @@ const EditChannel = () => {
                   </Button>
                 </>
               ) : (
-                <Button
-                  type='button'
-                  className='router-page-button'
-                  color='blue'
-                  onClick={() => setDetailBasicEditing(true)}
-                >
-                  <Icon name='edit' />
-                  {t('channel.edit.buttons.edit_basic')}
-                </Button>
+                <>
+                  <Button
+                    type='button'
+                    className='router-page-button'
+                    onClick={handleCancel}
+                  >
+                    <Icon name='undo' />
+                    {t('channel.edit.buttons.back')}
+                  </Button>
+                  <Button
+                    type='button'
+                    className='router-page-button'
+                    color='blue'
+                    onClick={() => setDetailBasicEditing(true)}
+                  >
+                    <Icon name='edit' />
+                    {t('channel.edit.buttons.edit_basic')}
+                  </Button>
+                </>
               )}
             </div>
           )}

@@ -253,8 +253,8 @@
       "buttons": {
         "back": "Back",
         "cancel": "Cancel",
-        "save": "Save",
-        "submit": "Submit",
+        "save": "Confirm",
+        "submit": "Confirm",
         "edit_basic": "Edit",
         "sync_models": "Sync Models",
         "previous_step": "Previous",
@@ -480,6 +480,7 @@
       "bind_channels_title": "Configure Channels for Group {{id}}"
     },
     "detail": {
+      "title": "Group Detail",
       "model": "Model",
       "channel_count": "Channel Count",
       "model_channels": "Channels",
@@ -587,7 +588,7 @@
         "expire_1_minute": "Expire in 1 Minute",
         "unlimited_quota": "Set Unlimited Quota",
         "cancel_unlimited": "Cancel Unlimited Quota",
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       },
       "messages": {
@@ -666,7 +667,7 @@
       "count": "Generate Count",
       "count_placeholder": "Please enter number of codes to generate",
       "buttons": {
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       }
     },
@@ -735,6 +736,7 @@
       "load_failed": "Failed to load log detail"
     },
     "detail": {
+      "title": "Log Detail",
       "buttons": {
         "back": "Back"
       },
@@ -811,6 +813,7 @@
       "cancel": "Cancel"
     },
     "detail": {
+      "title": "Task Detail",
       "buttons": {
         "back": "Back",
         "channel": "View Channel"
@@ -860,7 +863,7 @@
       "email": "Email",
       "email_placeholder": "Not set",
       "buttons": {
-        "submit": "Submit",
+        "submit": "Confirm",
         "cancel": "Cancel"
       }
     },

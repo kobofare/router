@@ -277,6 +277,9 @@ const TaskDetail = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
+          <Card.Header className='header router-page-title'>
+            {t('task.detail.title')}
+          </Card.Header>
           <div className='router-toolbar-start router-block-gap-sm'>
             <Button className='router-page-button' onClick={backToList}>
               {t('task.detail.buttons.back')}

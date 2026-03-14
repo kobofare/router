@@ -162,42 +162,43 @@ const RedemptionDetail = () => {
           </Card.Header>
           <div className='router-toolbar router-block-gap-sm'>
             <div className='router-toolbar-start'>
-              <Button className='router-page-button' onClick={handleBack}>
-                {t('redemption.detail.buttons.back')}
-              </Button>
-              {!isEditing && (
-                <Button
-                  className='router-page-button'
-                  primary
-                  onClick={() => setEditMode(true)}
-                >
-                  {t('redemption.buttons.edit')}
-                </Button>
+              {isEditing ? (
+                <>
+                  <Button
+                    className='router-page-button'
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                  >
+                    {t('redemption.edit.buttons.cancel')}
+                  </Button>
+                  <Button
+                    className='router-page-button'
+                    primary
+                    loading={saving}
+                    disabled={saving}
+                    onClick={submitEdit}
+                  >
+                    {t('redemption.edit.buttons.submit')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button className='router-page-button' onClick={handleBack}>
+                    {t('redemption.detail.buttons.back')}
+                  </Button>
+                  <Button
+                    className='router-page-button'
+                    primary
+                    onClick={() => setEditMode(true)}
+                  >
+                    {t('redemption.buttons.edit')}
+                  </Button>
+                </>
               )}
             </div>
             <div className='router-toolbar-end'>
               <div className='router-action-group'>
                 {redemption ? renderStatus(redemption.status, t) : null}
-                {isEditing ? (
-                  <>
-                    <Button
-                      className='router-page-button'
-                      onClick={handleCancelEdit}
-                      disabled={saving}
-                    >
-                      {t('redemption.edit.buttons.cancel')}
-                    </Button>
-                    <Button
-                      className='router-page-button'
-                      primary
-                      loading={saving}
-                      disabled={saving}
-                      onClick={submitEdit}
-                    >
-                      {t('redemption.edit.buttons.submit')}
-                    </Button>
-                  </>
-                ) : null}
               </div>
             </div>
           </div>

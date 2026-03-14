@@ -104,6 +104,9 @@ const LogDetail = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
+          <Card.Header className='header router-page-title'>
+            {t('log.detail.title')}
+          </Card.Header>
           <div className='router-toolbar router-block-gap-sm'>
             <div className='router-toolbar-start'>
               <Button

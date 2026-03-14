@@ -194,6 +194,15 @@ const EditToken = () => {
     }
     navigate('/token');
   };
+
+  const handleBack = () => {
+    if (returnPath !== '') {
+      navigate(-1);
+      return;
+    }
+    navigate('/token');
+  };
+
   const setExpiredTime = (month, day, hour, minute) => {
     let now = new Date();
     let timestamp = now.getTime() / 1000;
@@ -358,27 +367,41 @@ const EditToken = () => {
           </Card.Header>
           <div className='router-toolbar router-block-gap-sm'>
             <div className='router-toolbar-start'>
-              <Button className='router-page-button' onClick={handleCancel}>
-                {isCreateMode
-                  ? t('token.edit.buttons.cancel')
-                  : isEditing
-                    ? t('token.edit.buttons.cancel')
-                    : t('token.detail.buttons.back')}
-              </Button>
-              {isDetailMode && !isEditing && (
-                <Button
-                  className='router-page-button'
-                  positive
-                  onClick={() => setEditMode(true)}
-                >
-                  {t('token.buttons.edit')}
-                </Button>
+              {isDetailMode && isEditing ? (
+                <>
+                  <Button className='router-page-button' onClick={handleCancel}>
+                    {t('token.edit.buttons.cancel')}
+                  </Button>
+                  <Button className='router-page-button' positive onClick={submit}>
+                    {t('token.edit.buttons.submit')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    className='router-page-button'
+                    onClick={isCreateMode ? handleCancel : handleBack}
+                  >
+                    {isCreateMode
+                      ? t('token.edit.buttons.cancel')
+                      : t('token.detail.buttons.back')}
+                  </Button>
+                  {isDetailMode ? (
+                    <Button
+                      className='router-page-button'
+                      positive
+                      onClick={() => setEditMode(true)}
+                    >
+                      {t('token.buttons.edit')}
+                    </Button>
+                  ) : null}
+                </>
               )}
             </div>
             <div className='router-toolbar-end'>
               <div className='router-action-group'>
                 {isDetailMode ? renderStatus(Number(inputs.status || 0)) : null}
-                {isEditing && (
+                {isCreateMode && isEditing && (
                   <Button className='router-page-button' positive onClick={submit}>
                     {t('token.edit.buttons.submit')}
                   </Button>
