@@ -840,7 +840,8 @@
     "detail": {
       "title": "用户详情",
       "buttons": {
-        "back": "返回"
+        "back": "返回",
+        "edit": "编辑"
       }
     },
     "edit": {

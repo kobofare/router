@@ -840,7 +840,8 @@
     "detail": {
       "title": "User Detail",
       "buttons": {
-        "back": "Back"
+        "back": "Back",
+        "edit": "Edit"
       }
     },
     "edit": {
