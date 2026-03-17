@@ -7,6 +7,7 @@ import (
 	admin "github.com/yeying-community/router/internal/admin/controller"
 	auth "github.com/yeying-community/router/internal/admin/controller/auth"
 	channel "github.com/yeying-community/router/internal/admin/controller/channel"
+	dashboard "github.com/yeying-community/router/internal/admin/controller/dashboard"
 	group "github.com/yeying-community/router/internal/admin/controller/group"
 	log "github.com/yeying-community/router/internal/admin/controller/log"
 	option "github.com/yeying-community/router/internal/admin/controller/option"
@@ -231,6 +232,11 @@ func SetApiRouter(engine *gin.Engine) {
 			adminTasksRoute.GET("/:id", task.GetTask)
 			adminTasksRoute.POST("/:id/cancel", task.CancelTask)
 			adminTasksRoute.POST("/:id/retry", task.RetryTask)
+		}
+		adminDashboardRoute := adminRouter.Group("/dashboard")
+		adminDashboardRoute.Use(middleware.AdminAuth())
+		{
+			adminDashboardRoute.GET("/", dashboard.GetDashboard)
 		}
 		adminGroupsRoute := adminRouter.Group("/groups")
 		adminGroupsRoute.Use(middleware.AdminAuth())

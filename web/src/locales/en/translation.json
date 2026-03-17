@@ -952,6 +952,16 @@
       "span": "Span",
       "start": "Start",
       "end": "End",
+      "add_condition": "Add Condition",
+      "remove_condition": "Remove",
+      "clear_conditions": "Clear Conditions",
+      "hint": "Add \"Time Range\" or \"Model\" conditions when needed",
+      "model_placeholder": "Select models",
+      "model_note": "Current scope: {{scope}}",
+      "conditions": {
+        "time": "Time Range",
+        "models": "Model"
+      },
       "providers": "Providers",
       "no_providers": "No models available",
       "granularity_options": {
@@ -965,11 +975,21 @@
     "spending": {
       "overview": {
         "title": "Spending Overview",
+        "today_cost": "Today's Cost (USD)",
         "yesterday_cost": "Yesterday Cost (USD)",
         "period_cost": "{{period}} Cost (USD)",
+        "period_avg_cost": "Average Daily Cost (USD)",
+        "period_requests": "Period Requests",
+        "period_tokens": "Period Tokens",
         "yesterday_revenue": "Yesterday Revenue (USD)",
         "period_revenue": "{{period}} Revenue (USD)",
-        "drill_hint": "Drill down for trends and details"
+        "drill_hint": "Drill down for trends and details",
+        "scope": {
+          "label": "Scope",
+          "all": "All models",
+          "selected": "{{count}} models selected",
+          "none": "No model selected"
+        }
       },
       "calendar": {
         "title": "Spending Calendar",
@@ -996,6 +1016,10 @@
         "empty": "No details"
       },
       "period": {
+        "today": "Today",
+        "last_7_days": "Last 7 Days",
+        "last_30_days": "Last 30 Days",
+        "this_month": "This Month",
         "last_week": "Last Week",
         "last_month": "Last Month",
         "this_year": "This Year",
@@ -1016,6 +1040,116 @@
         "usd": "USD",
         "token": "Token",
         "ten_thousand": "10k"
+      },
+      "analysis": {
+        "title": "Spending Analysis"
+      }
+    },
+    "admin": {
+      "title": "Admin Overview",
+      "period": {
+        "label": "Period"
+      },
+      "updated_at": "Updated: {{time}}",
+      "buttons": {
+        "refresh": "Refresh"
+      },
+      "metrics": {
+        "consume": "Spend (USD)",
+        "topup": "Top-up (USD)",
+        "net": "Net Inflow (USD)",
+        "request_count": "Requests",
+        "active_user_count": "Active Users",
+        "channels": "Enabled / Total Channels",
+        "channel_disabled": "Disabled Channels",
+        "groups": "Groups",
+        "providers": "Providers",
+        "tasks_active": "Active Tasks",
+        "tasks_failed": "Failed Tasks"
+      },
+      "sections": {
+        "trend": "Trend Analysis",
+        "channels": "Channel Health",
+        "tasks": "Recent System Tasks"
+      },
+      "trend": {
+        "metrics": {
+          "consume_quota": "Spend (USD)",
+          "topup_quota": "Top-up (USD)",
+          "request_count": "Requests",
+          "active_user_count": "Active Users"
+        }
+      },
+      "table": {
+        "channel_name": "Channel",
+        "status": "Status",
+        "capabilities": "Capabilities",
+        "balance": "Balance",
+        "used_cost": "Used Cost (USD)",
+        "task_type": "Task Type",
+        "task_status": "Status",
+        "task_channel": "Channel",
+        "task_model": "Model",
+        "task_created": "Created At"
+      },
+      "channel_status": {
+        "1": "Enabled",
+        "2": "Manual Disabled",
+        "3": "Auto Disabled",
+        "4": "Creating",
+        "default": "Unknown"
+      },
+      "task_status": {
+        "pending": "Pending",
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "canceled": "Canceled",
+        "default": "Unknown"
+      },
+      "task_type": {
+        "channel_model_test": "Model Test",
+        "channel_refresh_models": "Model Refresh",
+        "channel_refresh_balance": "Balance Refresh",
+        "default": "Other"
+      },
+      "capabilities": {
+        "text": "Text",
+        "image": "Image",
+        "audio": "Audio",
+        "video": "Video"
+      },
+      "health": {
+        "summary": {
+          "with_tests": "Channels with Tests",
+          "without_tests": "Channels Pending Test",
+          "avg_pass_rate": "Avg Pass Rate",
+          "avg_coverage_rate": "Avg Coverage",
+          "avg_latency": "Avg Latency",
+          "needs_retest": "Channels Need Retest"
+        },
+        "chart": {
+          "health_score": "Health Score",
+          "pass_rate": "Pass Rate",
+          "coverage_rate": "Coverage Rate",
+          "avg_latency": "Average Latency",
+          "last_tested": "Last Tested",
+          "legend_health": "Bar: Health Score",
+          "legend_pass": "Line: Pass Rate",
+          "legend_coverage": "Line: Coverage Rate",
+          "legend_latency": "Line: Latency (ms)"
+        },
+        "level": {
+          "healthy": "Healthy",
+          "warning": "Warning",
+          "critical": "Critical",
+          "unknown": "Unknown"
+        }
+      },
+      "empty": {
+        "trend": "No trend data",
+        "channels": "No channel data",
+        "tasks": "No task data"
       }
     }
   },
