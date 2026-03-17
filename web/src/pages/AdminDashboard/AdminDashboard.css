@@ -63,6 +63,10 @@
   margin-top: 12px;
 }
 
+.admin-dashboard-trend-toolbar {
+  margin-bottom: 10px;
+}
+
 .admin-dashboard-empty {
   color: #a3aed0;
   padding: 8px 0;

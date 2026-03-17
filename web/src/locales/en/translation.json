@@ -1058,6 +1058,8 @@
         "consume": "Spend (USD)",
         "topup": "Top-up (USD)",
         "net": "Net Inflow (USD)",
+        "request_count": "Requests",
+        "active_user_count": "Active Users",
         "channels": "Enabled / Total Channels",
         "channel_disabled": "Disabled Channels",
         "groups": "Groups",
@@ -1066,8 +1068,17 @@
         "tasks_failed": "Failed Tasks"
       },
       "sections": {
+        "trend": "Trend Analysis",
         "channels": "Channel Health",
         "tasks": "Recent System Tasks"
+      },
+      "trend": {
+        "metrics": {
+          "consume_quota": "Spend (USD)",
+          "topup_quota": "Top-up (USD)",
+          "request_count": "Requests",
+          "active_user_count": "Active Users"
+        }
       },
       "table": {
         "channel_name": "Channel",
@@ -1109,6 +1120,7 @@
         "video": "Video"
       },
       "empty": {
+        "trend": "No trend data",
         "channels": "No channel data",
         "tasks": "No task data"
       }

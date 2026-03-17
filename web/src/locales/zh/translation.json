@@ -1058,6 +1058,8 @@
         "consume": "周期消费（美元）",
         "topup": "周期充值（美元）",
         "net": "周期净流入（美元）",
+        "request_count": "周期请求数",
+        "active_user_count": "活跃用户数",
         "channels": "可用渠道 / 总渠道",
         "channel_disabled": "停用渠道数",
         "groups": "分组数量",
@@ -1066,8 +1068,17 @@
         "tasks_failed": "失败任务"
       },
       "sections": {
+        "trend": "趋势分析",
         "channels": "渠道健康",
         "tasks": "近期系统任务"
+      },
+      "trend": {
+        "metrics": {
+          "consume_quota": "消费（美元）",
+          "topup_quota": "充值（美元）",
+          "request_count": "请求数",
+          "active_user_count": "活跃用户数"
+        }
       },
       "table": {
         "channel_name": "渠道",
@@ -1109,6 +1120,7 @@
         "video": "视频"
       },
       "empty": {
+        "trend": "暂无趋势数据",
         "channels": "暂无渠道数据",
         "tasks": "暂无任务数据"
       }
