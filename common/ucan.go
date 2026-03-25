@@ -62,6 +62,83 @@ func ResolveUcanAudience() string {
 	return "did:web:localhost"
 }
 
+func resolveDefaultUcanResource() string {
+	aud := strings.TrimSpace(ResolveUcanAudience())
+	const prefix = "did:web:"
+	if strings.HasPrefix(strings.ToLower(aud), prefix) {
+		host := strings.TrimSpace(aud[len(prefix):])
+		if host != "" {
+			return config.DefaultUcanResourcePrefix + host
+		}
+	}
+	return config.DefaultUcanResourcePrefix + "localhost"
+}
+
+func capabilityEquals(a UcanCapability, b UcanCapability) bool {
+	return strings.EqualFold(strings.TrimSpace(a.Resource), strings.TrimSpace(b.Resource)) &&
+		strings.EqualFold(strings.TrimSpace(a.Action), strings.TrimSpace(b.Action))
+}
+
+func appendCapabilitySetIfMissing(sets [][]UcanCapability, cap UcanCapability) [][]UcanCapability {
+	target := []UcanCapability{{Resource: strings.TrimSpace(cap.Resource), Action: strings.TrimSpace(cap.Action)}}
+	for _, existing := range sets {
+		if len(existing) != 1 {
+			continue
+		}
+		if capabilityEquals(existing[0], target[0]) {
+			return sets
+		}
+	}
+	return append(sets, target)
+}
+
+func ResolveUcanRequiredCapabilitySets() [][]UcanCapability {
+	resource := strings.TrimSpace(config.UcanResource)
+	action := strings.TrimSpace(config.UcanAction)
+	if resource == "" {
+		resource = resolveDefaultUcanResource()
+	}
+	if action == "" {
+		action = config.DefaultUcanAction
+	}
+
+	current := UcanCapability{Resource: resource, Action: action}
+	defaultCap := UcanCapability{Resource: resolveDefaultUcanResource(), Action: config.DefaultUcanAction}
+	compatCaps := []UcanCapability{
+		{Resource: config.AppCompatUcanResource, Action: config.AppCompatUcanAction},
+		{Resource: config.CompatUcanResource, Action: config.CompatUcanAction},
+		{Resource: config.ProfileCompatUcanResource, Action: config.ProfileCompatUcanAction},
+	}
+
+	knownCaps := make([]UcanCapability, 0, len(compatCaps)+1)
+	knownCaps = append(knownCaps, defaultCap)
+	knownCaps = append(knownCaps, compatCaps...)
+
+	sets := [][]UcanCapability{{current}}
+	isKnown := false
+	for _, cap := range knownCaps {
+		if capabilityEquals(current, cap) {
+			isKnown = true
+			break
+		}
+	}
+	if !isKnown {
+		return sets
+	}
+
+	for _, cap := range knownCaps {
+		sets = appendCapabilitySetIfMissing(sets, cap)
+	}
+	return sets
+}
+
+func isCapabilityDeniedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "capability denied")
+}
+
 func IsUcanToken(token string) bool {
 	parts := strings.Split(token, ".")
 	if len(parts) < 2 {
@@ -104,6 +181,30 @@ func VerifyUcanInvocation(token string, expectedAud string, required []UcanCapab
 		return "", errors.New("invalid UCAN issuer")
 	}
 	return strings.TrimPrefix(iss, "did:pkh:eth:"), nil
+}
+
+func VerifyUcanInvocationAny(token string, expectedAud string, requiredSets [][]UcanCapability) (string, error) {
+	if len(requiredSets) == 0 {
+		return "", errors.New("missing UCAN capability requirement")
+	}
+	var lastCapabilityErr error
+	for _, required := range requiredSets {
+		if len(required) == 0 {
+			continue
+		}
+		address, err := VerifyUcanInvocation(token, expectedAud, required)
+		if err == nil {
+			return address, nil
+		}
+		if !isCapabilityDeniedError(err) {
+			return "", err
+		}
+		lastCapabilityErr = err
+	}
+	if lastCapabilityErr != nil {
+		return "", lastCapabilityErr
+	}
+	return "", errors.New("missing UCAN capability requirement")
 }
 
 func base58Decode(input string) ([]byte, error) {
@@ -179,7 +280,13 @@ func capsAllow(available []UcanCapability, required []UcanCapability) bool {
 	for _, req := range required {
 		matched := false
 		for _, cap := range available {
-			if matchPattern(cap.Resource, req.Resource) && matchPattern(cap.Action, req.Action) {
+			resourceMatched :=
+				matchPattern(cap.Resource, req.Resource) ||
+					matchPattern(req.Resource, cap.Resource)
+			actionMatched :=
+				matchPattern(cap.Action, req.Action) ||
+					matchPattern(req.Action, cap.Action)
+			if resourceMatched && actionMatched {
 				matched = true
 				break
 			}

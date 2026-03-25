@@ -436,6 +436,7 @@
       "description": "Description",
       "channels": "Channels",
       "billing_ratio": "Billing Ratio",
+      "daily_quota_limit": "Daily Quota Limit",
       "source": "Source",
       "status": "Status",
       "sort_order": "Sort Order",
@@ -455,6 +456,8 @@
       "description_placeholder": "Optional description for this group",
       "billing_ratio": "Billing Ratio",
       "billing_ratio_placeholder": "Defaults to 1, use 0 or greater",
+      "daily_quota_limit": "Daily Quota Limit",
+      "daily_quota_limit_placeholder": "0 means unlimited, unit is quota",
       "sort_order": "Sort Value",
       "channels": "Bound Channels",
       "channels_placeholder": "Select channels available for this group"
@@ -506,6 +509,7 @@
       "empty": "No groups",
       "id_required": "Group ID is required",
       "billing_ratio_invalid": "Billing ratio must be greater than or equal to 0",
+      "daily_quota_limit_invalid": "Daily quota limit must be greater than or equal to 0",
       "load_failed": "Failed to load groups",
       "bind_load_failed": "Failed to load group channels",
       "model_load_failed": "Failed to load group models",
@@ -623,6 +627,7 @@
     "download": "Download",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "unlimited": "Unlimited",
     "quota": {
       "display": "Equivalent: ${{amount}}",
       "display_short": "${{amount}}",
@@ -711,6 +716,7 @@
     "table": {
       "time": "Time",
       "channel": "Channel",
+      "group": "Group",
       "type": "Type",
       "model": "Model",
       "username": "Username",
@@ -723,6 +729,7 @@
       "time_range": "Time Range",
       "channel_id": "Channel ID",
       "channel_id_placeholder": "Optional",
+      "group_id_placeholder": "Optional",
       "username_placeholder": "Optional",
       "prompt_tokens": "Prompt Tokens",
       "completion_tokens": "Completion Tokens",
@@ -751,6 +758,7 @@
         "time": "Time",
         "type": "Type",
         "channel": "Channel",
+        "group": "Group",
         "model": "Model",
         "username": "Username",
         "token_name": "Token Name",
@@ -846,6 +854,15 @@
     "title": "User Management",
     "detail": {
       "title": "User Detail",
+      "daily_quota_title": "Today's Package Quota",
+      "daily_quota_group": "Package Group",
+      "daily_quota_limit": "Today's Limit",
+      "daily_quota_consumed": "Today's Consumed",
+      "daily_quota_reserved": "Today's Reserved",
+      "daily_quota_remaining": "Today's Remaining",
+      "daily_quota_biz_date": "Business Date",
+      "daily_quota_timezone": "Timezone",
+      "daily_quota_updated_at": "Updated At",
       "buttons": {
         "back": "Back",
         "edit": "Edit"
@@ -883,6 +900,7 @@
       "create_success": "User account created successfully!",
       "operation_success": "Operation completed successfully!",
       "operation_failed": "Operation failed",
+      "daily_quota_load_failed": "Failed to load user's daily package quota",
       "wallet_copy_success": "Wallet address copied",
       "wallet_copy_failed": "Copy failed, please copy manually"
     },
@@ -1050,6 +1068,14 @@
       },
       "analysis": {
         "title": "Spending Analysis"
+      },
+      "package_daily": {
+        "title": "Today's Package Quota",
+        "group": "Package Group",
+        "limit": "Today's Limit",
+        "consumed": "Today's Consumed",
+        "remaining": "Today's Remaining",
+        "biz_date": "Business Date"
       }
     },
     "admin": {

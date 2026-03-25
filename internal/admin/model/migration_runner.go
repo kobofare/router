@@ -112,6 +112,30 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return nil
 			},
 		},
+		{
+			Version:     "202603201030_main_event_log_group_id",
+			Description: "add group_id index column to event logs in main database",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Log{})
+			},
+		},
+		{
+			Version:     "202603201500_group_daily_quota_limits",
+			Description: "add group daily quota limit columns and daily counter table",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&GroupCatalog{}); err != nil {
+					return err
+				}
+				return tx.AutoMigrate(&GroupQuotaDailyCounter{})
+			},
+		},
+		{
+			Version:     "202603202030_user_group_daily_quota_counters",
+			Description: "switch group daily quota counters to user+group scoped counters",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&GroupQuotaDailyCounter{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
@@ -123,6 +147,13 @@ func runLogVersionedMigrations(db *gorm.DB) error {
 			Description: "baseline: create current log schema",
 			Up: func(tx *gorm.DB) error {
 				return runLogBaselineMigrationWithDB(tx)
+			},
+		},
+		{
+			Version:     "202603201030_log_event_log_group_id",
+			Description: "add group_id index column to event logs in log database",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Log{})
 			},
 		},
 	}

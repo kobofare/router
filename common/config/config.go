@@ -93,8 +93,21 @@ var WalletJWTFallbackSecrets []string
 
 // UCAN auth
 var UcanAud = ""
-var UcanResource = "profile"
-var UcanAction = "read"
+
+const DefaultUcanResourcePrefix = "llm:"
+const DefaultUcanAction = "invoke"
+
+const AppCompatUcanResource = "app:*"
+const AppCompatUcanAction = "invoke"
+const CompatUcanResource = "router:llm"
+const CompatUcanAction = "invoke"
+
+// Compatibility alias for previously issued tokens.
+const ProfileCompatUcanResource = "profile"
+const ProfileCompatUcanAction = "read"
+
+var UcanResource = ""
+var UcanAction = DefaultUcanAction
 
 // CORS allowlist (comma-separated env CORS_ALLOWED_ORIGINS)
 var CorsAllowedOrigins []string

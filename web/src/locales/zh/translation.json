@@ -436,6 +436,7 @@
       "description": "描述",
       "channels": "渠道",
       "billing_ratio": "业务倍率",
+      "daily_quota_limit": "每日额度上限",
       "source": "来源",
       "status": "状态",
       "sort_order": "排序",
@@ -455,6 +456,8 @@
       "description_placeholder": "可选，用于说明该分组用途",
       "billing_ratio": "业务倍率",
       "billing_ratio_placeholder": "默认为 1，可填 0 或更大值",
+      "daily_quota_limit": "每日额度上限",
+      "daily_quota_limit_placeholder": "0 表示不限额，单位为额度",
       "sort_order": "排序值",
       "channels": "绑定渠道",
       "channels_placeholder": "选择该分组可用的渠道"
@@ -506,6 +509,7 @@
       "empty": "暂无分组",
       "id_required": "分组标识不能为空",
       "billing_ratio_invalid": "业务倍率必须大于或等于 0",
+      "daily_quota_limit_invalid": "每日额度上限必须大于或等于 0",
       "load_failed": "加载分组失败",
       "bind_load_failed": "加载分组渠道失败",
       "model_load_failed": "加载分组模型失败",
@@ -623,6 +627,7 @@
     "download": "下载",
     "cancel": "取消",
     "confirm": "确认",
+    "unlimited": "不限额",
     "quota": {
       "display": "等价金额：${{amount}}",
       "display_short": "${{amount}}",
@@ -711,6 +716,7 @@
     "table": {
       "time": "时间",
       "channel": "渠道",
+      "group": "分组",
       "type": "类型",
       "model": "模型",
       "username": "用户名",
@@ -723,6 +729,7 @@
       "time_range": "起止时间",
       "channel_id": "渠道 ID",
       "channel_id_placeholder": "可选值",
+      "group_id_placeholder": "可选值",
       "username_placeholder": "可选值",
       "prompt_tokens": "提示词消耗",
       "completion_tokens": "补全消耗",
@@ -751,6 +758,7 @@
         "time": "时间",
         "type": "类型",
         "channel": "渠道",
+        "group": "分组",
         "model": "模型",
         "username": "用户名",
         "token_name": "令牌名称",
@@ -846,6 +854,15 @@
     "title": "用户管理",
     "detail": {
       "title": "用户详情",
+      "daily_quota_title": "今日套餐额度",
+      "daily_quota_group": "套餐分组",
+      "daily_quota_limit": "今日上限",
+      "daily_quota_consumed": "今日已用",
+      "daily_quota_reserved": "今日预占",
+      "daily_quota_remaining": "今日剩余",
+      "daily_quota_biz_date": "业务日",
+      "daily_quota_timezone": "时区",
+      "daily_quota_updated_at": "更新时间",
       "buttons": {
         "back": "返回",
         "edit": "编辑"
@@ -883,6 +900,7 @@
       "create_success": "用户账户创建成功！",
       "operation_success": "操作成功完成！",
       "operation_failed": "操作失败",
+      "daily_quota_load_failed": "加载用户今日套餐额度失败",
       "wallet_copy_success": "钱包地址已复制",
       "wallet_copy_failed": "复制失败，请手动复制"
     },
@@ -1050,6 +1068,14 @@
       },
       "analysis": {
         "title": "花费分析"
+      },
+      "package_daily": {
+        "title": "今日套餐额度",
+        "group": "套餐分组",
+        "limit": "今日上限",
+        "consumed": "今日已用",
+        "remaining": "今日剩余",
+        "biz_date": "业务日"
       }
     },
     "admin": {
