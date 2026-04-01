@@ -40,23 +40,13 @@ const OperationSetting = ({ section = '' }) => {
     DisplayInCurrencyEnabled: '',
     DisplayTokenStatEnabled: '',
     ApproximateTokenEnabled: '',
-    FXAutoSyncEnabled: '',
-    FXAutoSyncIntervalSeconds: 21600,
-    FXAutoSyncProvider: 'frankfurter',
     RetryTimes: 0,
   });
   const [originInputs, setOriginInputs] = useState({});
   const [groupOptions, setGroupOptions] = useState([]);
   const [billingCurrencies, setBillingCurrencies] = useState([]);
   const [billingLoading, setBillingLoading] = useState(false);
-  const [billingSyncing, setBillingSyncing] = useState(false);
   const [billingSavingKey, setBillingSavingKey] = useState('');
-  const [fxSyncStatus, setFxSyncStatus] = useState({
-    last_run_at: 0,
-    last_success_at: 0,
-    last_error: '',
-    min_interval: 60,
-  });
   let [loading, setLoading] = useState(false);
   let [historyTimestamp, setHistoryTimestamp] = useState(
     timestamp2string(now.getTime() / 1000 - 30 * 24 * 3600)
@@ -107,7 +97,6 @@ const OperationSetting = ({ section = '' }) => {
     getOptions().then();
     loadGroups().then();
     loadBillingCurrencies().then();
-    loadFXSyncStatus().then();
   }, []);
 
   const billingStatusOptions = [
@@ -194,24 +183,6 @@ const OperationSetting = ({ section = '' }) => {
     }
   };
 
-  const loadFXSyncStatus = async () => {
-    try {
-      const res = await API.get('/api/v1/admin/billing/fx/status');
-      const { success, data } = res.data || {};
-      if (!success || !data) {
-        return;
-      }
-      setFxSyncStatus({
-        last_run_at: Number(data.last_run_at || 0),
-        last_success_at: Number(data.last_success_at || 0),
-        last_error: (data.last_error || '').toString(),
-        min_interval: Number(data.min_interval || 60),
-      });
-    } catch (error) {
-      // ignore status loading failure to avoid interrupting normal settings flow
-    }
-  };
-
   const updateOption = async (key, value) => {
     setLoading(true);
     if (key.endsWith('Enabled')) {
@@ -290,31 +261,6 @@ const OperationSetting = ({ section = '' }) => {
         if (originInputs['RetryTimes'] !== inputs.RetryTimes) {
           await updateOption('RetryTimes', inputs.RetryTimes);
         }
-        break;
-      case 'billing':
-        const intervalSeconds = Number.parseInt(
-          inputs.FXAutoSyncIntervalSeconds ?? '',
-          10
-        );
-        if (!Number.isFinite(intervalSeconds) || intervalSeconds < 60) {
-          showError(t('setting.operation.billing.messages.sync_interval_invalid'));
-          return;
-        }
-        if (
-          `${originInputs['FXAutoSyncIntervalSeconds'] || ''}` !==
-          `${intervalSeconds}`
-        ) {
-          await updateOption(
-            'FXAutoSyncIntervalSeconds',
-            `${intervalSeconds}`
-          );
-        }
-        if (
-          `${originInputs['FXAutoSyncProvider'] || ''}` !== 'frankfurter'
-        ) {
-          await updateOption('FXAutoSyncProvider', 'frankfurter');
-        }
-        await loadFXSyncStatus();
         break;
       default:
         break;
@@ -409,39 +355,6 @@ const OperationSetting = ({ section = '' }) => {
     } finally {
       setBillingSavingKey('');
     }
-  };
-
-  const syncBillingCurrenciesFromFX = async () => {
-    setBillingSyncing(true);
-    try {
-      const res = await API.post('/api/v1/admin/billing/fx/sync');
-      const { success, message, data } = res.data || {};
-      if (!success) {
-        showError(message || t('setting.operation.billing.messages.sync_failed'));
-        return;
-      }
-      const updatedCount = Number(data?.updated_count || 0);
-      showSuccess(
-        t('setting.operation.billing.messages.sync_success', {
-          count: updatedCount,
-        })
-      );
-      await loadBillingCurrencies();
-      await loadFXSyncStatus();
-      await getOptions();
-    } catch (error) {
-      showError(error?.message || t('setting.operation.billing.messages.sync_failed'));
-    } finally {
-      setBillingSyncing(false);
-    }
-  };
-
-  const renderTimestampValue = (value) => {
-    const number = Number(value || 0);
-    if (!Number.isFinite(number) || number <= 0) {
-      return '-';
-    }
-    return timestamp2string(number);
   };
 
   return (
@@ -717,59 +630,6 @@ const OperationSetting = ({ section = '' }) => {
               <div className='router-settings-note'>
                 {t('setting.operation.billing.subtitle')}
               </div>
-              <Form.Group widths='equal'>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.FXAutoSyncEnabled === 'true'}
-                  label={t('setting.operation.billing.auto_sync.enabled')}
-                  name='FXAutoSyncEnabled'
-                  onChange={handleInputChange}
-                />
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.billing.auto_sync.interval_seconds')}
-                  name='FXAutoSyncIntervalSeconds'
-                  onChange={handleInputChange}
-                  autoComplete='new-password'
-                  value={inputs.FXAutoSyncIntervalSeconds}
-                  type='number'
-                  min={fxSyncStatus.min_interval || 60}
-                  step='1'
-                  placeholder='21600'
-                />
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.billing.auto_sync.provider')}
-                  name='FXAutoSyncProvider'
-                  value='frankfurter'
-                  readOnly
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  submitConfig('billing').then();
-                }}
-              >
-                {t('setting.operation.billing.buttons.save_auto_sync')}
-              </Form.Button>
-              <div className='router-settings-note'>
-                {t('setting.operation.billing.auto_sync.last_run', {
-                  value: renderTimestampValue(fxSyncStatus.last_run_at),
-                })}
-              </div>
-              <div className='router-settings-note'>
-                {t('setting.operation.billing.auto_sync.last_success', {
-                  value: renderTimestampValue(fxSyncStatus.last_success_at),
-                })}
-              </div>
-              {fxSyncStatus.last_error ? (
-                <div className='router-settings-note'>
-                  {t('setting.operation.billing.auto_sync.last_error', {
-                    value: fxSyncStatus.last_error,
-                  })}
-                </div>
-              ) : null}
               <div className='router-toolbar router-block-gap-sm'>
                 <div className='router-toolbar-start'>
                   <Button
@@ -779,19 +639,6 @@ const OperationSetting = ({ section = '' }) => {
                     disabled={billingLoading || billingCurrencies.some((item) => item._isNew)}
                   >
                     {t('setting.operation.billing.buttons.add')}
-                  </Button>
-                  <Button
-                    className='router-page-button'
-                    type='button'
-                    onClick={syncBillingCurrenciesFromFX}
-                    loading={billingSyncing}
-                    disabled={
-                      billingLoading ||
-                      billingSyncing ||
-                      billingCurrencies.some((item) => item._isNew)
-                    }
-                  >
-                    {t('setting.operation.billing.buttons.sync_fx')}
                   </Button>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { isRoot } from '../../helpers';
 import OtherSetting from '../../components/OtherSetting';
 import PersonalSetting from '../../components/PersonalSetting';
 import OperationSetting from '../../components/OperationSetting';
+import ExchangeRateSetting from '../../components/ExchangeRateSetting';
 
 const Setting = () => {
   const { t } = useTranslation();
@@ -41,6 +42,13 @@ const Setting = () => {
         { key: 'log', label: t('setting.operation.log.title') },
         { key: 'general', label: t('setting.operation.general.title') },
         { key: 'billing', label: t('setting.operation.billing.title') },
+      ],
+    });
+    menuGroups.push({
+      key: 'exchange',
+      label: t('setting.tabs.exchange'),
+      sections: [
+        { key: 'sync', label: t('setting.exchange.sync.title') },
       ],
     });
     menuGroups.push({
@@ -93,6 +101,9 @@ const Setting = () => {
   const renderContent = () => {
     if (activeTab === 'operation') {
       return <OperationSetting section={activeSection} />;
+    }
+    if (activeTab === 'exchange') {
+      return <ExchangeRateSetting section={activeSection} />;
     }
     if (activeTab === 'system') {
       return <SystemSetting section={activeSection} />;

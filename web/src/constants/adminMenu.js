@@ -71,6 +71,11 @@ export const ADMIN_MENU_GROUPS = [
     icon: 'setting',
     items: [
       {
+        name: 'setting.tabs.exchange',
+        to: '/admin/setting?tab=exchange&section=sync',
+        icon: 'exchange',
+      },
+      {
         name: 'setting.tabs.system',
         to: '/admin/setting?tab=system&section=general',
         icon: 'server',

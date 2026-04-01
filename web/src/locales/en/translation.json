@@ -1267,7 +1267,8 @@
       "personal": "Personal Settings",
       "operation": "Operation Settings",
       "system": "System Settings",
-      "other": "Other Settings"
+      "other": "Other Settings",
+      "exchange": "Exchange Rate Settings"
     },
     "personal": {
       "tokens": {
@@ -1605,6 +1606,31 @@
       },
       "copyright": {
         "notice": "Removing Router's copyright notice requires authorization. Project maintenance requires significant effort, if this project is meaningful to you, please actively support it."
+      }
+    },
+    "exchange": {
+      "title": "Exchange Rate Settings",
+      "subtitle": "Manage FX sync strategy and status. This page controls rate synchronization only, not billing currency catalog maintenance.",
+      "sync": {
+        "title": "Auto Sync"
+      },
+      "auto_sync": {
+        "enabled": "Enable auto FX sync",
+        "interval_seconds": "Sync interval (seconds)",
+        "provider": "Rate provider",
+        "last_run": "Last run: {{value}}",
+        "last_success": "Last success: {{value}}",
+        "last_error": "Last error: {{value}}"
+      },
+      "buttons": {
+        "save": "Save FX settings",
+        "sync_now": "Sync now"
+      },
+      "messages": {
+        "interval_invalid": "Sync interval must be greater than or equal to {{min}} seconds",
+        "save_success": "FX settings saved",
+        "sync_failed": "Failed to sync FX rates",
+        "sync_success": "FX sync finished, updated {{count}} currencies"
       }
     }
   },

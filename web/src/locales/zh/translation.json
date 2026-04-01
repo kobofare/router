@@ -1267,7 +1267,8 @@
       "personal": "个人设置",
       "operation": "运营设置",
       "system": "系统设置",
-      "other": "其他设置"
+      "other": "其他设置",
+      "exchange": "汇率设置"
     },
     "personal": {
       "tokens": {
@@ -1601,6 +1602,31 @@
       },
       "copyright": {
         "notice": "移除 Router 的版权标识必须首先获得授权，项目维护需要花费大量精力，如果本项目对你有意义，请主动支持本项目。"
+      }
+    },
+    "exchange": {
+      "title": "汇率设置",
+      "subtitle": "管理外汇同步策略与状态。该页面负责汇率同步，不包含计费币种清单维护。",
+      "sync": {
+        "title": "自动同步"
+      },
+      "auto_sync": {
+        "enabled": "启用自动汇率同步",
+        "interval_seconds": "同步间隔（秒）",
+        "provider": "汇率来源",
+        "last_run": "最近运行：{{value}}",
+        "last_success": "最近成功：{{value}}",
+        "last_error": "最近错误：{{value}}"
+      },
+      "buttons": {
+        "save": "保存汇率设置",
+        "sync_now": "立即同步汇率"
+      },
+      "messages": {
+        "interval_invalid": "同步间隔必须大于或等于 {{min}} 秒",
+        "save_success": "汇率设置已保存",
+        "sync_failed": "同步汇率失败",
+        "sync_success": "汇率同步完成，已更新 {{count}} 个币种"
       }
     }
   },
