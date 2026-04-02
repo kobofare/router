@@ -207,7 +207,8 @@
         "detail": "Detail",
         "add_price_component": "Add Rule",
         "actions": "Actions",
-        "empty": "No model details"
+        "empty": "No model details",
+        "delete_confirm": "Delete this model?"
       },
       "price_component_table": {
         "component": "Component",
@@ -267,7 +268,8 @@
         "fetch_provider_required": "Please choose a provider first",
         "fetch_key_required": "Please provide API key first, or save one in provider config",
         "fetch_failed": "Failed to fetch models from provider API",
-        "fetch_success": "Models fetched and applied to catalog"
+        "fetch_success": "Models fetched and applied to catalog",
+        "model_required": "Please enter a model name"
       }
     },
     "edit": {
@@ -759,7 +761,8 @@
       "display": "Equivalent: ${{amount}}",
       "display_short": "${{amount}}",
       "unit": "$"
-    }
+    },
+    "delete": "Delete"
   },
   "redemption": {
     "title": "Redemption Management",

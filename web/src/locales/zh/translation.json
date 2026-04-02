@@ -207,7 +207,8 @@
         "detail": "详情",
         "add_price_component": "新增规则",
         "actions": "操作",
-        "empty": "暂无模型明细"
+        "empty": "暂无模型明细",
+        "delete_confirm": "确认删除该模型吗？"
       },
       "price_component_table": {
         "component": "计费项",
@@ -267,7 +268,8 @@
         "fetch_provider_required": "请先选择供应商",
         "fetch_key_required": "请先填写 API Key，或在供应商配置中保存 Key",
         "fetch_failed": "从供应商 API 拉取模型失败",
-        "fetch_success": "已完成模型拉取并回填到供应商配置"
+        "fetch_success": "已完成模型拉取并回填到供应商配置",
+        "model_required": "请填写模型名称"
       }
     },
     "edit": {
@@ -759,7 +761,8 @@
       "display": "等价金额：${{amount}}",
       "display_short": "${{amount}}",
       "unit": "$"
-    }
+    },
+    "delete": "删除"
   },
   "redemption": {
     "title": "兑换管理",

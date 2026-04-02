@@ -369,6 +369,8 @@ const OFFICIAL_PROVIDER_BASE_URLS = {
 };
 
 const cloneEditableRow = (row) => toEditableRows([row])[0] || createEmptyRow();
+const cloneModelDetail = (detail) =>
+  normalizeModelDetails([detail])[0] || createEmptyModelDetail('');
 
 const MODEL_TYPE_OPTIONS = [
   { key: 'text', value: 'text', text: 'text' },
@@ -513,6 +515,7 @@ const ProvidersManager = () => {
   const [detailEditingSection, setDetailEditingSection] = useState('');
   const [detailBasicDraft, setDetailBasicDraft] = useState(createEmptyRow());
   const [detailModelsDraft, setDetailModelsDraft] = useState(createEmptyRow());
+  const [detailEditingModelIndex, setDetailEditingModelIndex] = useState(-1);
   const [detailModelSearchKeyword, setDetailModelSearchKeyword] = useState('');
   const [pricingDetailOpen, setPricingDetailOpen] = useState(false);
   const [pricingDetailModel, setPricingDetailModel] = useState(null);
@@ -568,7 +571,8 @@ const ProvidersManager = () => {
   const setCreateValue = (key, value) => {
     setCreateRow((prev) => ({
       ...prev,
-      [key]: value,
+      [key]:
+        typeof value === 'function' ? value(prev[key], prev) : value,
     }));
   };
 
@@ -576,6 +580,7 @@ const ProvidersManager = () => {
     setDetailEditingSection('');
     setDetailBasicDraft(createEmptyRow());
     setDetailModelsDraft(createEmptyRow());
+    setDetailEditingModelIndex(-1);
     setDetailModelSearchKeyword('');
   }, []);
 
@@ -644,7 +649,8 @@ const ProvidersManager = () => {
   const setDetailModelsValue = (key, value) => {
     setDetailModelsDraft((prev) => ({
       ...prev,
-      [key]: value,
+      [key]:
+        typeof value === 'function' ? value(prev[key], prev) : value,
     }));
   };
 
@@ -658,52 +664,52 @@ const ProvidersManager = () => {
     setPricingDetailModel(null);
   }, []);
 
-  const setModelDetailField = (setter, row, index, key, value) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    if (index < 0 || index >= details.length) return;
-    const next = { ...details[index] };
-    if (key === 'input_price' || key === 'output_price') {
-      const parsed = Number(value);
-      next[key] = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-    } else if (key === 'currency') {
-      next[key] = (value || '').toUpperCase();
-    } else if (key === 'source') {
-      next[key] = (value || '').toLowerCase();
-    } else if (key === 'type') {
-      const normalizedType =
-        (value || '').toLowerCase() || inferModelType(next.model || '');
-      next.type = normalizedType;
-      next.capabilities = normalizeCapabilities(
-        next.capabilities,
-        next.model || '',
-      );
-      if (!next.price_unit) {
-        next.price_unit = defaultPriceUnitByType(
-          normalizedType,
+  const setModelDetailField = (setter, _row, index, key, value) => {
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      if (index < 0 || index >= details.length) return details;
+      const next = { ...details[index] };
+      if (key === 'input_price' || key === 'output_price') {
+        next[key] =
+          value === null || value === undefined ? '' : `${value}`;
+      } else if (key === 'currency') {
+        next[key] = (value || '').toUpperCase();
+      } else if (key === 'source') {
+        next[key] = (value || '').toLowerCase();
+      } else if (key === 'type') {
+        const normalizedType =
+          (value || '').toLowerCase() || inferModelType(next.model || '');
+        next.type = normalizedType;
+        next.capabilities = normalizeCapabilities(
+          next.capabilities,
           next.model || '',
         );
+        if (!next.price_unit) {
+          next.price_unit = defaultPriceUnitByType(
+            normalizedType,
+            next.model || '',
+          );
+        }
+      } else if (key === 'model') {
+        next.model = value || '';
+        if (!next.type) {
+          next.type = inferModelType(next.model);
+        }
+        next.capabilities = normalizeCapabilities(
+          next.capabilities,
+          next.model || '',
+        );
+        if (!next.price_unit) {
+          next.price_unit = defaultPriceUnitByType(next.type, next.model);
+        }
+      } else if (key === 'capabilities') {
+        next.capabilities = normalizeCapabilities(value, next.model || '');
+      } else {
+        next[key] = value || '';
       }
-    } else if (key === 'model') {
-      next.model = value || '';
-      if (!next.type) {
-        next.type = inferModelType(next.model);
-      }
-      next.capabilities = normalizeCapabilities(
-        next.capabilities,
-        next.model || '',
-      );
-      if (!next.price_unit) {
-        next.price_unit = defaultPriceUnitByType(next.type, next.model);
-      }
-    } else if (key === 'capabilities') {
-      next.capabilities = normalizeCapabilities(value, next.model || '');
-    } else {
-      next[key] = value || '';
-    }
-    details[index] = next;
-    setter('model_details', details);
+      details[index] = next;
+      return details;
+    });
   };
 
   const setPriceComponentField = (
@@ -714,38 +720,38 @@ const ProvidersManager = () => {
     key,
     value,
   ) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    if (detailIndex < 0 || detailIndex >= details.length) return;
-    const detail = { ...details[detailIndex] };
-    const components = Array.isArray(detail.price_components)
-      ? [...detail.price_components]
-      : [];
-    if (componentIndex < 0 || componentIndex >= components.length) return;
-    const next = { ...components[componentIndex] };
-    if (
-      key === 'input_price' ||
-      key === 'output_price' ||
-      key === 'sort_order'
-    ) {
-      const parsed = Number(value);
-      next[key] = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-    } else if (key === 'currency') {
-      next[key] = (value || '').toUpperCase();
-    } else if (key === 'source') {
-      next[key] = (value || '').toLowerCase();
-    } else if (key === 'component') {
-      next.component = (value || '').toLowerCase();
-      next.condition = '';
-      next.price_unit = defaultPriceUnitByComponent(next.component);
-    } else {
-      next[key] = value || '';
-    }
-    components[componentIndex] = next;
-    detail.price_components = normalizePriceComponents(components);
-    details[detailIndex] = detail;
-    setter('model_details', details);
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      if (detailIndex < 0 || detailIndex >= details.length) return details;
+      const detail = { ...details[detailIndex] };
+      const components = Array.isArray(detail.price_components)
+        ? [...detail.price_components]
+        : [];
+      if (componentIndex < 0 || componentIndex >= components.length) {
+        return details;
+      }
+      const next = { ...components[componentIndex] };
+      if (key === 'input_price' || key === 'output_price') {
+        next[key] =
+          value === null || value === undefined ? '' : `${value}`;
+      } else if (key === 'sort_order') {
+        next[key] = value === null || value === undefined ? '' : `${value}`;
+      } else if (key === 'currency') {
+        next[key] = (value || '').toUpperCase();
+      } else if (key === 'source') {
+        next[key] = (value || '').toLowerCase();
+      } else if (key === 'component') {
+        next.component = (value || '').toLowerCase();
+        next.condition = '';
+        next.price_unit = defaultPriceUnitByComponent(next.component);
+      } else {
+        next[key] = value || '';
+      }
+      components[componentIndex] = next;
+      detail.price_components = components;
+      details[detailIndex] = detail;
+      return details;
+    });
   };
 
   const updatePriceComponentConditionTemplate = (
@@ -873,64 +879,175 @@ const ProvidersManager = () => {
     return null;
   };
 
-  const addPriceComponentRow = (setter, row, detailIndex) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    if (detailIndex < 0 || detailIndex >= details.length) return;
-    const detail = { ...details[detailIndex] };
-    const components = Array.isArray(detail.price_components)
-      ? [...detail.price_components]
-      : [];
-    components.push(createEmptyPriceComponent('text'));
-    detail.price_components = normalizePriceComponents(components);
-    details[detailIndex] = detail;
-    setter('model_details', details);
+  const addPriceComponentRow = (setter, _row, detailIndex) => {
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      if (detailIndex < 0 || detailIndex >= details.length) return details;
+      const detail = { ...details[detailIndex] };
+      const components = Array.isArray(detail.price_components)
+        ? [...detail.price_components]
+        : [];
+      components.push(createEmptyPriceComponent('text'));
+      detail.price_components = components;
+      details[detailIndex] = detail;
+      return details;
+    });
   };
 
   const removePriceComponentRow = (
     setter,
-    row,
+    _row,
     detailIndex,
     componentIndex,
   ) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    if (detailIndex < 0 || detailIndex >= details.length) return;
-    const detail = { ...details[detailIndex] };
-    const components = Array.isArray(detail.price_components)
-      ? [...detail.price_components]
-      : [];
-    if (componentIndex < 0 || componentIndex >= components.length) return;
-    components.splice(componentIndex, 1);
-    detail.price_components = normalizePriceComponents(components);
-    details[detailIndex] = detail;
-    setter('model_details', details);
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      if (detailIndex < 0 || detailIndex >= details.length) return details;
+      const detail = { ...details[detailIndex] };
+      const components = Array.isArray(detail.price_components)
+        ? [...detail.price_components]
+        : [];
+      if (componentIndex < 0 || componentIndex >= components.length) {
+        return details;
+      }
+      components.splice(componentIndex, 1);
+      detail.price_components = components;
+      details[detailIndex] = detail;
+      return details;
+    });
   };
 
-  const addModelDetailRow = (setter, row) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    details.unshift(createEmptyModelDetail(''));
-    setter('model_details', details);
+  const addModelDetailRow = (setter, _row) => {
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      details.unshift(createEmptyModelDetail(''));
+      return details;
+    });
   };
 
-  const removeModelDetailRow = (setter, row, index) => {
-    const details = Array.isArray(row.model_details)
-      ? [...row.model_details]
-      : [];
-    if (index < 0 || index >= details.length) return;
-    details.splice(index, 1);
-    setter('model_details', details);
+  const removeModelDetailRow = (setter, _row, index) => {
+    setter('model_details', (currentDetails) => {
+      const details = Array.isArray(currentDetails) ? [...currentDetails] : [];
+      if (index < 0 || index >= details.length) return details;
+      details.splice(index, 1);
+      return details;
+    });
   };
 
   const reloadCurrentPage = async () => {
     await loadCatalog(activePage, normalizedSearchKeyword);
   };
 
-  const saveProvider = async (method, url, row, options = {}) => {
+  const persistViewerModelDetails = useCallback(
+    async (modelDetails) => {
+      const sourceRow = cloneEditableRow(viewRow);
+      const provider = normalizeProvider(sourceRow.id);
+      if (!provider) {
+        showInfo(t('channel.providers.messages.provider_required'));
+        return null;
+      }
+      const saved = await saveProvider(
+        'put',
+        `/api/v1/admin/providers/${provider}`,
+        {
+          ...sourceRow,
+          model_details: normalizeModelDetails(modelDetails || []),
+          updated_at: Math.floor(Date.now() / 1000),
+        },
+      );
+      if (saved) {
+        setViewingProvider(saved.id || '');
+        setViewRow(saved);
+        resetDetailEditingState();
+      }
+      return saved;
+    },
+    [resetDetailEditingState, saveProvider, t, viewRow],
+  );
+
+  const startDetailModelEdit = useCallback(
+    (index) => {
+      const sourceRow = cloneEditableRow(viewRow);
+      const details = Array.isArray(sourceRow.model_details)
+        ? sourceRow.model_details
+        : [];
+      if (
+        saving ||
+        creating ||
+        !sourceRow?.id ||
+        index < 0 ||
+        index >= details.length
+      ) {
+        return;
+      }
+      setDetailEditingSection('models');
+      setDetailModelsDraft(sourceRow);
+      setDetailEditingModelIndex(index);
+    },
+    [creating, saving, viewRow],
+  );
+
+  const startDetailModelCreate = useCallback(() => {
+    const sourceRow = cloneEditableRow(viewRow);
+    if (saving || creating || !sourceRow?.id) {
+      return;
+    }
+    const nextDetails = [
+      createEmptyModelDetail(''),
+      ...(Array.isArray(sourceRow.model_details) ? sourceRow.model_details : []),
+    ];
+    setDetailEditingSection('models');
+    setDetailModelsDraft({
+      ...sourceRow,
+      model_details: nextDetails,
+    });
+    setDetailEditingModelIndex(0);
+    setViewModelSearchKeyword('');
+    setViewModelPage(1);
+  }, [creating, saving, viewRow]);
+
+  const saveDetailModelEdit = useCallback(async () => {
+    const currentDetails = Array.isArray(detailModelsDraft.model_details)
+      ? detailModelsDraft.model_details
+      : [];
+    const currentDetail =
+      detailEditingModelIndex >= 0 && detailEditingModelIndex < currentDetails.length
+        ? cloneModelDetail(currentDetails[detailEditingModelIndex])
+        : null;
+    if (!currentDetail?.model) {
+      showInfo(t('channel.providers.messages.model_required'));
+      return;
+    }
+    await persistViewerModelDetails(currentDetails);
+  }, [
+    detailEditingModelIndex,
+    detailModelsDraft.model_details,
+    persistViewerModelDetails,
+    t,
+  ]);
+
+  const deleteDetailModel = useCallback(
+    async (index) => {
+      const sourceRow = cloneEditableRow(viewRow);
+      const details = Array.isArray(sourceRow.model_details)
+        ? [...sourceRow.model_details]
+        : [];
+      if (saving || creating || index < 0 || index >= details.length) {
+        return;
+      }
+      if (
+        typeof window !== 'undefined' &&
+        !window.confirm(t('channel.providers.model_detail_table.delete_confirm'))
+      ) {
+        return;
+      }
+      details.splice(index, 1);
+      await persistViewerModelDetails(details);
+    },
+    [creating, persistViewerModelDetails, saving, t, viewRow],
+  );
+
+  async function saveProvider(method, url, row, options = {}) {
     const provider = normalizeProvider(row.id);
     if (!provider) {
       showInfo(t('channel.providers.messages.provider_required'));
@@ -973,7 +1090,7 @@ const ProvidersManager = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   const openDeleteModal = (row) => {
     if (saving || creating) return;
@@ -1110,11 +1227,12 @@ const ProvidersManager = () => {
     const modelSearchKeyword =
       typeof options.searchKeyword === 'string' ? options.searchKeyword : '';
     const hideTitle = options.hideTitle === true;
+    const showToolbar = options.showToolbar !== false;
     const normalizedModelSearchKeyword = modelSearchKeyword
       .trim()
       .toLowerCase();
     const detailRows = details.map((detail, index) => ({ detail, index }));
-    const visibleDetailRows =
+    let visibleDetailRows =
       normalizedModelSearchKeyword === ''
         ? detailRows
         : detailRows.filter(({ detail }) => {
@@ -1130,43 +1248,53 @@ const ProvidersManager = () => {
               .toLowerCase();
             return haystack.includes(normalizedModelSearchKeyword);
           });
+    if (
+      inlineEditingEnabled &&
+      editingRowIndex >= 0 &&
+      editingRowIndex < detailRows.length &&
+      !visibleDetailRows.some(({ index }) => index === editingRowIndex)
+    ) {
+      visibleDetailRows = [detailRows[editingRowIndex], ...visibleDetailRows];
+    }
     return (
       <div>
-        <div className='router-toolbar router-toolbar-compact'>
-          <div className='router-toolbar-start'>
-            {!hideTitle ? (
-              <div className='router-toolbar-title'>
-                {t('channel.providers.dialog.model_details')}
-              </div>
-            ) : null}
+        {showToolbar ? (
+          <div className='router-toolbar router-toolbar-compact'>
+            <div className='router-toolbar-start'>
+              {!hideTitle ? (
+                <div className='router-toolbar-title'>
+                  {t('channel.providers.dialog.model_details')}
+                </div>
+              ) : null}
+            </div>
+            <div className='router-toolbar-end'>
+              {searchable ? (
+                <Form.Input
+                  className='router-inline-input router-search-form-xs'
+                  icon='search'
+                  iconPosition='left'
+                  placeholder={t(
+                    'channel.providers.model_detail_table.search_placeholder',
+                  )}
+                  value={modelSearchKeyword}
+                  onChange={(e, { value }) => {
+                    if (typeof options.onSearchChange === 'function') {
+                      options.onSearchChange(value || '');
+                    }
+                  }}
+                />
+              ) : null}
+              <Button
+                type='button'
+                className='router-inline-button'
+                disabled={disabled}
+                onClick={() => addModelDetailRow(setValueFn, row)}
+              >
+                {t('channel.providers.model_detail_table.add')}
+              </Button>
+            </div>
           </div>
-          <div className='router-toolbar-end'>
-            {searchable ? (
-              <Form.Input
-                className='router-inline-input router-search-form-xs'
-                icon='search'
-                iconPosition='left'
-                placeholder={t(
-                  'channel.providers.model_detail_table.search_placeholder',
-                )}
-                value={modelSearchKeyword}
-                onChange={(e, { value }) => {
-                  if (typeof options.onSearchChange === 'function') {
-                    options.onSearchChange(value || '');
-                  }
-                }}
-              />
-            ) : null}
-            <Button
-              type='button'
-              className='router-inline-button'
-              disabled={disabled}
-              onClick={() => addModelDetailRow(setValueFn, row)}
-            >
-              {t('channel.providers.model_detail_table.add')}
-            </Button>
-          </div>
-        </div>
+        ) : null}
         <Table compact celled className='router-detail-table'>
           <Table.Header>
             <Table.Row>
@@ -1282,7 +1410,7 @@ const ProvidersManager = () => {
                         fluid
                         type='number'
                         step='0.000001'
-                        value={detail.input_price || 0}
+                        value={detail.input_price ?? ''}
                         disabled={disabled}
                         onChange={(e, { value }) =>
                           setModelDetailField(
@@ -1290,7 +1418,7 @@ const ProvidersManager = () => {
                             row,
                             detailIndex,
                             'input_price',
-                            value || 0,
+                            value ?? '',
                           )
                         }
                       />
@@ -1301,7 +1429,7 @@ const ProvidersManager = () => {
                         fluid
                         type='number'
                         step='0.000001'
-                        value={detail.output_price || 0}
+                        value={detail.output_price ?? ''}
                         disabled={disabled}
                         onChange={(e, { value }) =>
                           setModelDetailField(
@@ -1309,7 +1437,7 @@ const ProvidersManager = () => {
                             row,
                             detailIndex,
                             'output_price',
-                            value || 0,
+                            value ?? '',
                           )
                         }
                       />
@@ -1318,7 +1446,7 @@ const ProvidersManager = () => {
                       <Form.Input
                         className='router-inline-input'
                         fluid
-                        value={detail.price_unit || ''}
+                        value={detail.price_unit ?? ''}
                         disabled={disabled}
                         onChange={(e, { value }) =>
                           setModelDetailField(
@@ -1335,7 +1463,7 @@ const ProvidersManager = () => {
                       <Form.Input
                         className='router-inline-input'
                         fluid
-                        value={detail.currency || 'USD'}
+                        value={detail.currency ?? ''}
                         disabled={disabled}
                         onChange={(e, { value }) =>
                           setModelDetailField(
@@ -1343,7 +1471,7 @@ const ProvidersManager = () => {
                             row,
                             detailIndex,
                             'currency',
-                            value || 'USD',
+                            value ?? '',
                           )
                         }
                       />
@@ -1544,7 +1672,7 @@ const ProvidersManager = () => {
                                         fluid
                                         type='number'
                                         step='0.000001'
-                                        value={component.input_price || 0}
+                                        value={component.input_price ?? ''}
                                         disabled={disabled}
                                         onChange={(e, { value }) =>
                                           setPriceComponentField(
@@ -1553,7 +1681,7 @@ const ProvidersManager = () => {
                                             detailIndex,
                                             componentIndex,
                                             'input_price',
-                                            value || 0,
+                                            value ?? '',
                                           )
                                         }
                                       />
@@ -1564,7 +1692,7 @@ const ProvidersManager = () => {
                                         fluid
                                         type='number'
                                         step='0.000001'
-                                        value={component.output_price || 0}
+                                        value={component.output_price ?? ''}
                                         disabled={disabled}
                                         onChange={(e, { value }) =>
                                           setPriceComponentField(
@@ -1573,7 +1701,7 @@ const ProvidersManager = () => {
                                             detailIndex,
                                             componentIndex,
                                             'output_price',
-                                            value || 0,
+                                            value ?? '',
                                           )
                                         }
                                       />
@@ -1584,7 +1712,7 @@ const ProvidersManager = () => {
                                         fluid
                                         options={PRICE_UNIT_OPTIONS}
                                         value={
-                                          component.price_unit ||
+                                          component.price_unit ??
                                           defaultPriceUnitByComponent(
                                             component.component,
                                           )
@@ -1606,7 +1734,7 @@ const ProvidersManager = () => {
                                       <Form.Input
                                         className='router-inline-input'
                                         fluid
-                                        value={component.currency || 'USD'}
+                                        value={component.currency ?? ''}
                                         disabled={disabled}
                                         onChange={(e, { value }) =>
                                           setPriceComponentField(
@@ -1615,7 +1743,7 @@ const ProvidersManager = () => {
                                             detailIndex,
                                             componentIndex,
                                             'currency',
-                                            value || 'USD',
+                                            value ?? '',
                                           )
                                         }
                                       />
@@ -1695,9 +1823,19 @@ const ProvidersManager = () => {
   };
 
   const renderModelDetailsReadonly = (row, options = {}) => {
-    const details = Array.isArray(row?.model_details) ? row.model_details : [];
     const searchable = options.searchable === true;
     const hideTitle = options.hideTitle === true;
+    const showToolbar = options.showToolbar !== false;
+    const inlineEditing = options.inlineEditing || {};
+    const inlineEditingEnabled = inlineEditing.enabled === true;
+    const editingRowIndex = Number.isInteger(inlineEditing.index)
+      ? inlineEditing.index
+      : -1;
+    const sourceRow =
+      inlineEditingEnabled && inlineEditing.row ? inlineEditing.row : row;
+    const details = Array.isArray(sourceRow?.model_details)
+      ? sourceRow.model_details
+      : [];
     const pageSize =
       Number(options.pageSize || 0) > 0
         ? Number(options.pageSize)
@@ -1709,10 +1847,11 @@ const ProvidersManager = () => {
     const normalizedModelSearchKeyword = modelSearchKeyword
       .trim()
       .toLowerCase();
+    const detailRows = details.map((detail, index) => ({ detail, index }));
     const visibleDetailRows =
       normalizedModelSearchKeyword === ''
-        ? details
-        : details.filter((detail) => {
+        ? detailRows
+        : detailRows.filter(({ detail }) => {
             const haystack = [
               detail.model || '',
               detail.type || '',
@@ -1734,45 +1873,48 @@ const ProvidersManager = () => {
       (safeCurrentPage - 1) * pageSize,
       safeCurrentPage * pageSize,
     );
+    const actionsDisabled = saving || (inlineEditingEnabled && editingRowIndex >= 0);
     return (
       <div className='router-block-top-sm'>
-        <div className='router-toolbar router-block-gap-xs'>
-          <div className='router-toolbar-start'>
-            {!hideTitle ? (
-              <div className='router-toolbar-title'>
-                {t('channel.providers.dialog.model_details')}
-              </div>
-            ) : null}
+        {showToolbar ? (
+          <div className='router-toolbar router-block-gap-xs'>
+            <div className='router-toolbar-start'>
+              {!hideTitle ? (
+                <div className='router-toolbar-title'>
+                  {t('channel.providers.dialog.model_details')}
+                </div>
+              ) : null}
+            </div>
+            <div className='router-toolbar-end'>
+              {searchable ? (
+                <Form.Input
+                  className='router-inline-input router-search-form-xs'
+                  icon='search'
+                  iconPosition='left'
+                  placeholder={t(
+                    'channel.providers.model_detail_table.search_placeholder',
+                  )}
+                  value={modelSearchKeyword}
+                  onChange={(e, { value }) => {
+                    if (typeof options.onSearchChange === 'function') {
+                      options.onSearchChange(value || '');
+                    }
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
-          <div className='router-toolbar-end'>
-            {searchable ? (
-              <Form.Input
-                className='router-inline-input router-search-form-xs'
-                icon='search'
-                iconPosition='left'
-                placeholder={t(
-                  'channel.providers.model_detail_table.search_placeholder',
-                )}
-                value={modelSearchKeyword}
-                onChange={(e, { value }) => {
-                  if (typeof options.onSearchChange === 'function') {
-                    options.onSearchChange(value || '');
-                  }
-                }}
-              />
-            ) : null}
-          </div>
-        </div>
+        ) : null}
         <Table compact celled className='router-detail-table'>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell width={4}>
                 {t('channel.providers.model_detail_table.model')}
               </Table.HeaderCell>
-              <Table.HeaderCell width={2}>
+              <Table.HeaderCell width={1}>
                 {t('channel.providers.model_detail_table.type')}
               </Table.HeaderCell>
-              <Table.HeaderCell width={3}>
+              <Table.HeaderCell width={1}>
                 {t('channel.providers.model_detail_table.capabilities')}
               </Table.HeaderCell>
               <Table.HeaderCell>
@@ -1790,6 +1932,9 @@ const ProvidersManager = () => {
               <Table.HeaderCell>
                 {t('channel.providers.model_detail_table.source')}
               </Table.HeaderCell>
+              <Table.HeaderCell width={2}>
+                {t('channel.providers.model_detail_table.actions')}
+              </Table.HeaderCell>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -1797,25 +1942,507 @@ const ProvidersManager = () => {
               <Table.Row>
                 <Table.Cell
                   className='router-empty-cell'
-                  colSpan={8}
+                  colSpan={9}
                   textAlign='center'
                 >
                   {t('channel.providers.model_detail_table.empty')}
                 </Table.Cell>
               </Table.Row>
             ) : (
-              pageRows.map((detail, index) => {
+              pageRows.map(({ detail, index: detailIndex }) => {
+                const isEditingRow =
+                  inlineEditingEnabled && editingRowIndex === detailIndex;
                 const showInputDetail = hasComplexInputPricing(detail);
                 const showOutputDetail = hasComplexOutputPricing(detail);
-                return (
-                  <Table.Row key={`${detail.model || 'model'}-${index}`}>
+                return isEditingRow ? (
+                  <React.Fragment
+                    key={`${detail.model || 'model'}-${detailIndex}`}
+                  >
+                    <Table.Row>
+                      <Table.Cell className='router-cell-min-260'>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          value={detail.model || ''}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'model',
+                              value || '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell className='router-cell-min-80'>
+                        <Form.Select
+                          className='router-inline-dropdown'
+                          fluid
+                          options={MODEL_TYPE_OPTIONS}
+                          value={detail.type || 'text'}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'type',
+                              value || 'text',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell className='router-cell-min-90'>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          placeholder='text,image,audio'
+                          value={
+                            Array.isArray(detail.capabilities)
+                              ? detail.capabilities.join(', ')
+                              : ''
+                          }
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'capabilities',
+                              value || '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          type='number'
+                          step='0.000001'
+                          value={detail.input_price ?? ''}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'input_price',
+                              value ?? '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          type='number'
+                          step='0.000001'
+                          value={detail.output_price ?? ''}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'output_price',
+                              value ?? '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          value={detail.price_unit ?? ''}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'price_unit',
+                              value || '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Form.Input
+                          className='router-inline-input'
+                          fluid
+                          value={detail.currency ?? ''}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'currency',
+                              value ?? '',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Form.Select
+                          className='router-inline-dropdown'
+                          fluid
+                          options={SOURCE_OPTIONS}
+                          value={detail.source || 'manual'}
+                          disabled={saving}
+                          onChange={(e, { value }) =>
+                            setModelDetailField(
+                              setDetailModelsValue,
+                              detailModelsDraft,
+                              detailIndex,
+                              'source',
+                              value || 'manual',
+                            )
+                          }
+                        />
+                      </Table.Cell>
+                      <Table.Cell className='router-nowrap'>
+                        <Button
+                          type='button'
+                          className='router-inline-button'
+                          disabled={saving}
+                          onClick={cancelDetailSectionEdit}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                        <Button
+                          type='button'
+                          className='router-inline-button'
+                          color='blue'
+                          loading={saving}
+                          disabled={saving}
+                          onClick={saveDetailModelEdit}
+                        >
+                          {t('common.confirm')}
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
+                    <Table.Row>
+                      <Table.Cell colSpan={9}>
+                        <div className='router-block-top-sm'>
+                          <div className='router-toolbar router-toolbar-compact'>
+                            <div className='router-toolbar-title'>
+                              {t(
+                                'channel.providers.model_detail_table.price_components',
+                              )}
+                            </div>
+                            <div className='router-toolbar-end'>
+                              <Button
+                                type='button'
+                                className='router-inline-button'
+                                disabled={saving}
+                                onClick={() =>
+                                  addPriceComponentRow(
+                                    setDetailModelsValue,
+                                    detailModelsDraft,
+                                    detailIndex,
+                                  )
+                                }
+                              >
+                                {t(
+                                  'channel.providers.model_detail_table.add_price_component',
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                          <Table
+                            compact
+                            celled
+                            className='router-detail-subtable'
+                          >
+                            <Table.Header>
+                              <Table.Row>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.component',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.condition',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.input_price',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.output_price',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.price_unit',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.currency',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.source',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.source_url',
+                                  )}
+                                </Table.HeaderCell>
+                                <Table.HeaderCell>
+                                  {t(
+                                    'channel.providers.price_component_table.actions',
+                                  )}
+                                </Table.HeaderCell>
+                              </Table.Row>
+                            </Table.Header>
+                            <Table.Body>
+                              {(detail.price_components || []).length === 0 ? (
+                                <Table.Row>
+                                  <Table.Cell
+                                    className='router-empty-cell'
+                                    colSpan={9}
+                                    textAlign='center'
+                                  >
+                                    {t(
+                                      'channel.providers.price_component_table.empty',
+                                    )}
+                                  </Table.Cell>
+                                </Table.Row>
+                              ) : (
+                                (detail.price_components || []).map(
+                                  (component, componentIndex) => (
+                                    <Table.Row
+                                      key={`${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`}
+                                    >
+                                      <Table.Cell>
+                                        <Form.Select
+                                          className='router-inline-dropdown'
+                                          fluid
+                                          options={PRICE_COMPONENT_OPTIONS}
+                                          value={component.component || 'text'}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'component',
+                                              value || '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Input
+                                          className='router-inline-input'
+                                          fluid
+                                          placeholder='quality=hd;size=1024x1024'
+                                          value={component.condition || ''}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'condition',
+                                              value || '',
+                                            )
+                                          }
+                                          action={{
+                                            icon: 'erase',
+                                            type: 'button',
+                                            disabled: saving,
+                                            onClick: () =>
+                                              setPriceComponentField(
+                                                setDetailModelsValue,
+                                                detailModelsDraft,
+                                                detailIndex,
+                                                componentIndex,
+                                                'condition',
+                                                '',
+                                              ),
+                                          }}
+                                        />
+                                        {renderPriceComponentConditionTemplate(
+                                          setDetailModelsValue,
+                                          detailModelsDraft,
+                                          detailIndex,
+                                          componentIndex,
+                                          component,
+                                          saving,
+                                        )}
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Input
+                                          className='router-inline-input'
+                                          fluid
+                                          type='number'
+                                          step='0.000001'
+                                          value={component.input_price ?? ''}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'input_price',
+                                              value ?? '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Input
+                                          className='router-inline-input'
+                                          fluid
+                                          type='number'
+                                          step='0.000001'
+                                          value={component.output_price ?? ''}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'output_price',
+                                              value ?? '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Select
+                                          className='router-inline-dropdown'
+                                          fluid
+                                          options={PRICE_UNIT_OPTIONS}
+                                          value={
+                                            component.price_unit ??
+                                            defaultPriceUnitByComponent(
+                                              component.component,
+                                            )
+                                          }
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'price_unit',
+                                              value || '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Input
+                                          className='router-inline-input'
+                                          fluid
+                                          value={component.currency ?? ''}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'currency',
+                                              value ?? '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Select
+                                          className='router-inline-dropdown'
+                                          fluid
+                                          options={SOURCE_OPTIONS}
+                                          value={component.source || 'manual'}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'source',
+                                              value || 'manual',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell>
+                                        <Form.Input
+                                          className='router-inline-input'
+                                          fluid
+                                          value={component.source_url || ''}
+                                          disabled={saving}
+                                          onChange={(e, { value }) =>
+                                            setPriceComponentField(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                              'source_url',
+                                              value || '',
+                                            )
+                                          }
+                                        />
+                                      </Table.Cell>
+                                      <Table.Cell textAlign='center'>
+                                        <Button
+                                          type='button'
+                                          className='router-inline-button'
+                                          disabled={saving}
+                                          onClick={() =>
+                                            removePriceComponentRow(
+                                              setDetailModelsValue,
+                                              detailModelsDraft,
+                                              detailIndex,
+                                              componentIndex,
+                                            )
+                                          }
+                                        >
+                                          {t('common.delete')}
+                                        </Button>
+                                      </Table.Cell>
+                                    </Table.Row>
+                                  ),
+                                )
+                              )}
+                            </Table.Body>
+                          </Table>
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  </React.Fragment>
+                ) : (
+                  <Table.Row key={`${detail.model || 'model'}-${detailIndex}`}>
                     <Table.Cell className='router-cell-min-260'>
                       {detail.model || '-'}
                     </Table.Cell>
-                    <Table.Cell className='router-cell-min-120'>
+                    <Table.Cell className='router-cell-min-80'>
                       {detail.type || 'text'}
                     </Table.Cell>
-                    <Table.Cell>
+                    <Table.Cell className='router-cell-min-90'>
                       {(detail.capabilities || []).length > 0
                         ? detail.capabilities.map((type) => (
                             <Label
@@ -1859,6 +2486,32 @@ const ProvidersManager = () => {
                     <Table.Cell>{detail.price_unit || '-'}</Table.Cell>
                     <Table.Cell>{detail.currency || 'USD'}</Table.Cell>
                     <Table.Cell>{detail.source || 'manual'}</Table.Cell>
+                    <Table.Cell className='router-nowrap'>
+                      <Button
+                        type='button'
+                        className='router-inline-button'
+                        disabled={actionsDisabled}
+                        onClick={() =>
+                          typeof inlineEditing.onStartEdit === 'function'
+                            ? inlineEditing.onStartEdit(detailIndex)
+                            : null
+                        }
+                      >
+                        {t('common.edit')}
+                      </Button>
+                      <Button
+                        type='button'
+                        className='router-inline-button'
+                        disabled={actionsDisabled}
+                        onClick={() =>
+                          typeof inlineEditing.onDelete === 'function'
+                            ? inlineEditing.onDelete(detailIndex)
+                            : null
+                        }
+                      >
+                        {t('common.delete')}
+                      </Button>
+                    </Table.Cell>
                   </Table.Row>
                 );
               })
@@ -2201,64 +2854,46 @@ const ProvidersManager = () => {
                   {t('channel.providers.dialog.model_details')}
                 </Header>
               </div>
-              <div className='router-toolbar-start'>
-                {modelsEditing ? (
-                  <>
-                    <Button
-                      type='button'
-                      className='router-page-button'
-                      onClick={cancelDetailSectionEdit}
-                      disabled={saving}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      type='button'
-                      className='router-page-button'
-                      color='blue'
-                      loading={saving}
-                      disabled={saving}
-                      onClick={() => saveViewerSection('models')}
-                    >
-                      {t('common.save')}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    type='button'
-                    className='router-page-button'
-                    disabled={saving}
-                    onClick={() => startDetailSectionEdit('models')}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {modelsEditing
-              ? renderModelDetailsTable(
-                  detailModelsDraft,
-                  setDetailModelsValue,
-                  saving,
-                  {
-                    searchable: true,
-                    hideTitle: true,
-                    searchKeyword: detailModelSearchKeyword,
-                    onSearchChange: setDetailModelSearchKeyword,
-                  },
-                )
-              : renderModelDetailsReadonly(viewRow, {
-                  searchable: true,
-                  hideTitle: true,
-                  searchKeyword: viewModelSearchKeyword,
-                  currentPage: viewModelPage,
-                  pageSize: PROVIDER_DETAIL_MODEL_PAGE_SIZE,
-                  onSearchChange: (value) => {
+              <div className='router-toolbar-end'>
+                <Form.Input
+                  className='router-inline-input router-search-form-xs router-section-header-search'
+                  icon='search'
+                  iconPosition='left'
+                  placeholder={t(
+                    'channel.providers.model_detail_table.search_placeholder',
+                  )}
+                  value={viewModelSearchKeyword}
+                  onChange={(e, { value }) => {
                     setViewModelSearchKeyword(value || '');
                     setViewModelPage(1);
-                  },
-                  onPageChange: setViewModelPage,
-                })}
+                  }}
+                />
+                <Button
+                  type='button'
+                  className='router-page-button'
+                  disabled={saving || modelsEditing}
+                  onClick={startDetailModelCreate}
+                >
+                  {t('channel.providers.model_detail_table.add')}
+                </Button>
+              </div>
+            </div>
+            {renderModelDetailsReadonly(viewRow, {
+              searchable: false,
+              hideTitle: true,
+              showToolbar: false,
+              searchKeyword: viewModelSearchKeyword,
+              currentPage: viewModelPage,
+              pageSize: PROVIDER_DETAIL_MODEL_PAGE_SIZE,
+              onPageChange: setViewModelPage,
+              inlineEditing: {
+                enabled: modelsEditing && detailEditingModelIndex >= 0,
+                row: detailModelsDraft,
+                index: detailEditingModelIndex,
+                onStartEdit: startDetailModelEdit,
+                onDelete: deleteDetailModel,
+              },
+            })}
           </section>
         </div>
       </div>

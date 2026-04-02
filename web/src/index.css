@@ -122,6 +122,26 @@ code {
     background: rgba(33, 133, 208, 0.05);
 }
 
+.ui.vertical.menu.router-admin-sidebar-menu > .router-user-sidebar-item {
+    font-size: 13px !important;
+    border-radius: 10px !important;
+    margin-bottom: 6px !important;
+    padding: 0.8rem 0.95rem !important;
+    border: none !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+.ui.vertical.menu.router-admin-sidebar-menu > .router-user-sidebar-item.active {
+    color: #2185d0 !important;
+    font-weight: 600 !important;
+    background: rgba(33, 133, 208, 0.1) !important;
+}
+
+.ui.vertical.menu.router-admin-sidebar-menu > .router-user-sidebar-item.active .router-admin-sidebar-item-icon {
+    color: #2185d0 !important;
+}
+
 .ui.popup.router-admin-compact-popup {
     min-width: 180px;
     padding: 6px !important;
@@ -242,6 +262,12 @@ code {
 
 .router-admin-sidebar.compact .router-admin-sidebar-item .icon {
     margin-right: 0 !important;
+}
+
+.router-admin-sidebar.compact .router-user-sidebar-item {
+    text-align: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 .router-fixed-header {
@@ -1027,6 +1053,16 @@ code {
     opacity: 0.72 !important;
 }
 
+.router-provider-detail-section-header .ui.form .field .ui.input.router-section-header-search input,
+.router-provider-detail-section-header .ui.input.router-section-header-search > input,
+.router-entity-detail-section-header .ui.form .field .ui.input.router-section-header-search input,
+.router-entity-detail-section-header .ui.input.router-section-header-search > input {
+    min-height: 30px !important;
+    height: 30px !important;
+    padding-top: 0.48em !important;
+    padding-bottom: 0.48em !important;
+}
+
 .ui.label.router-tag {
     font-size: 12px !important;
     font-weight: 500 !important;
@@ -1625,6 +1661,14 @@ code {
 
 .router-cell-min-120 {
     min-width: 120px;
+}
+
+.router-cell-min-80 {
+    min-width: 80px;
+}
+
+.router-cell-min-90 {
+    min-width: 90px;
 }
 
 .router-cell-min-240 {
