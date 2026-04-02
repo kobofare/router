@@ -825,6 +825,80 @@ code {
     opacity: 0.72 !important;
 }
 
+.ui.modal.router-channel-model-editor-modal {
+    width: 640px;
+    max-width: calc(100vw - 32px);
+}
+
+.router-channel-model-editor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.router-channel-model-editor-card {
+    border: 1px solid rgba(34, 36, 38, 0.08);
+    border-radius: 12px;
+    background: #fafbfc;
+    padding: 14px;
+}
+
+.router-channel-model-editor-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #1f2937;
+    margin-bottom: 12px;
+}
+
+.router-channel-model-editor-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0 14px;
+}
+
+.router-channel-model-editor-toggle-copy {
+    min-width: 0;
+}
+
+.router-channel-model-editor-toggle-label {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #111827;
+}
+
+.router-channel-model-editor-toggle-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.router-channel-model-editor-toggle-row .ui.toggle.checkbox {
+    flex-shrink: 0;
+}
+
+.router-channel-model-editor-toggle-row .ui.toggle.checkbox label {
+    font-size: 14px !important;
+}
+
+.router-channel-model-editor-provider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.router-channel-model-editor-provider-row .ui.dropdown,
+.router-channel-model-editor-provider-row .ui.selection.dropdown {
+    flex: 1 1 240px;
+    min-width: 240px;
+}
+
 .ui.form textarea.router-modal-textarea {
     font-size: 14px !important;
     line-height: 1.5 !important;

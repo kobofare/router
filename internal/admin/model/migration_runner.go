@@ -208,6 +208,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return dropLegacyGroupQuotaColumnsWithDB(tx)
 			},
 		},
+		{
+			Version:     "202604021730_channel_model_provider",
+			Description: "add persisted provider field for channel model selection",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelModel{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

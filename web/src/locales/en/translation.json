@@ -379,6 +379,14 @@
         "pricing_detail_model": "Model: {{model}}",
         "pricing_detail_alias": "Alias: {{alias}}",
         "pricing_detail_empty": "No complex pricing details for this model",
+        "editor": {
+          "info_title": "Model Info",
+          "status_title": "Model Status",
+          "pricing_title": "Pricing",
+          "status_hint": "When disabled, this model will not participate in the current channel's available model set.",
+          "provider_placeholder": "Select a provider",
+          "provider_empty": "No provider is assigned to this model yet"
+        },
         "pricing_detail_table": {
           "component": "Component",
           "condition": "Condition",

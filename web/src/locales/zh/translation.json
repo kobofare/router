@@ -379,6 +379,14 @@
         "pricing_detail_model": "模型：{{model}}",
         "pricing_detail_alias": "别名：{{alias}}",
         "pricing_detail_empty": "当前模型暂无复杂计费详情",
+        "editor": {
+          "info_title": "模型信息",
+          "status_title": "模型状态",
+          "pricing_title": "计费信息",
+          "status_hint": "关闭后，该模型不会参与当前渠道的可用模型集合。",
+          "provider_placeholder": "请选择供应商",
+          "provider_empty": "当前模型暂未归属供应商"
+        },
         "pricing_detail_table": {
           "component": "计费项",
           "condition": "条件",

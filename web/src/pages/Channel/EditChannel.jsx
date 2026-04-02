@@ -376,6 +376,9 @@ const buildProviderLookupKeys = (row) => {
   return Array.from(keys);
 };
 
+const normalizeChannelModelProviderValue = (value) =>
+  (value || '').toString().trim().toLowerCase();
+
 const inferAssignableProviderForRowWithOptions = (row, providerOptions) => {
   const candidates = buildProviderLookupKeys(row);
   const providerValues = new Set(
@@ -551,6 +554,7 @@ const normalizeChannelModelConfigRow = (row) => {
   return {
     model,
     upstream_model: upstreamModel || model,
+    provider: normalizeChannelModelProviderValue(row.provider),
     type: normalizeChannelModelType(row.type),
     endpoint: normalizeChannelModelEndpoint(row.type, row.endpoint),
     inactive: row.inactive === true,
@@ -1384,15 +1388,53 @@ const EditChannel = () => {
   );
   const getProviderOwnersForModel = useCallback(
     (row) => {
+      const selectedProvider = normalizeChannelModelProviderValue(
+        row?.provider,
+      );
       const owners = new Set();
+      if (selectedProvider !== '') {
+        owners.add(selectedProvider);
+      }
       buildProviderLookupKeys(row).forEach((key) => {
         (providerModelOwners[key] || []).forEach((providerId) => {
           owners.add(providerId);
         });
       });
-      return Array.from(owners).sort((a, b) => a.localeCompare(b));
+      const sortedOwners = Array.from(owners).sort((a, b) =>
+        a.localeCompare(b),
+      );
+      if (selectedProvider === '' || !sortedOwners.includes(selectedProvider)) {
+        return sortedOwners;
+      }
+      return [
+        selectedProvider,
+        ...sortedOwners.filter((item) => item !== selectedProvider),
+      ];
     },
     [providerModelOwners],
+  );
+  const getProviderSelectOptionsForModel = useCallback(
+    (row) => {
+      const providerOptionById = new Map(
+        (Array.isArray(providerOptions) ? providerOptions : []).map((option) => [
+          normalizeProviderIdentifier(option?.value || ''),
+          option,
+        ]),
+      );
+      return getProviderOwnersForModel(row).map((providerId) => {
+        const normalizedProviderId = normalizeProviderIdentifier(providerId);
+        const matchedOption = providerOptionById.get(normalizedProviderId);
+        if (matchedOption) {
+          return matchedOption;
+        }
+        return {
+          key: normalizedProviderId,
+          value: normalizedProviderId,
+          text: normalizedProviderId || '-',
+        };
+      });
+    },
+    [getProviderOwnersForModel, providerOptions],
   );
   const getComplexPricingDetailsForModel = useCallback(
     (row) => {
@@ -2996,6 +3038,7 @@ const EditChannel = () => {
           setInputs((prev) => buildNextInputsWithModelConfigs(prev, nextConfigs));
           return;
         }
+        await persistDetailModelConfigs(nextConfigs);
         return;
       }
       setInputs((prev) => buildNextInputsWithModelConfigs(prev, nextConfigs));
@@ -3005,6 +3048,7 @@ const EditChannel = () => {
       detailEditingModelKey,
       detailModelsEditing,
       isDetailMode,
+      persistDetailModelConfigs,
       visibleModelConfigs,
     ],
   );
@@ -3045,6 +3089,12 @@ const EditChannel = () => {
               return {
                 ...row,
                 [field]: normalizePriceOverrideValue(value),
+              };
+            }
+            if (field === 'provider') {
+              return {
+                ...row,
+                provider: normalizeChannelModelProviderValue(value),
               };
             }
             return {
@@ -3466,6 +3516,7 @@ const EditChannel = () => {
         onClose={cancelDetailModelsEdit}
         closeOnDimmerClick={!detailModelMutating}
         closeOnEscape={!detailModelMutating}
+        className='router-channel-model-editor-modal'
       >
         <Modal.Header>
           {`${t('common.edit')} · ${
@@ -3474,162 +3525,207 @@ const EditChannel = () => {
         </Modal.Header>
         <Modal.Content>
           {detailEditingModelRow ? (
-            <Form>
-              <Form.Group widths='equal'>
-                <Form.Input
-                  className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.name')}
-                  value={detailEditingModelRow.upstream_model || '-'}
-                  readOnly
-                />
-                <Form.Input
-                  className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.type')}
-                  value={t(
-                    `channel.model_types.${normalizeChannelModelType(
-                      detailEditingModelRow.type,
-                    )}`,
-                  )}
-                  readOnly
-                />
-              </Form.Group>
-              <Form.Field>
-                <label>{t('channel.edit.model_selector.table.providers')}</label>
-                <div className='router-inline-actions'>
-                  {getProviderOwnersForModel(detailEditingModelRow).length > 0
-                    ? getProviderOwnersForModel(detailEditingModelRow).map(
-                        (providerId) => (
-                          <Label
-                            key={`${detailEditingModelRow.upstream_model}-${providerId}`}
-                            basic
-                            className='router-tag'
-                          >
-                            {providerId}
-                          </Label>
-                        ),
-                      )
-                    : '-'}
-                  {getProviderOwnersForModel(detailEditingModelRow).length ===
-                    0 && !providerCatalogLoading ? (
-                    <Button
-                      type='button'
-                      className='router-inline-button'
-                      basic
-                      onClick={() => openAppendProviderModal(detailEditingModelRow)}
-                    >
-                      {t('channel.edit.model_selector.provider_add')}
-                    </Button>
-                  ) : null}
+            <Form className='router-channel-model-editor-form'>
+              <div className='router-channel-model-editor-card'>
+                <div className='router-channel-model-editor-section-title'>
+                  {t('channel.edit.model_selector.editor.info_title')}
                 </div>
-              </Form.Field>
-              <Form.Field>
-                <Checkbox
-                  label={t('channel.edit.model_selector.table.selected')}
-                  checked={!!detailEditingModelRow.selected}
-                  disabled={
-                    detailModelMutating ||
-                    providerCatalogLoading ||
-                    (!canSelectChannelModel(detailEditingModelRow) &&
-                      !detailEditingModelRow.selected)
-                  }
-                  onChange={(e, { checked }) =>
-                    toggleModelSelection(
-                      detailEditingModelRow.upstream_model,
-                      checked,
-                    )
-                  }
-                />
-              </Form.Field>
-              <Form.Group widths='equal'>
-                <Form.Input
-                  className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.alias')}
-                  value={detailEditingModelRow.model || ''}
-                  onChange={(e, { value }) =>
-                    updateModelConfigField(
-                      detailEditingModelRow.upstream_model,
-                      'model',
-                      value || detailEditingModelRow.upstream_model,
-                    )
-                  }
-                />
-                <Form.Input
-                  className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.price_unit')}
-                  value={detailEditingModelRow.price_unit || '-'}
-                  readOnly
-                />
-              </Form.Group>
-              <Form.Group widths='equal'>
+                <Form.Group widths='equal'>
+                  <Form.Input
+                    className='router-modal-input'
+                    label={t('channel.edit.model_selector.table.name')}
+                    value={detailEditingModelRow.upstream_model || '-'}
+                    readOnly
+                  />
+                  <Form.Input
+                    className='router-modal-input'
+                    label={t('channel.edit.model_selector.table.type')}
+                    value={t(
+                      `channel.model_types.${normalizeChannelModelType(
+                        detailEditingModelRow.type,
+                      )}`,
+                    )}
+                    readOnly
+                  />
+                </Form.Group>
+                <Form.Group widths='equal'>
+                  <Form.Input
+                    className='router-modal-input'
+                    label={t('channel.edit.model_selector.table.alias')}
+                    value={detailEditingModelRow.model || ''}
+                    onChange={(e, { value }) =>
+                      updateModelConfigField(
+                        detailEditingModelRow.upstream_model,
+                        'model',
+                        value || detailEditingModelRow.upstream_model,
+                      )
+                    }
+                  />
+                  <Form.Input
+                    className='router-modal-input'
+                    label={t('channel.edit.model_selector.table.price_unit')}
+                    value={detailEditingModelRow.price_unit || '-'}
+                    readOnly
+                  />
+                </Form.Group>
                 <Form.Field>
-                  <label>{t('channel.edit.model_selector.table.input_price')}</label>
-                  {getComplexPricingDetailsForModel(detailEditingModelRow).some(
-                    (detail) =>
-                      (detail.price_components || []).some(
-                        (component) => Number(component.input_price || 0) > 0,
-                      ),
-                  ) ? (
-                    <Button
-                      type='button'
-                      basic
-                      className='router-inline-button'
-                      onClick={() => openComplexPricingModal(detailEditingModelRow)}
-                    >
-                      {t('channel.edit.model_selector.pricing_detail_button')}
-                    </Button>
-                  ) : (
-                    <Form.Input
-                      className='router-modal-input'
-                      type='number'
-                      min='0'
-                      step='0.01'
-                      placeholder='-'
-                      value={detailEditingModelRow.input_price ?? ''}
+                  <label>{t('channel.edit.model_selector.table.providers')}</label>
+                  <div className='router-channel-model-editor-provider-row'>
+                    <Dropdown
+                      selection
+                      fluid
+                      className='router-modal-dropdown'
+                      placeholder={t(
+                        'channel.edit.model_selector.editor.provider_placeholder',
+                      )}
+                      options={getProviderSelectOptionsForModel(
+                        detailEditingModelRow,
+                      )}
+                      value={detailEditingModelRow.provider || ''}
+                      disabled={
+                        providerCatalogLoading ||
+                        getProviderSelectOptionsForModel(detailEditingModelRow)
+                          .length === 0
+                      }
                       onChange={(e, { value }) =>
                         updateModelConfigField(
                           detailEditingModelRow.upstream_model,
-                          'input_price',
-                          value,
+                          'provider',
+                          value || '',
                         )
                       }
                     />
-                  )}
+                    {getProviderSelectOptionsForModel(detailEditingModelRow)
+                      .length === 0 ? (
+                      <>
+                        <span className='router-text-meta'>
+                          {t(
+                            'channel.edit.model_selector.editor.provider_empty',
+                          )}
+                        </span>
+                        <Button
+                          type='button'
+                          className='router-inline-button'
+                          basic
+                          onClick={() =>
+                            openAppendProviderModal(detailEditingModelRow)
+                          }
+                        >
+                          {t('channel.edit.model_selector.provider_add')}
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
                 </Form.Field>
-                <Form.Field>
-                  <label>{t('channel.edit.model_selector.table.output_price')}</label>
-                  {getComplexPricingDetailsForModel(detailEditingModelRow).some(
-                    (detail) =>
-                      (detail.price_components || []).some(
-                        (component) => Number(component.output_price || 0) > 0,
-                      ),
-                  ) ? (
-                    <Button
-                      type='button'
-                      basic
-                      className='router-inline-button'
-                      onClick={() => openComplexPricingModal(detailEditingModelRow)}
-                    >
-                      {t('channel.edit.model_selector.pricing_detail_button')}
-                    </Button>
-                  ) : (
-                    <Form.Input
-                      className='router-modal-input'
-                      type='number'
-                      min='0'
-                      step='0.01'
-                      placeholder='-'
-                      value={detailEditingModelRow.output_price ?? ''}
-                      onChange={(e, { value }) =>
-                        updateModelConfigField(
-                          detailEditingModelRow.upstream_model,
-                          'output_price',
-                          value,
-                        )
-                      }
-                    />
-                  )}
-                </Form.Field>
-              </Form.Group>
+              </div>
+
+              <div className='router-channel-model-editor-card'>
+                <div className='router-channel-model-editor-section-title'>
+                  {t('channel.edit.model_selector.editor.status_title')}
+                </div>
+                <div className='router-channel-model-editor-toggle-row'>
+                  <div className='router-channel-model-editor-toggle-copy'>
+                    <div className='router-channel-model-editor-toggle-label'>
+                      {t('channel.edit.model_selector.table.selected')}
+                    </div>
+                    <div className='router-channel-model-editor-toggle-hint'>
+                      {t('channel.edit.model_selector.editor.status_hint')}
+                    </div>
+                  </div>
+                  <Checkbox
+                    toggle
+                    checked={!!detailEditingModelRow.selected}
+                    disabled={
+                      detailModelMutating ||
+                      providerCatalogLoading ||
+                      (!canSelectChannelModel(detailEditingModelRow) &&
+                        !detailEditingModelRow.selected)
+                    }
+                    onChange={(e, { checked }) =>
+                      toggleModelSelection(
+                        detailEditingModelRow.upstream_model,
+                        checked,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className='router-channel-model-editor-card'>
+                <div className='router-channel-model-editor-section-title'>
+                  {t('channel.edit.model_selector.editor.pricing_title')}
+                </div>
+                <Form.Group widths='equal'>
+                  <Form.Field>
+                    <label>{t('channel.edit.model_selector.table.input_price')}</label>
+                    {getComplexPricingDetailsForModel(detailEditingModelRow).some(
+                      (detail) =>
+                        (detail.price_components || []).some(
+                          (component) => Number(component.input_price || 0) > 0,
+                        ),
+                    ) ? (
+                      <Button
+                        type='button'
+                        basic
+                        className='router-inline-button'
+                        onClick={() => openComplexPricingModal(detailEditingModelRow)}
+                      >
+                        {t('channel.edit.model_selector.pricing_detail_button')}
+                      </Button>
+                    ) : (
+                      <Form.Input
+                        className='router-modal-input'
+                        type='number'
+                        min='0'
+                        step='0.01'
+                        placeholder='-'
+                        value={detailEditingModelRow.input_price ?? ''}
+                        onChange={(e, { value }) =>
+                          updateModelConfigField(
+                            detailEditingModelRow.upstream_model,
+                            'input_price',
+                            value,
+                          )
+                        }
+                      />
+                    )}
+                  </Form.Field>
+                  <Form.Field>
+                    <label>{t('channel.edit.model_selector.table.output_price')}</label>
+                    {getComplexPricingDetailsForModel(detailEditingModelRow).some(
+                      (detail) =>
+                        (detail.price_components || []).some(
+                          (component) => Number(component.output_price || 0) > 0,
+                        ),
+                    ) ? (
+                      <Button
+                        type='button'
+                        basic
+                        className='router-inline-button'
+                        onClick={() => openComplexPricingModal(detailEditingModelRow)}
+                      >
+                        {t('channel.edit.model_selector.pricing_detail_button')}
+                      </Button>
+                    ) : (
+                      <Form.Input
+                        className='router-modal-input'
+                        type='number'
+                        min='0'
+                        step='0.01'
+                        placeholder='-'
+                        value={detailEditingModelRow.output_price ?? ''}
+                        onChange={(e, { value }) =>
+                          updateModelConfigField(
+                            detailEditingModelRow.upstream_model,
+                            'output_price',
+                            value,
+                          )
+                        }
+                      />
+                    )}
+                  </Form.Field>
+                </Form.Group>
+              </div>
             </Form>
           ) : null}
         </Modal.Content>
@@ -4713,7 +4809,19 @@ const EditChannel = () => {
                                   >
                                     <Checkbox
                                       checked={!!row.selected}
-                                      disabled
+                                      disabled={
+                                        detailModelMutating ||
+                                        detailModelsEditing ||
+                                        providerCatalogLoading ||
+                                        (!canSelectChannelModel(row) &&
+                                          !row.selected)
+                                      }
+                                      onChange={(e, { checked }) =>
+                                        toggleModelSelection(
+                                          row.upstream_model,
+                                          checked,
+                                        )
+                                      }
                                     />
                                   </Table.Cell>
                                   <Table.Cell
@@ -4742,7 +4850,10 @@ const EditChannel = () => {
                                   </Table.Cell>
                                   <Table.Cell>
                                     {providerOwners.length > 0 ? (
-                                      providerOwners.map((providerId) => (
+                                      (row.provider
+                                        ? [normalizeChannelModelProviderValue(row.provider)]
+                                        : providerOwners
+                                      ).map((providerId) => (
                                         <Label
                                           key={`${row.upstream_model}-${providerId}`}
                                           basic
@@ -5025,7 +5136,10 @@ const EditChannel = () => {
                                 </Table.Cell>
                                 <Table.Cell>
                                   {providerOwners.length > 0 ? (
-                                    providerOwners.map((providerId) => (
+                                    (row.provider
+                                      ? [normalizeChannelModelProviderValue(row.provider)]
+                                      : providerOwners
+                                    ).map((providerId) => (
                                       <Label
                                         key={`${row.upstream_model}-${providerId}`}
                                         basic
