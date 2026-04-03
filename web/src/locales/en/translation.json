@@ -28,16 +28,18 @@
   },
   "topup": {
     "title": "Top Up Center",
-    "get_code": {
+    "display_currency": "Display",
+    "external_topup": {
       "title": "External Top-up",
-      "current_quota": "Current YYC Balance",
+      "current_balance": "Current Balance",
       "button": "Open External Top-up",
       "creating": "Creating order...",
       "description": "Router creates a top-up order first, then redirects to the external payment page.",
       "request_failed": "Failed to create top-up order",
-      "popup_blocked": "The browser blocked the new window. Please allow pop-ups and try again."
+      "popup_blocked": "The browser blocked the new window. Please allow pop-ups and try again.",
+      "no_link": "Admin has not set up the top-up link!"
     },
-    "orders": {
+    "external_topup_orders": {
       "title": "External Top-up Orders",
       "refresh": "Refresh",
       "empty": "No external top-up orders yet",
@@ -56,21 +58,21 @@
         "canceled": "Canceled"
       }
     },
-    "redemptions": {
+    "redemption_records": {
       "title": "Redemption Records",
       "refresh": "Refresh",
       "empty": "No redemption records yet",
       "columns": {
         "time": "Time",
-        "quota": "Top-up YYC",
+        "amount": "Top-up Amount",
         "detail": "Detail"
       }
     },
-    "result": {
+    "redemption_result": {
       "title": "Latest Redemption Result",
       "close": "Close",
       "fields": {
-        "redeemed_yyc": "Redeemed YYC",
+        "redeemed_amount": "Redeemed Amount",
         "before_balance": "Balance Before",
         "after_balance": "Balance After",
         "redemption_name": "Redemption Name",
@@ -80,7 +82,7 @@
         "redeemed_at": "Redeemed At"
       }
     },
-    "redeem_code": {
+    "redeem": {
       "title": "Redeem Code",
       "description": "If you already have a redemption code, you can credit it here directly.",
       "placeholder": "Please enter redemption code",
@@ -90,8 +92,7 @@
       "submitting": "Redeeming...",
       "empty_code": "Please enter the redemption code!",
       "success": "Top up successful!",
-      "request_failed": "Request failed",
-      "no_link": "Admin has not set up the top-up link!"
+      "request_failed": "Request failed"
     }
   },
   "channel": {
@@ -1035,6 +1036,13 @@
     "title": "User Management",
     "detail": {
       "title": "User Detail",
+      "package_mode_title": "Package Mode",
+      "balance_mode_title": "Redemption Mode",
+      "remaining_amount": "Remaining",
+      "used_amount": "Used",
+      "request_count_hint": "Total requests",
+      "recent_redemptions_title": "Recent Redemptions",
+      "recent_redemptions_empty": "No redemption records",
       "package_title": "Active Package",
       "package_name": "Package Name",
       "package_group": "Package Group",

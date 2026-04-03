@@ -8,6 +8,7 @@ import {
   Table,
 } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
 import {
@@ -271,6 +272,7 @@ const resolveQuotaInputStep = (unit, currencyIndex) => {
 
 const PackagesManager = () => {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -327,6 +329,10 @@ const PackagesManager = () => {
   const normalizedKeyword = useMemo(
     () => (typeof searchKeyword === 'string' ? searchKeyword.trim() : ''),
     [searchKeyword]
+  );
+  const keywordFromURL = useMemo(
+    () => (searchParams.get('keyword') || '').toString().trim(),
+    [searchParams]
   );
 
   const totalPages = useMemo(() => {
@@ -487,6 +493,11 @@ const PackagesManager = () => {
       };
     });
   }, [currencyIndex]);
+
+  useEffect(() => {
+    setSearchKeyword(keywordFromURL);
+    setActivePage(1);
+  }, [keywordFromURL]);
 
   useEffect(() => {
     loadPackages(activePage, normalizedKeyword).then();

@@ -14,6 +14,11 @@ import {
   YAxis,
 } from 'recharts';
 import { API } from '../../helpers/api';
+import {
+  buildPublicDisplayCurrencyIndex,
+  convertYYCToDisplayAmount,
+  formatCompactDisplayAmount,
+} from '../../helpers/billing';
 import '../Dashboard/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -67,24 +72,6 @@ const HEALTH_LEVEL_COLORS = {
   warning: '#f59e0b',
   critical: '#ef4444',
   unknown: '#94a3b8',
-};
-
-const getQuotaPerUnit = () => {
-  const raw = parseFloat(localStorage.getItem('quota_per_unit') || '1');
-  if (!Number.isFinite(raw) || raw <= 0) return 1;
-  return raw;
-};
-
-const toUsd = (quota) => {
-  const value = Number(quota);
-  if (!Number.isFinite(value)) return 0;
-  return value / getQuotaPerUnit();
-};
-
-const formatUsd = (quota) => {
-  const amount = toUsd(quota);
-  if (!Number.isFinite(amount)) return '0.0000';
-  return amount.toFixed(4);
 };
 
 const formatCount = (value) => {
@@ -148,10 +135,32 @@ const taskStatusColor = (status) => {
 
 const AdminDashboard = () => {
   const { t } = useTranslation();
+  const displayCurrencyIndex = useMemo(
+    () => buildPublicDisplayCurrencyIndex([]),
+    []
+  );
   const [period, setPeriod] = useState('last_7_days');
   const [loading, setLoading] = useState(false);
   const [trendMetric, setTrendMetric] = useState('consume_quota');
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
+
+  const toUsd = useCallback(
+    (quota) => {
+      const amount = convertYYCToDisplayAmount(
+        quota,
+        'USD',
+        displayCurrencyIndex
+      );
+      if (!Number.isFinite(amount)) return 0;
+      return amount;
+    },
+    [displayCurrencyIndex]
+  );
+
+  const formatUsd = useCallback(
+    (quota) => formatCompactDisplayAmount(toUsd(quota)),
+    [toUsd]
+  );
 
   const periodOptions = useMemo(
     () =>

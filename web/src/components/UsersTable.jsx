@@ -18,7 +18,6 @@ import {
   formatCompactNumber,
   renderGroup,
   renderText,
-  renderYYC,
 } from '../helpers/render';
 
 function renderRole(role, t) {
@@ -309,13 +308,6 @@ const UsersTable = () => {
     setActivePage(1);
   };
 
-  const renderQuotaValue = (value) =>
-    (() => {
-      const numericValue = Number(value);
-      const base = Number.isFinite(numericValue) ? numericValue : 0;
-      return renderYYC(base, t);
-    })();
-
   const renderCountValue = (value) => (
     <Popup
       content={formatFullNumber(value)}
@@ -350,16 +342,6 @@ const UsersTable = () => {
             selection
             options={[
               { key: '', text: t('user.table.sort.default'), value: '' },
-              {
-                key: 'quota',
-                text: t('user.table.sort.by_quota'),
-                value: 'quota',
-              },
-              {
-                key: 'used_quota',
-                text: t('user.table.sort.by_used_quota'),
-                value: 'used_quota',
-              },
               {
                 key: 'request_count',
                 text: t('user.table.sort.by_request_count'),
@@ -406,24 +388,6 @@ const UsersTable = () => {
               }}
             >
               {t('user.table.group')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('quota');
-              }}
-            >
-              {t('user.table.remaining_quota')}
-              <span className='router-inline-unit'>$</span>
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('used_quota');
-              }}
-            >
-              {t('user.table.used_quota')}
-              <span className='router-inline-unit'>$</span>
             </Table.HeaderCell>
             <Table.HeaderCell
               className='router-sortable-header'
@@ -516,11 +480,6 @@ const UsersTable = () => {
                     )}
                   </Table.Cell>
                   <Table.Cell>{renderUserGroup(user.group)}</Table.Cell>
-                  {/*<Table.Cell>*/}
-                  {/*  {user.email ? <Popup hoverable content={user.email} trigger={<span>{renderText(user.email, 24)}</span>} /> : '无'}*/}
-                  {/*</Table.Cell>*/}
-                  <Table.Cell>{renderQuotaValue(user.yyc_balance ?? user.quota)}</Table.Cell>
-                  <Table.Cell>{renderQuotaValue(user.yyc_used ?? user.used_quota)}</Table.Cell>
                   <Table.Cell>
                     {renderCountValue(user.request_count)}
                   </Table.Cell>
@@ -581,7 +540,7 @@ const UsersTable = () => {
 
         <Table.Footer>
           <Table.Row>
-            <Table.HeaderCell colSpan='11'>
+            <Table.HeaderCell colSpan='9'>
               <Pagination
                 className='router-page-pagination'
                 floated='right'

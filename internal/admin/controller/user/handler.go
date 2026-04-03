@@ -58,6 +58,10 @@ type activeUserPackageSubscriptionPayload struct {
 	Subscription          *activeUserPackageSubscriptionView `json:"subscription,omitempty"`
 }
 
+type userRecentRedemptionsPayload struct {
+	Items []*presenter.Redemption `json:"items"`
+}
+
 func exposedUser(user *model.User) *presenter.User {
 	if user == nil {
 		return nil
@@ -486,6 +490,58 @@ func GetUserActivePackageSubscription(c *gin.Context) {
 		"data": activeUserPackageSubscriptionPayload{
 			HasActiveSubscription: true,
 			Subscription:          buildActiveUserPackageSubscriptionView(subscription),
+		},
+	})
+}
+
+// GetUserRecentRedemptions godoc
+// @Summary Get recent redemptions for user (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "User ID"
+// @Param limit query int false "Max items"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/user/{id}/redemptions [get]
+func GetUserRecentRedemptions(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "id 为空",
+		})
+		return
+	}
+	targetUser, err := usersvc.GetByID(id, false)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	if !requesterCanReadUser(c, targetUser) {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "无权获取同级或更高等级用户的信息",
+		})
+		return
+	}
+	limit, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("limit", "5")))
+	rows, err := model.ListRedemptionsByRedeemedUserID(id, limit)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": userRecentRedemptionsPayload{
+			Items: presenter.NewRedemptions(rows),
 		},
 	})
 }

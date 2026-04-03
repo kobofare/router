@@ -46,6 +46,7 @@ func SetApiRouter(engine *gin.Engine) {
 		publicRouter.GET("/profile", middleware.CriticalRateLimit(), auth.PublicProfile)
 
 		publicRouter.GET("/status", admin.GetStatus)
+		publicRouter.GET("/billing/currencies", adminbilling.GetPublicBillingCurrencies)
 		publicRouter.GET("/notice", admin.GetNotice)
 		publicRouter.GET("/about", admin.GetAbout)
 		publicRouter.GET("/home_page_content", admin.GetHomePageContent)
@@ -198,6 +199,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminUserRoute.GET("/search", user.SearchUsers)
 			adminUserRoute.GET("/:id", user.GetUser)
 			adminUserRoute.GET("/:id/package/subscription", user.GetUserActivePackageSubscription)
+			adminUserRoute.GET("/:id/redemptions", user.GetUserRecentRedemptions)
 			adminUserRoute.GET("/:id/quota/summary", user.GetUserQuotaSummary)
 			adminUserRoute.POST("/", user.CreateUser)
 			adminUserRoute.POST("/manage", user.ManageUser)

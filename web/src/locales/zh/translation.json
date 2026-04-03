@@ -28,16 +28,18 @@
   },
   "topup": {
     "title": "充值中心",
-    "get_code": {
+    "display_currency": "展示币种",
+    "external_topup": {
       "title": "外部充值",
-      "current_quota": "当前 YYC 余额",
+      "current_balance": "当前余额",
       "button": "前往外部充值",
       "creating": "创建订单中...",
       "description": "Router 会先创建充值订单，再跳转到外部充值页面完成支付。",
       "request_failed": "创建充值订单失败",
-      "popup_blocked": "浏览器拦截了新窗口，请允许弹窗后重试"
+      "popup_blocked": "浏览器拦截了新窗口，请允许弹窗后重试",
+      "no_link": "超级管理员未设置充值链接！"
     },
-    "orders": {
+    "external_topup_orders": {
       "title": "外部充值订单",
       "refresh": "刷新",
       "empty": "暂无外部充值订单",
@@ -56,21 +58,21 @@
         "canceled": "已取消"
       }
     },
-    "redemptions": {
+    "redemption_records": {
       "title": "兑换入账记录",
       "refresh": "刷新",
       "empty": "暂无兑换入账记录",
       "columns": {
         "time": "时间",
-        "quota": "充值 YYC",
+        "amount": "充值金额",
         "detail": "明细"
       }
     },
-    "result": {
+    "redemption_result": {
       "title": "最近一次兑换结果",
       "close": "关闭",
       "fields": {
-        "redeemed_yyc": "到账 YYC",
+        "redeemed_amount": "到账金额",
         "before_balance": "充值前余额",
         "after_balance": "充值后余额",
         "redemption_name": "兑换码名称",
@@ -80,7 +82,7 @@
         "redeemed_at": "兑换时间"
       }
     },
-    "redeem_code": {
+    "redeem": {
       "title": "兑换码充值",
       "description": "如果你已经拿到兑换码，可以在这里直接完成入账。",
       "placeholder": "请输入兑换码",
@@ -90,8 +92,7 @@
       "submitting": "兑换中...",
       "empty_code": "请输入兑换码！",
       "success": "充值成功！",
-      "request_failed": "请求失败",
-      "no_link": "超级管理员未设置充值链接！"
+      "request_failed": "请求失败"
     }
   },
   "channel": {
@@ -1035,6 +1036,13 @@
     "title": "用户管理",
     "detail": {
       "title": "用户详情",
+      "package_mode_title": "套餐模式",
+      "balance_mode_title": "兑换码模式",
+      "remaining_amount": "剩余",
+      "used_amount": "已用",
+      "request_count_hint": "累计请求次数",
+      "recent_redemptions_title": "最近兑换记录",
+      "recent_redemptions_empty": "暂无兑换记录",
       "package_title": "当前生效套餐",
       "package_name": "套餐名称",
       "package_group": "套餐分组",

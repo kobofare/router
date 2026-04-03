@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Form,
@@ -8,6 +8,7 @@ import {
   Statistic,
   Label,
   Table,
+  Dropdown,
 } from 'semantic-ui-react';
 import {
   API,
@@ -17,7 +18,19 @@ import {
   timestamp2string,
 } from '../../helpers';
 import { formatAmountWithUnit, renderYYC } from '../../helpers/render';
+import {
+  buildPublicDisplayCurrencyIndex,
+  convertYYCToDisplayAmount,
+  DEFAULT_FIAT_DISPLAY_CODE,
+  listDisplayCurrencies,
+  loadPublicDisplayCurrencyCatalog,
+  normalizeDisplayCurrencyCode,
+  resolvePreferredDisplayCurrency,
+  YYC_DISPLAY_CODE,
+} from '../../helpers/billing';
 import { useTranslation } from 'react-i18next';
+
+const TOPUP_DISPLAY_CURRENCY_STORAGE_KEY = 'topup_display_currency';
 
 const normalizeTopUpResult = (raw) => {
   if (!raw || typeof raw !== 'object') {
@@ -40,8 +53,42 @@ const normalizeTopUpResult = (raw) => {
   };
 };
 
+const buildDisplayCurrencyOptions = (currencyIndex) =>
+  listDisplayCurrencies(currencyIndex).map((item) => ({
+    key: item.code,
+    value: item.code,
+    text: item?.symbol ? `${item.symbol} ${item.code}` : `${item.code}`,
+  }));
+
+const getStoredDisplayCurrency = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return normalizeDisplayCurrencyCode(
+    window.localStorage.getItem(TOPUP_DISPLAY_CURRENCY_STORAGE_KEY)
+  );
+};
+
+const storeDisplayCurrency = (code) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem(
+    TOPUP_DISPLAY_CURRENCY_STORAGE_KEY,
+    normalizeDisplayCurrencyCode(code)
+  );
+};
+
+const resolveDisplayCurrency = (currencyIndex, current = '') => {
+  return resolvePreferredDisplayCurrency(
+    currencyIndex,
+    current || getStoredDisplayCurrency() || DEFAULT_FIAT_DISPLAY_CODE
+  );
+};
+
 const TopUp = () => {
   const { t } = useTranslation();
+  const initialCurrencyIndex = buildPublicDisplayCurrencyIndex([]);
   const [redemptionCode, setRedemptionCode] = useState('');
   const [topUpLink, setTopUpLink] = useState('');
   const [userQuota, setUserQuota] = useState(0);
@@ -52,10 +99,58 @@ const TopUp = () => {
   const [topupLogs, setTopupLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [recentTopUpResult, setRecentTopUpResult] = useState(null);
+  const [displayCurrencyIndex, setDisplayCurrencyIndex] = useState(
+    initialCurrencyIndex
+  );
+  const [displayCurrency, setDisplayCurrency] = useState(
+    resolveDisplayCurrency(initialCurrencyIndex)
+  );
+  const [loadingDisplayCurrencies, setLoadingDisplayCurrencies] = useState(false);
+
+  const displayCurrencyOptions = buildDisplayCurrencyOptions(displayCurrencyIndex);
+
+  const renderBalanceValue = (yycAmount) => {
+    const normalizedAmount = Number(yycAmount || 0);
+    if (!Number.isFinite(normalizedAmount)) {
+      return renderYYC(0, t);
+    }
+    const normalizedCurrency = normalizeDisplayCurrencyCode(displayCurrency);
+    if (normalizedCurrency === YYC_DISPLAY_CODE) {
+      return renderYYC(normalizedAmount, t);
+    }
+    const displayAmount = convertYYCToDisplayAmount(
+      normalizedAmount,
+      normalizedCurrency,
+      displayCurrencyIndex
+    );
+    if (!Number.isFinite(displayAmount)) {
+      return renderYYC(normalizedAmount, t);
+    }
+    return formatAmountWithUnit(displayAmount, normalizedCurrency, 6);
+  };
+
+  const loadDisplayCurrencies = useCallback(async () => {
+    setLoadingDisplayCurrencies(true);
+    try {
+      const { currencyIndex: nextIndex, defaultCurrency } =
+        await loadPublicDisplayCurrencyCatalog();
+      setDisplayCurrencyIndex(nextIndex);
+      setDisplayCurrency((prev) => {
+        const next = resolveDisplayCurrency(
+          nextIndex,
+          prev || defaultCurrency || DEFAULT_FIAT_DISPLAY_CODE
+        );
+        storeDisplayCurrency(next);
+        return next;
+      });
+    } finally {
+      setLoadingDisplayCurrencies(false);
+    }
+  }, []);
 
   const topUp = async () => {
     if (redemptionCode === '') {
-      showInfo(t('topup.redeem_code.empty_code'));
+      showInfo(t('topup.redeem.empty_code'));
       return;
     }
     setIsSubmitting(true);
@@ -78,7 +173,7 @@ const TopUp = () => {
             face_value_unit: '',
             redeemed_at: 0,
           };
-        showSuccess(t('topup.redeem_code.success'));
+        showSuccess(t('topup.redeem.success'));
         setUserQuota(normalizedResult.after_yyc_balance);
         setRecentTopUpResult(normalizedResult);
         setRedemptionCode('');
@@ -87,7 +182,7 @@ const TopUp = () => {
         showError(message);
       }
     } catch (err) {
-      showError(t('topup.redeem_code.request_failed'));
+      showError(t('topup.redeem.request_failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,12 +190,12 @@ const TopUp = () => {
 
   const openTopUpLink = async () => {
     if (!topUpLink) {
-      showError(t('topup.redeem_code.no_link'));
+      showError(t('topup.external_topup.no_link'));
       return;
     }
     const popup = window.open('', '_blank', 'noopener,noreferrer');
     if (!popup) {
-      showError(t('topup.get_code.popup_blocked'));
+      showError(t('topup.external_topup.popup_blocked'));
       return;
     }
     setIsCreatingTopUpOrder(true);
@@ -115,7 +210,7 @@ const TopUp = () => {
       const redirectURL = data?.redirect_url;
       if (!redirectURL) {
         popup.close();
-        showError(t('topup.get_code.request_failed'));
+        showError(t('topup.external_topup.request_failed'));
         return;
       }
       getTopupOrders().then();
@@ -123,7 +218,7 @@ const TopUp = () => {
       popup.focus();
     } catch (err) {
       popup.close();
-      showError(t('topup.get_code.request_failed'));
+      showError(t('topup.external_topup.request_failed'));
     } finally {
       setIsCreatingTopUpOrder(false);
     }
@@ -180,44 +275,45 @@ const TopUp = () => {
     getUserQuota().then();
     getTopupOrders().then();
     getTopupLogs().then();
-  }, []);
+    loadDisplayCurrencies().then();
+  }, [loadDisplayCurrencies]);
 
   const renderTopupOrderStatus = (status) => {
     switch (status) {
       case 'created':
         return (
           <Label basic color='blue' className='router-tag'>
-            {t('topup.orders.status.created')}
+            {t('topup.external_topup_orders.status.created')}
           </Label>
         );
       case 'pending':
         return (
           <Label basic color='orange' className='router-tag'>
-            {t('topup.orders.status.pending')}
+            {t('topup.external_topup_orders.status.pending')}
           </Label>
         );
       case 'paid':
         return (
           <Label basic color='teal' className='router-tag'>
-            {t('topup.orders.status.paid')}
+            {t('topup.external_topup_orders.status.paid')}
           </Label>
         );
       case 'fulfilled':
         return (
           <Label basic color='green' className='router-tag'>
-            {t('topup.orders.status.fulfilled')}
+            {t('topup.external_topup_orders.status.fulfilled')}
           </Label>
         );
       case 'failed':
         return (
           <Label basic color='red' className='router-tag'>
-            {t('topup.orders.status.failed')}
+            {t('topup.external_topup_orders.status.failed')}
           </Label>
         );
       case 'canceled':
         return (
           <Label basic className='router-tag'>
-            {t('topup.orders.status.canceled')}
+            {t('topup.external_topup_orders.status.canceled')}
           </Label>
         );
       default:
@@ -233,8 +329,42 @@ const TopUp = () => {
     <div className='dashboard-container'>
       <Card fluid className='chart-card'>
         <Card.Content>
-          <Card.Header>
-            <Header as='h2' className='router-page-title'>{t('topup.title')}</Header>
+          <Card.Header className='router-card-header'>
+            <div className='router-toolbar'>
+              <Header as='h2' className='router-page-title'>
+                {t('topup.title')}
+              </Header>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'nowrap',
+                }}
+              >
+                <span
+                  className='router-text-muted'
+                  style={{ whiteSpace: 'nowrap', fontSize: '0.92rem' }}
+                >
+                  {t('topup.display_currency')}
+                </span>
+                <Dropdown
+                  selection
+                  compact
+                  className='router-inline-dropdown'
+                  style={{ minWidth: '108px' }}
+                  options={displayCurrencyOptions}
+                  value={displayCurrency}
+                  loading={loadingDisplayCurrencies}
+                  disabled={loadingDisplayCurrencies || displayCurrencyOptions.length === 0}
+                  onChange={(_, { value }) => {
+                    const next = resolveDisplayCurrency(displayCurrencyIndex, value);
+                    setDisplayCurrency(next);
+                    storeDisplayCurrency(next);
+                  }}
+                />
+              </div>
+            </div>
           </Card.Header>
 
           <Grid columns={2} stackable>
@@ -247,7 +377,7 @@ const TopUp = () => {
                   <Card.Header className='router-card-header'>
                     <Header as='h3' className='router-section-title router-title-accent-primary'>
                       <i className='credit card icon'></i>
-                      {t('topup.get_code.title')}
+                      {t('topup.external_topup.title')}
                     </Header>
                   </Card.Header>
                   <Card.Description className='router-card-fill'>
@@ -255,14 +385,14 @@ const TopUp = () => {
                       <div className='router-center-panel'>
                         <Statistic className='router-accent-statistic'>
                           <Statistic.Value>
-                            {renderYYC(userQuota, t)}
+                            {renderBalanceValue(userQuota)}
                           </Statistic.Value>
                           <Statistic.Label>
-                            {t('topup.get_code.current_quota')}
+                            {t('topup.external_topup.current_balance')}
                           </Statistic.Label>
                         </Statistic>
                         <div className='router-text-muted' style={{ marginTop: '0.75rem' }}>
-                          {t('topup.get_code.description')}
+                          {t('topup.external_topup.description')}
                         </div>
                       </div>
 
@@ -275,8 +405,8 @@ const TopUp = () => {
                           disabled={isCreatingTopUpOrder || !topUpLink}
                         >
                           {isCreatingTopUpOrder
-                            ? t('topup.get_code.creating')
-                            : t('topup.get_code.button')}
+                            ? t('topup.external_topup.creating')
+                            : t('topup.external_topup.button')}
                         </Button>
                       </div>
                     </div>
@@ -294,13 +424,13 @@ const TopUp = () => {
                   <Card.Header className='router-card-header'>
                     <Header as='h3' className='router-section-title router-title-accent-positive'>
                       <i className='ticket alternate icon'></i>
-                      {t('topup.redeem_code.title')}
+                      {t('topup.redeem.title')}
                     </Header>
                   </Card.Header>
                   <Card.Description className='router-card-fill'>
                     <div className='router-card-body-spread'>
                       <div className='router-text-muted'>
-                        {t('topup.redeem_code.description')}
+                        {t('topup.redeem.description')}
                       </div>
 
                       <Form.Input
@@ -308,7 +438,7 @@ const TopUp = () => {
                         fluid
                         icon='key'
                         iconPosition='left'
-                        placeholder={t('topup.redeem_code.placeholder')}
+                        placeholder={t('topup.redeem.placeholder')}
                         value={redemptionCode}
                         onChange={(e) => {
                           setRedemptionCode(e.target.value);
@@ -327,11 +457,11 @@ const TopUp = () => {
                                   await navigator.clipboard.readText();
                                 setRedemptionCode(text.trim());
                               } catch (err) {
-                                showError(t('topup.redeem_code.paste_error'));
+                                showError(t('topup.redeem.paste_error'));
                               }
                             }}
                           >
-                            {t('topup.redeem_code.paste')}
+                            {t('topup.redeem.paste')}
                           </Button>
                         }
                       />
@@ -346,8 +476,8 @@ const TopUp = () => {
                           disabled={isSubmitting}
                         >
                           {isSubmitting
-                            ? t('topup.redeem_code.submitting')
-                            : t('topup.redeem_code.submit')}
+                            ? t('topup.redeem.submitting')
+                            : t('topup.redeem.submit')}
                         </Button>
                       </div>
                     </div>
@@ -364,7 +494,7 @@ const TopUp = () => {
                   <div className='router-toolbar'>
                     <Header as='h3' className='router-section-title router-title-accent-warning'>
                       <i className='check circle icon'></i>
-                      {t('topup.result.title')}
+                      {t('topup.redemption_result.title')}
                     </Header>
                     <Button
                       className='router-section-button'
@@ -372,16 +502,16 @@ const TopUp = () => {
                       size='small'
                       onClick={() => setRecentTopUpResult(null)}
                     >
-                      {t('topup.result.close')}
+                      {t('topup.redemption_result.close')}
                     </Button>
                   </div>
                 </Card.Header>
                 <Table basic='very' compact='very' className='router-list-table'>
                   <Table.Body>
                     <Table.Row>
-                      <Table.Cell width={4}>{t('topup.result.fields.redeemed_yyc')}</Table.Cell>
-                      <Table.Cell>{renderYYC(recentTopUpResult.redeemed_yyc, t)}</Table.Cell>
-                      <Table.Cell width={4}>{t('topup.result.fields.redeemed_at')}</Table.Cell>
+                      <Table.Cell width={4}>{t('topup.redemption_result.fields.redeemed_amount')}</Table.Cell>
+                      <Table.Cell>{renderBalanceValue(recentTopUpResult.redeemed_yyc)}</Table.Cell>
+                      <Table.Cell width={4}>{t('topup.redemption_result.fields.redeemed_at')}</Table.Cell>
                       <Table.Cell>
                         {recentTopUpResult.redeemed_at
                           ? timestamp2string(recentTopUpResult.redeemed_at)
@@ -389,23 +519,23 @@ const TopUp = () => {
                       </Table.Cell>
                     </Table.Row>
                     <Table.Row>
-                      <Table.Cell>{t('topup.result.fields.before_balance')}</Table.Cell>
-                      <Table.Cell>{renderYYC(recentTopUpResult.before_yyc_balance, t)}</Table.Cell>
-                      <Table.Cell>{t('topup.result.fields.after_balance')}</Table.Cell>
-                      <Table.Cell>{renderYYC(recentTopUpResult.after_yyc_balance, t)}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.before_balance')}</Table.Cell>
+                      <Table.Cell>{renderBalanceValue(recentTopUpResult.before_yyc_balance)}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.after_balance')}</Table.Cell>
+                      <Table.Cell>{renderBalanceValue(recentTopUpResult.after_yyc_balance)}</Table.Cell>
                     </Table.Row>
                     <Table.Row>
-                      <Table.Cell>{t('topup.result.fields.redemption_name')}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.redemption_name')}</Table.Cell>
                       <Table.Cell>{recentTopUpResult.redemption_name || '-'}</Table.Cell>
-                      <Table.Cell>{t('topup.result.fields.redemption_id')}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.redemption_id')}</Table.Cell>
                       <Table.Cell>{recentTopUpResult.redemption_id || '-'}</Table.Cell>
                     </Table.Row>
                     <Table.Row>
-                      <Table.Cell>{t('topup.result.fields.group')}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.group')}</Table.Cell>
                       <Table.Cell>
                         {recentTopUpResult.group_name || recentTopUpResult.group_id || '-'}
                       </Table.Cell>
-                      <Table.Cell>{t('topup.result.fields.face_value')}</Table.Cell>
+                      <Table.Cell>{t('topup.redemption_result.fields.face_value')}</Table.Cell>
                       <Table.Cell>
                         {recentTopUpResult.face_value_amount > 0
                           ? formatAmountWithUnit(
@@ -427,14 +557,14 @@ const TopUp = () => {
                 <div className='router-toolbar'>
                   <Header as='h3' className='router-section-title router-title-accent-primary'>
                     <i className='credit card outline icon'></i>
-                    {t('topup.orders.title')}
+                    {t('topup.external_topup_orders.title')}
                   </Header>
                   <Button
                     className='router-section-button'
                     onClick={getTopupOrders}
                     loading={loadingOrders}
                   >
-                    {t('topup.orders.refresh')}
+                    {t('topup.external_topup_orders.refresh')}
                   </Button>
                 </div>
               </Card.Header>
@@ -442,16 +572,16 @@ const TopUp = () => {
                 <Table.Header>
                   <Table.Row>
                     <Table.HeaderCell width={3}>
-                      {t('topup.orders.columns.time')}
+                      {t('topup.external_topup_orders.columns.time')}
                     </Table.HeaderCell>
                     <Table.HeaderCell width={2}>
-                      {t('topup.orders.columns.status')}
+                      {t('topup.external_topup_orders.columns.status')}
                     </Table.HeaderCell>
                     <Table.HeaderCell width={4}>
-                      {t('topup.orders.columns.order_id')}
+                      {t('topup.external_topup_orders.columns.order_id')}
                     </Table.HeaderCell>
                     <Table.HeaderCell>
-                      {t('topup.orders.columns.transaction_id')}
+                      {t('topup.external_topup_orders.columns.transaction_id')}
                     </Table.HeaderCell>
                   </Table.Row>
                 </Table.Header>
@@ -461,7 +591,7 @@ const TopUp = () => {
                       <Table.Cell colSpan='4' className='router-text-muted'>
                         {loadingOrders
                           ? t('common.loading')
-                          : t('topup.orders.empty')}
+                          : t('topup.external_topup_orders.empty')}
                       </Table.Cell>
                     </Table.Row>
                   ) : (
@@ -491,28 +621,28 @@ const TopUp = () => {
                 <div className='router-toolbar'>
                   <Header as='h3' className='router-section-title router-title-accent-secondary'>
                     <i className='history icon'></i>
-                    {t('topup.redemptions.title')}
+                    {t('topup.redemption_records.title')}
                   </Header>
                   <Button
                     className='router-section-button'
                     onClick={getTopupLogs}
                     loading={loadingLogs}
                   >
-                    {t('topup.history.refresh')}
+                    {t('topup.redemption_records.refresh')}
                   </Button>
                 </div>
               </Card.Header>
               <Table basic='very' compact className='router-list-table'>
                 <Table.Header>
-                  <Table.Row>
-                    <Table.HeaderCell width={3}>
-                      {t('topup.redemptions.columns.time')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell width={2}>
-                      {t('topup.redemptions.columns.quota')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('topup.redemptions.columns.detail')}
+                    <Table.Row>
+                      <Table.HeaderCell width={3}>
+                        {t('topup.redemption_records.columns.time')}
+                      </Table.HeaderCell>
+                      <Table.HeaderCell width={2}>
+                        {t('topup.redemption_records.columns.amount')}
+                      </Table.HeaderCell>
+                      <Table.HeaderCell>
+                        {t('topup.redemption_records.columns.detail')}
                     </Table.HeaderCell>
                   </Table.Row>
                 </Table.Header>
@@ -522,7 +652,7 @@ const TopUp = () => {
                       <Table.Cell colSpan='3' className='router-text-muted'>
                         {loadingLogs
                           ? t('common.loading')
-                          : t('topup.redemptions.empty')}
+                          : t('topup.redemption_records.empty')}
                       </Table.Cell>
                     </Table.Row>
                   ) : (
@@ -534,7 +664,7 @@ const TopUp = () => {
                         <Table.Cell>
                           {log.quota ? (
                             <Label basic color='green' className='router-tag'>
-                              {renderYYC(log.quota, t)}
+                              {renderBalanceValue(log.quota)}
                             </Label>
                           ) : (
                             '-'

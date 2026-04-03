@@ -1112,6 +1112,116 @@ code {
     padding: 0.54em 0.82em !important;
 }
 
+.router-entity-detail-subsection-title {
+    margin: 4px 0 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    font-weight: 500;
+    color: #374151;
+}
+
+.router-entity-empty-hint {
+    padding: 10px 0 2px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.router-user-redemption-summary {
+    margin-top: 6px;
+}
+
+.router-user-redemption-summary .ui.table {
+    margin-top: 0;
+}
+
+.router-inline-stat-card {
+    min-height: 38px;
+    border: 1px solid rgba(34, 36, 38, 0.12);
+    border-radius: 0.28571429rem;
+    background: #fafbfc;
+    padding: 8px 12px;
+}
+
+.router-inline-stat-value {
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.router-inline-stat-hint {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.router-inline-meta-card {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1px solid rgba(34, 36, 38, 0.12);
+    border-radius: 0.28571429rem;
+    background: #fafbfc;
+    padding: 8px 12px;
+}
+
+.router-inline-meta-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1f2937;
+    word-break: break-all;
+}
+
+.router-inline-amount-card {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(33, 133, 208, 0.14);
+    border-radius: 0.28571429rem;
+    background: linear-gradient(180deg, rgba(33, 133, 208, 0.05), rgba(33, 133, 208, 0.02));
+    padding: 8px 12px;
+}
+
+.router-inline-amount-value {
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.router-inline-meta-action {
+    flex: 0 0 auto;
+}
+
+.ui.button.router-inline-meta-copy,
+.ui.buttons .button.router-inline-meta-copy {
+    min-height: 26px !important;
+    padding: 0.42em 0.56em !important;
+    border-color: rgba(34, 36, 38, 0.12) !important;
+    box-shadow: none !important;
+}
+
+.ui.button.router-inline-meta-copy > .icon,
+.ui.buttons .button.router-inline-meta-copy > .icon {
+    margin: 0 !important;
+}
+
+.router-inline-status-card {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(34, 36, 38, 0.12);
+    border-radius: 0.28571429rem;
+    background: #fafbfc;
+    padding: 8px 12px;
+}
+
 .ui.selection.dropdown.router-inline-dropdown,
 .ui.selection.dropdown.router-inline-dropdown > .text,
 .ui.selection.dropdown.router-inline-dropdown > .default.text,

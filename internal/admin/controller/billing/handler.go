@@ -32,6 +32,72 @@ type upsertBillingCurrencyRequest struct {
 	Source     string  `json:"source"`
 }
 
+type publicBillingCurrencyItem struct {
+	Code       string  `json:"code"`
+	Name       string  `json:"name"`
+	Symbol     string  `json:"symbol"`
+	MinorUnit  int     `json:"minor_unit"`
+	YYCPerUnit float64 `json:"yyc_per_unit"`
+}
+
+// GetPublicBillingCurrencies godoc
+// @Summary List billing currencies (public)
+// @Tags public
+// @Produce json
+// @Success 200 {object} docs.StandardResponse
+// @Router /api/v1/public/billing/currencies [get]
+func GetPublicBillingCurrencies(c *gin.Context) {
+	rows, err := model.ListBillingCurrencies()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "加载计费币种失败: " + err.Error(),
+		})
+		return
+	}
+
+	items := make([]publicBillingCurrencyItem, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		if row.Status != model.BillingCurrencyStatusEnabled || row.YYCPerUnit <= 0 {
+			continue
+		}
+		code := strings.ToUpper(strings.TrimSpace(row.Code))
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		items = append(items, publicBillingCurrencyItem{
+			Code:       code,
+			Name:       row.Name,
+			Symbol:     row.Symbol,
+			MinorUnit:  row.MinorUnit,
+			YYCPerUnit: row.YYCPerUnit,
+		})
+	}
+	if _, ok := seen[model.BillingCurrencyCodeUSD]; !ok {
+		items = append(items, publicBillingCurrencyItem{
+			Code:       model.BillingCurrencyCodeUSD,
+			Name:       "US Dollar",
+			Symbol:     "$",
+			MinorUnit:  2,
+			YYCPerUnit: usdYYCPerUnit(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"default_currency": model.BillingCurrencyCodeUSD,
+			"items":            items,
+		},
+	})
+}
+
 // GetBillingCurrencies godoc
 // @Summary List billing currencies (admin)
 // @Tags admin

@@ -21,10 +21,18 @@ import { useTranslation } from 'react-i18next';
 import { ITEMS_PER_PAGE } from '../constants';
 import {
   renderColorLabel,
-  renderQuota,
+  isQuotaDisplayedInCurrency,
   YYC_SYMBOL,
 } from '../helpers/render';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  buildPublicDisplayCurrencyIndex,
+  formatQuotaForDisplay,
+  listDisplayCurrencies,
+  loadPublicDisplayCurrencyCatalog,
+  resolvePreferredDisplayCurrency,
+  YYC_DISPLAY_CODE,
+} from '../helpers/billing';
 
 function renderTimestamp(timestamp, trace_id) {
   return (
@@ -140,51 +148,6 @@ function normalizeLogEntry(log) {
     user_daily_quota: Number(log?.yyc_user_daily ?? log?.user_daily_quota ?? 0),
     user_emergency_quota: Number(log?.yyc_user_emergency ?? log?.user_emergency_quota ?? 0),
   };
-}
-
-function buildDisplayCurrencyIndex(rows) {
-  const next = {
-    YYC: {
-      code: 'YYC',
-      symbol: YYC_SYMBOL,
-      minor_unit: 0,
-      yyc_per_unit: 1,
-    },
-  };
-  (Array.isArray(rows) ? rows : [])
-    .filter((item) => Number(item?.status || 0) === 1)
-    .forEach((item) => {
-      const code = (item?.code || '').toString().trim().toUpperCase();
-      if (!code) {
-        return;
-      }
-      next[code] = {
-        ...item,
-        code,
-      };
-    });
-  return next;
-}
-
-function formatLogQuotaAmount(amount, fractionDigits = 6) {
-  const normalizedAmount = Number(amount || 0);
-  if (!Number.isFinite(normalizedAmount)) {
-    return '-';
-  }
-  return normalizedAmount.toFixed(fractionDigits);
-}
-
-function renderLogQuotaValue(quota, displayUnit, currencyIndex) {
-  const yycValue = Number(quota || 0);
-  if (!Number.isFinite(yycValue)) {
-    return '-';
-  }
-  const targetCurrency = currencyIndex?.[displayUnit] || currencyIndex?.YYC;
-  const rate = Number(targetCurrency?.yyc_per_unit || 0);
-  if (!Number.isFinite(rate) || rate <= 0) {
-    return '-';
-  }
-  return formatLogQuotaAmount(yycValue / rate, 6);
 }
 
 function toDatetimeLocalValue(value) {
@@ -317,7 +280,9 @@ const LogsTable = () => {
     end_timestamp: '',
   });
   const [displayUnit, setDisplayUnit] = useState('USD');
-  const [currencyIndex, setCurrencyIndex] = useState(buildDisplayCurrencyIndex([]));
+  const [currencyIndex, setCurrencyIndex] = useState(() =>
+    buildPublicDisplayCurrencyIndex([])
+  );
 
   const LOG_OPTIONS = [
     { key: '0', text: t('log.type.all'), value: 0 },
@@ -431,23 +396,13 @@ const LogsTable = () => {
   );
 
   const displayUnitOptions = useMemo(() => {
-    const items = [
-      {
-        value: 'YYC',
-        label: YYC_SYMBOL,
-      },
-    ];
-    Object.values(currencyIndex)
-      .filter((item) => item && item.code && item.code !== 'YYC')
-      .sort((a, b) => `${a.code}`.localeCompare(`${b.code}`))
-      .forEach((item) => {
-        const symbol = (item?.symbol || '').toString().trim();
-        items.push({
-          value: item.code,
-          label: symbol || item.code,
-        });
-      });
-    return items;
+    return listDisplayCurrencies(currencyIndex).map((item) => ({
+      value: item.code,
+      label:
+        item.code === YYC_DISPLAY_CODE
+          ? YYC_SYMBOL
+          : (item?.symbol || '').toString().trim() || item.code,
+    }));
   }, [currencyIndex]);
 
   const openFilterDraft = useCallback(
@@ -577,30 +532,29 @@ const LogsTable = () => {
   }, [isAdminScope, t]);
 
   const loadDisplayUnits = useCallback(async () => {
-    if (!isAdminScope) {
-      return;
-    }
     try {
+      if (!isAdminScope) {
+        const { currencyIndex: nextIndex } = await loadPublicDisplayCurrencyCatalog();
+        const preferredUnit = isQuotaDisplayedInCurrency() ? 'USD' : YYC_DISPLAY_CODE;
+        setCurrencyIndex(nextIndex);
+        setDisplayUnit((current) =>
+          resolvePreferredDisplayCurrency(
+            nextIndex,
+            preferredUnit || current || YYC_DISPLAY_CODE
+          )
+        );
+        return;
+      }
       const res = await API.get('/api/v1/admin/billing/currencies');
       const { success, message, data } = res.data || {};
       if (!success) {
         showError(message || t('log.messages.load_failed'));
         return;
       }
-      const next = buildDisplayCurrencyIndex(Array.isArray(data) ? data : []);
+      const next = buildPublicDisplayCurrencyIndex(Array.isArray(data) ? data : []);
       setCurrencyIndex(next);
       setDisplayUnit((current) => {
-        const normalizedCurrent = (current || '').toString().trim().toUpperCase();
-        if (normalizedCurrent && next[normalizedCurrent]) {
-          return normalizedCurrent;
-        }
-        if (next.USD) {
-          return 'USD';
-        }
-        const fallbackUnit = Object.keys(next)
-          .filter((code) => code)
-          .sort((a, b) => a.localeCompare(b))[0];
-        return fallbackUnit || 'YYC';
+        return resolvePreferredDisplayCurrency(next, current || 'USD');
       });
     } catch (error) {
       showError(error?.message || error);
@@ -695,11 +649,8 @@ const LogsTable = () => {
   }, [loadFilterOptions]);
 
   useEffect(() => {
-    if (!isAdminScope) {
-      return;
-    }
     loadDisplayUnits().then();
-  }, [isAdminScope, loadDisplayUnits]);
+  }, [loadDisplayUnits]);
 
   useEffect(() => {
     setActivePage(1);
@@ -1198,9 +1149,12 @@ const LogsTable = () => {
                       </Table.Cell>
                       <Table.Cell>
                         {isAdminScope
-                          ? renderLogQuotaValue(log.quota, displayUnit, currencyIndex)
+                          ? formatQuotaForDisplay(log.quota, displayUnit, currencyIndex)
                           : log.quota
-                            ? renderQuota(log.quota, t, 6)
+                            ? formatQuotaForDisplay(log.quota, displayUnit, currencyIndex, {
+                                includeSymbol: true,
+                                yycMode: 'compact',
+                              })
                             : ''}
                       </Table.Cell>
                     </>

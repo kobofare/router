@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, Dropdown, Input } from 'semantic-ui-react';
 import {
@@ -14,6 +14,12 @@ import {
   YAxis,
 } from 'recharts';
 import { API } from '../../helpers/api';
+import {
+  buildPublicDisplayCurrencyIndex,
+  convertYYCToDisplayAmount,
+  formatCompactDisplayAmount,
+  loadPublicDisplayCurrencyCatalog,
+} from '../../helpers/billing';
 import './Dashboard.css';
 
 // 在 Dashboard 组件内添加自定义配置
@@ -356,6 +362,14 @@ const Dashboard = () => {
   const [activeFilters, setActiveFilters] = useState(['time']);
   const [dailyPackageQuota, setDailyPackageQuota] = useState(null);
   const [dailyPackageQuotaLoading, setDailyPackageQuotaLoading] = useState(false);
+  const [displayCurrencyIndex, setDisplayCurrencyIndex] = useState(() =>
+    buildPublicDisplayCurrencyIndex([])
+  );
+
+  const loadDisplayCurrencies = useCallback(async () => {
+    const { currencyIndex } = await loadPublicDisplayCurrencyCatalog();
+    setDisplayCurrencyIndex(currencyIndex);
+  }, []);
 
   const allModels = useMemo(
     () => Array.from(new Set(Object.values(providers).flat())),
@@ -422,6 +436,10 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDailyPackageQuota();
   }, []);
+
+  useEffect(() => {
+    loadDisplayCurrencies().then();
+  }, [loadDisplayCurrencies]);
 
   const toStartTimestamp = (dateStr) => {
     const date = parseDateInput(dateStr);
@@ -591,39 +609,33 @@ const Dashboard = () => {
     }
   };
 
-  const getQuotaPerUnit = () => {
-    const raw = parseFloat(localStorage.getItem('quota_per_unit') || '1');
-    if (!Number.isFinite(raw) || raw <= 0) return 1;
-    return raw;
-  };
+  const toUsd = useCallback(
+    (quota) => {
+      const amount = convertYYCToDisplayAmount(
+        quota,
+        'USD',
+        displayCurrencyIndex
+      );
+      if (!Number.isFinite(amount)) {
+        return 0;
+      }
+      return amount;
+    },
+    [displayCurrencyIndex]
+  );
 
-  const toUsd = (quota) => {
-    const unit = getQuotaPerUnit();
-    const value = Number(quota);
-    if (!Number.isFinite(value)) return 0;
-    return value / unit;
-  };
+  const formatUsdAmount = useCallback(
+    (amount) =>
+      formatCompactDisplayAmount(amount, {
+        compactLabel: t('dashboard.spending.labels.ten_thousand'),
+      }),
+    [t]
+  );
 
-  const formatCurrencyValue = (quota) => {
-    const amount = toUsd(quota);
-    if (!Number.isFinite(amount)) return '0.0000';
-    const abs = Math.abs(amount);
-    if (abs >= 10000) {
-      const display = (amount / 10000).toFixed(2);
-      return `${display}${t('dashboard.spending.labels.ten_thousand')}`;
-    }
-    return amount.toFixed(4);
-  };
-
-  const formatUsdAmount = (amount) => {
-    if (!Number.isFinite(amount)) return '0.0000';
-    const abs = Math.abs(amount);
-    if (abs >= 10000) {
-      const display = (amount / 10000).toFixed(2);
-      return `${display}${t('dashboard.spending.labels.ten_thousand')}`;
-    }
-    return amount.toFixed(4);
-  };
+  const formatQuotaAsUsd = useCallback(
+    (quota) => formatUsdAmount(toUsd(quota)),
+    [formatUsdAmount, toUsd]
+  );
 
   const formatCountValue = (value) => {
     const num = Number(value);
@@ -846,7 +858,7 @@ const Dashboard = () => {
         cost: toUsd(bucket.quota),
       };
     });
-  }, [overviewTrendData, overviewSummary, overviewGranularity]);
+  }, [overviewTrendData, overviewSummary, overviewGranularity, toUsd]);
 
   const calendarBuckets = useMemo(() => {
     const bucketMap = aggregateBucketData(calendarData);
@@ -862,7 +874,7 @@ const Dashboard = () => {
         requests: bucket.requests,
       };
     });
-  }, [calendarData, calendarGranularity, calendarUnit]);
+  }, [calendarData, calendarGranularity, calendarUnit, toUsd]);
 
   const overviewMetricConfig = {
     requests: {
@@ -1043,7 +1055,7 @@ const Dashboard = () => {
                       })}
                     </div>
                     <div className='dashboard-spend-value'>
-                      {formatCurrencyValue(overviewSummary?.period_cost || 0)}
+                      {formatQuotaAsUsd(overviewSummary?.period_cost || 0)}
                     </div>
                   </div>
                   <div className='dashboard-spend-metric'>
@@ -1051,7 +1063,7 @@ const Dashboard = () => {
                       {t('dashboard.spending.overview.today_cost')}
                     </div>
                     <div className='dashboard-spend-value'>
-                      {formatCurrencyValue(
+                      {formatQuotaAsUsd(
                         overviewSummary?.today_cost ?? overviewSummary?.yesterday_cost ?? 0
                       )}
                     </div>
@@ -1063,7 +1075,7 @@ const Dashboard = () => {
                       {t('dashboard.spending.overview.period_avg_cost')}
                     </div>
                     <div className='dashboard-spend-value'>
-                      {formatCurrencyValue(
+                      {formatQuotaAsUsd(
                         (overviewSummary?.period_cost || 0) /
                           Math.max(1, overviewSummary?.period_days || 0)
                       )}
