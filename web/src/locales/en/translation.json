@@ -9,9 +9,11 @@
     "topup": "Top Up",
     "user": "User",
     "dashboard": "Dashboard",
+    "system_overview": "System Overview",
     "resource": "Resource Management",
     "operation": "Operations",
     "business_operation": "Business Operations",
+    "business_flow": "Business Flow",
     "platform_operation": "Platform Operations",
     "config": "Config",
     "package": "Package",
@@ -95,6 +97,31 @@
       "empty_code": "Please enter the redemption code!",
       "success": "Top up successful!",
       "request_failed": "Request failed"
+    }
+  },
+  "flow": {
+    "messages": {
+      "load_failed": "Failed to load business records"
+    },
+    "topup": {
+      "title": "Top-up Records",
+      "search_placeholder": "Search user, order ID, transaction ID, redemption name...",
+      "empty": "No top-up records",
+      "columns": {
+        "source": "Source",
+        "redemption": "Redemption",
+        "order": "Order"
+      }
+    },
+    "package": {
+      "title": "Package Records",
+      "search_placeholder": "Search user, package, group, record ID...",
+      "empty": "No package records"
+    },
+    "redemption": {
+      "title": "Redemption Records",
+      "search_placeholder": "Search user, redemption name, group, record ID...",
+      "empty": "No redemption records"
     }
   },
   "channel": {
@@ -606,7 +633,7 @@
       "name": "Package Name",
       "group": "Group",
       "daily_quota_limit": "Daily Amount",
-      "monthly_emergency_quota_limit": "Emergency Amount",
+      "package_emergency_quota_limit": "Emergency Amount",
       "duration_days": "Duration (Days)",
       "status": "Status",
       "created_at": "Created At",
@@ -632,7 +659,7 @@
       "group": "Group",
       "group_placeholder": "Select group",
       "daily_quota_limit": "Daily Amount",
-      "monthly_emergency_quota_limit": "Emergency Amount",
+      "package_emergency_quota_limit": "Emergency Amount",
       "duration_days": "Duration (Days)",
       "quota_reset_timezone": "Reset Timezone",
       "enabled": "Status",
@@ -1086,8 +1113,8 @@
       "quota_placeholder": "Please enter new remaining amount",
       "daily_quota_limit": "Daily Amount",
       "daily_quota_limit_placeholder": "0 means unlimited",
-      "monthly_emergency_quota_limit": "Emergency Amount",
-      "monthly_emergency_quota_limit_placeholder": "0 means disabled",
+      "package_emergency_quota_limit": "Emergency Amount",
+      "package_emergency_quota_limit_placeholder": "0 means disabled",
       "quota_reset_timezone": "Reset Timezone",
       "quota_reset_timezone_placeholder": "For example Asia/Shanghai",
       "github_id": "Linked GitHub Account",
@@ -1279,6 +1306,9 @@
     },
     "admin": {
       "title": "Admin Overview",
+      "nav": {
+        "overview": "Business Overview"
+      },
       "period": {
         "label": "Period"
       },
@@ -1390,9 +1420,10 @@
     "tabs": {
       "personal": "Personal Settings",
       "operation": "Operation Settings",
+      "currency": "Currency",
       "system": "System Settings",
       "other": "Other Settings",
-      "exchange": "Exchange Rate Settings"
+      "exchange": "Exchange"
     },
     "personal": {
       "tokens": {
@@ -1683,6 +1714,47 @@
         }
       }
     },
+    "currency": {
+      "catalog": {
+        "title": "Currency Catalog",
+        "subtitle": "Manage currency metadata. Rates are maintained in exchange management.",
+        "empty": "No currencies",
+        "columns": {
+          "code": "Code",
+          "name": "Name",
+          "symbol": "Symbol",
+          "minor_unit": "Minor Unit",
+          "status": "Status",
+          "created_at": "Created At",
+          "updated_at": "Updated At",
+          "action": "Action"
+        },
+        "status": {
+          "enabled": "Enabled",
+          "disabled": "Disabled"
+        },
+        "placeholders": {
+          "name": "e.g. US Dollar"
+        },
+        "buttons": {
+          "add": "Add Currency",
+          "save": "Save",
+          "cancel": "Cancel",
+          "delete": "Delete"
+        },
+        "messages": {
+          "load_failed": "Failed to load currencies",
+          "save_failed": "Failed to save currency",
+          "save_success": "Currency saved",
+          "delete_failed": "Failed to delete currency",
+          "delete_success": "Currency deleted",
+          "code_required": "Currency code is required",
+          "name_required": "Currency name is required",
+          "minor_unit_invalid": "Minor unit must be greater than or equal to 0",
+          "enabled_rate_required": "Configure a positive YYC rate in exchange settings before enabling this currency"
+        }
+      }
+    },
     "other": {
       "notice": {
         "title": "Notice Settings",
@@ -1736,42 +1808,38 @@
       }
     },
     "exchange": {
-      "title": "Exchange Rate Settings",
-      "subtitle": "Manage FX sync strategy and status. This page controls rate synchronization only, not billing currency catalog maintenance.",
-      "sync": {
-        "title": "Auto Sync"
+      "title": "Exchange Management",
+      "subtitle": "Show both manually maintained */YYC rates and synced fiat currency-pair rates.",
+      "empty": "No rates",
+      "columns": {
+        "pair": "Pair",
+      "rate": "Rate",
+      "provider": "Provider",
+      "rate_date": "Rate Date",
+      "created_at": "Created At",
+      "updated_at": "Updated At",
+      "action": "Action"
+    },
+      "rate_display": "1 {{base}} = {{value}} {{quote}}",
+      "providers": {
+        "manual": "Manual"
       },
-      "auto_sync": {
-        "enabled": "Enable auto FX sync",
-        "interval_seconds": "Sync interval (seconds)",
-        "provider": "Rate provider",
-        "last_run": "Last run: {{value}}",
-        "last_success": "Last success: {{value}}",
-        "last_error": "Last error: {{value}}"
-      },
-      "buttons": {
-        "save": "Save FX settings",
-        "sync_now": "Sync now",
-        "refresh_rates": "Refresh rates"
-      },
-      "messages": {
-        "interval_invalid": "Sync interval must be greater than or equal to {{min}} seconds",
-        "save_success": "FX settings saved",
-        "sync_failed": "Failed to sync FX rates",
-        "sync_success": "FX sync finished, updated {{count}} currencies",
-        "rates_load_failed": "Failed to load FX rates"
-      },
-      "rates": {
-        "title": "Fiat FX Rates",
-        "subtitle": "Shows real-time fiat-to-fiat rates. Currency scope comes from enabled billing currencies.",
-        "currencies": "Currency scope: {{value}}",
-        "empty": "No FX rates",
-        "columns": {
-          "pair": "Pair",
-          "rate": "Rate",
-          "date": "Date",
-          "provider": "Provider"
-        }
+  "buttons": {
+    "sync": "Sync",
+    "save": "Save",
+    "edit": "Edit"
+  },
+  "dialogs": {
+    "edit_title": "Edit Rate",
+    "rate_label": "Rate"
+  },
+  "messages": {
+        "load_failed": "Failed to load rates",
+        "sync_failed": "Failed to sync rates",
+        "sync_success": "Rates synced, updated {{count}} items",
+        "rate_invalid": "Rate must be greater than 0",
+        "save_failed": "Failed to save rate",
+        "save_success": "Rate saved"
       }
     }
   },

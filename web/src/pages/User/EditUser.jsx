@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Button, Card, Dropdown, Form, Header, Icon, Label, Table } from 'semantic-ui-react';
+import { Breadcrumb, Button, Card, Dropdown, Form, Header, Icon, Label } from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, copy, isRoot, showError, showSuccess } from '../../helpers';
 import {
@@ -15,7 +15,6 @@ import {
 import UnitDropdown from '../../components/UnitDropdown';
 import {
   formatAmountWithUnit,
-  formatYYCValue,
 } from '../../helpers/render';
 
 const ROLE_OPTIONS = (t) => [
@@ -86,21 +85,6 @@ const formatCountValue = (value) => {
   return normalized.toLocaleString();
 };
 
-const resolvePackageStatusText = (status, t) => {
-  switch (Number(status)) {
-    case 1:
-      return t('user.detail.package_status_types.active');
-    case 2:
-      return t('user.detail.package_status_types.expired');
-    case 3:
-      return t('user.detail.package_status_types.replaced');
-    case 4:
-      return t('user.detail.package_status_types.canceled');
-    default:
-      return t('user.detail.package_status_types.unknown');
-  }
-};
-
 const renderPackageStatusLabel = (status, t) => {
   switch (Number(status)) {
     case 1:
@@ -141,10 +125,6 @@ const createEmptyActivePackage = () => ({
   subscription: null,
 });
 
-const createEmptyRecentRedemptions = () => ({
-  items: [],
-});
-
 const normalizeActivePackage = (raw) => {
   if (!raw || typeof raw !== 'object') {
     return createEmptyActivePackage();
@@ -159,9 +139,7 @@ const normalizeActivePackage = (raw) => {
           group_id: (raw.subscription.group_id || '').toString().trim(),
           group_name: (raw.subscription.group_name || '').toString().trim(),
           daily_amount: Number(raw.subscription.daily_quota_limit || 0),
-          emergency_amount: Number(
-            raw.subscription.monthly_emergency_quota_limit || 0,
-          ),
+          emergency_amount: Number(raw.subscription.package_emergency_quota_limit ?? 0),
           reset_timezone: (raw.subscription.quota_reset_timezone || '').toString().trim(),
           started_at: Number(raw.subscription.started_at || 0),
           expires_at: Number(raw.subscription.expires_at || 0),
@@ -192,8 +170,6 @@ const UserDetail = () => {
   const [balanceUnit, setBalanceUnit] = useState('USD');
   const [activePackage, setActivePackage] = useState(createEmptyActivePackage());
   const [activePackageLoading, setActivePackageLoading] = useState(false);
-  const [recentRedemptions, setRecentRedemptions] = useState(createEmptyRecentRedemptions());
-  const [recentRedemptionsLoading, setRecentRedemptionsLoading] = useState(false);
   const [inputs, setInputs] = useState({
     username: '',
     email: '',
@@ -293,9 +269,7 @@ const UserDetail = () => {
         yyc_balance: Number(data?.yyc_balance ?? data?.quota ?? 0),
         group: data?.group || '',
         daily_amount: Number(data?.yyc_daily_limit ?? data?.daily_quota_limit ?? 0),
-        emergency_amount: Number(
-          data?.yyc_monthly_emergency_limit ?? data?.monthly_emergency_quota_limit ?? 0,
-        ),
+        emergency_amount: Number(data?.yyc_package_emergency_limit ?? data?.package_emergency_quota_limit ?? 0),
         reset_timezone: data?.quota_reset_timezone || 'Asia/Shanghai',
         role: Number(data?.role || 1),
         status: Number(data?.status || 1),
@@ -369,37 +343,6 @@ const UserDetail = () => {
     }
   }, [t]);
 
-  const loadRecentRedemptions = useCallback(async () => {
-    const normalizedUserId = (userId || '').toString().trim();
-    if (normalizedUserId === '') {
-      setRecentRedemptions(createEmptyRecentRedemptions());
-      return;
-    }
-    setRecentRedemptionsLoading(true);
-    try {
-      const res = await API.get(
-        `/api/v1/admin/user/${encodeURIComponent(normalizedUserId)}/redemptions`,
-        {
-          params: {
-            limit: 5,
-          },
-        },
-      );
-      const { success, message, data } = res.data || {};
-      if (!success) {
-        showError(message || t('user.messages.operation_failed'));
-        return;
-      }
-      setRecentRedemptions({
-        items: Array.isArray(data?.items) ? data.items : [],
-      });
-    } catch (error) {
-      showError(error?.message || error);
-    } finally {
-      setRecentRedemptionsLoading(false);
-    }
-  }, [t, userId]);
-
   useEffect(() => {
     const init = async () => {
       await loadGroups();
@@ -456,10 +399,6 @@ const UserDetail = () => {
   useEffect(() => {
     loadActivePackage().then();
   }, [loadActivePackage]);
-
-  useEffect(() => {
-    loadRecentRedemptions().then();
-  }, [loadRecentRedemptions]);
 
   useEffect(() => {
     if (editSection === 'balance') {
@@ -610,7 +549,6 @@ const UserDetail = () => {
     }
     setActionLoading(actionKey);
     try {
-      // Keep legacy request field names for backend compatibility.
       const res = await API.put('/api/v1/admin/user/', {
         id: userId,
         username,
@@ -618,7 +556,7 @@ const UserDetail = () => {
         group,
         quota: Math.trunc(yycBalance),
         daily_quota_limit: Math.trunc(Number(inputs.daily_amount || 0)),
-        monthly_emergency_quota_limit: Math.trunc(Number(inputs.emergency_amount || 0)),
+        package_emergency_quota_limit: Math.trunc(Number(inputs.emergency_amount || 0)),
         quota_reset_timezone: inputs.reset_timezone || 'Asia/Shanghai',
         role: Number(inputs.role || 1),
         status: Number(inputs.status || 1),
@@ -633,7 +571,6 @@ const UserDetail = () => {
       showSuccess(t('user.messages.update_success'));
       await loadUser();
       await loadActivePackage();
-      await loadRecentRedemptions();
       setEditSection('');
       return true;
     } catch (error) {
@@ -650,7 +587,6 @@ const UserDetail = () => {
     inputs.reset_timezone,
     loadUser,
     loadActivePackage,
-    loadRecentRedemptions,
     t,
     userId,
   ]);
@@ -699,20 +635,6 @@ const UserDetail = () => {
     navigate('/admin/user');
   }, [navigate, returnPath]);
 
-  const openRedemptionDetail = useCallback(
-    (id) => {
-      const normalizedId = (id || '').toString().trim();
-      if (normalizedId === '') {
-        return;
-      }
-      const from = `${location.pathname}${location.search || ''}${location.hash || ''}`;
-      navigate(`/admin/redemption/${normalizedId}`, {
-        state: { from },
-      });
-    },
-    [location.hash, location.pathname, location.search, navigate],
-  );
-
   const openPackageManagement = useCallback(() => {
     const keyword = hasActivePackage
       ? (activePackageSubscription?.package_name || activePackageSubscription?.package_id || '')
@@ -737,8 +659,7 @@ const UserDetail = () => {
 
   const refreshBalanceSection = useCallback(async () => {
     await loadUser();
-    await loadRecentRedemptions();
-  }, [loadRecentRedemptions, loadUser]);
+  }, [loadUser]);
 
   const formatAmountBySelectedUnit = useCallback(
     (yycAmount, { unlimited = false } = {}) => {
@@ -1122,10 +1043,8 @@ const UserDetail = () => {
                         <Button
                           type='button'
                           className='router-inline-button'
-                          loading={loading || recentRedemptionsLoading}
-                          disabled={
-                            loading || recentRedemptionsLoading || actionLoading !== '' || editSection !== ''
-                          }
+                          loading={loading}
+                          disabled={loading || actionLoading !== '' || editSection !== ''}
                           onClick={refreshBalanceSection}
                         >
                           {t('user.buttons.refresh')}
@@ -1175,55 +1094,6 @@ const UserDetail = () => {
                     </div>
                   </Form.Field>
                 </Form.Group>
-                <div className='router-user-redemption-summary'>
-                  <div className='router-entity-detail-subsection-title'>
-                    {t('user.detail.recent_redemptions_title')}
-                  </div>
-                  {recentRedemptions.items.length === 0 ? (
-                    <div className='router-entity-empty-hint'>
-                      {t('user.detail.recent_redemptions_empty')}
-                    </div>
-                  ) : (
-                    <Table basic='very' compact='very' size='small' unstackable>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.HeaderCell>{t('redemption.table.redeemed_time')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('redemption.title')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('redemption.table.face_value')}</Table.HeaderCell>
-                          <Table.HeaderCell collapsing>{t('redemption.table.actions')}</Table.HeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {recentRedemptions.items.map((row) => (
-                          <Table.Row key={row.id}>
-                            <Table.Cell>{formatDateTime(row.redeemed_time)}</Table.Cell>
-                            <Table.Cell>
-                              <div>{readOnlyValue(row.name)}</div>
-                              <div className='router-text-muted'>
-                                {readOnlyValue(row.group_name || row.group_id)}
-                              </div>
-                            </Table.Cell>
-                            <Table.Cell>
-                              <div>{formatAmountWithUnit(row.face_value_amount, row.face_value_unit)}</div>
-                              <div className='router-text-muted'>
-                                {formatYYCValue(row.yyc_value ?? row.quota ?? 0)}
-                              </div>
-                            </Table.Cell>
-                            <Table.Cell collapsing>
-                              <Button
-                                type='button'
-                                className='router-inline-button'
-                                onClick={() => openRedemptionDetail(row.id)}
-                              >
-                                {t('task.buttons.view')}
-                              </Button>
-                            </Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table>
-                  )}
-                </div>
               </section>
             </Form>
           </div>

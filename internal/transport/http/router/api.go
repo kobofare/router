@@ -9,6 +9,7 @@ import (
 	adminbilling "github.com/yeying-community/router/internal/admin/controller/billing"
 	channel "github.com/yeying-community/router/internal/admin/controller/channel"
 	dashboard "github.com/yeying-community/router/internal/admin/controller/dashboard"
+	flow "github.com/yeying-community/router/internal/admin/controller/flow"
 	group "github.com/yeying-community/router/internal/admin/controller/group"
 	log "github.com/yeying-community/router/internal/admin/controller/log"
 	option "github.com/yeying-community/router/internal/admin/controller/option"
@@ -222,6 +223,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminBillingRoute.GET("/fx/rates", adminbilling.GetFXMarketRates)
 			adminBillingRoute.POST("/currencies", middleware.RootAuth(), adminbilling.CreateBillingCurrency)
 			adminBillingRoute.PUT("/currencies/:code", middleware.RootAuth(), adminbilling.UpdateBillingCurrency)
+			adminBillingRoute.DELETE("/currencies/:code", middleware.RootAuth(), adminbilling.DeleteBillingCurrency)
 			adminBillingRoute.POST("/fx/sync", middleware.RootAuth(), adminbilling.SyncBillingCurrenciesFromFX)
 		}
 
@@ -264,6 +266,13 @@ func SetApiRouter(engine *gin.Engine) {
 		adminDashboardRoute.Use(middleware.AdminAuth())
 		{
 			adminDashboardRoute.GET("/", dashboard.GetDashboard)
+		}
+		adminFlowRoute := adminRouter.Group("/flow")
+		adminFlowRoute.Use(middleware.AdminAuth())
+		{
+			adminFlowRoute.GET("/topup-orders", flow.GetTopupOrderRecords)
+			adminFlowRoute.GET("/package-records", flow.GetPackageRecords)
+			adminFlowRoute.GET("/redemption-records", flow.GetRedemptionRecords)
 		}
 		adminGroupsRoute := adminRouter.Group("/groups")
 		adminGroupsRoute.Use(middleware.AdminAuth())

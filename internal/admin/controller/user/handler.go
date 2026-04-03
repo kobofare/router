@@ -45,7 +45,7 @@ type activeUserPackageSubscriptionView struct {
 	GroupID                    string `json:"group_id"`
 	GroupName                  string `json:"group_name,omitempty"`
 	DailyQuotaLimit            int64  `json:"daily_quota_limit"`
-	MonthlyEmergencyQuotaLimit int64  `json:"monthly_emergency_quota_limit"`
+	PackageEmergencyQuotaLimit int64  `json:"package_emergency_quota_limit"`
 	QuotaResetTimezone         string `json:"quota_reset_timezone"`
 	StartedAt                  int64  `json:"started_at"`
 	ExpiresAt                  int64  `json:"expires_at"`
@@ -156,7 +156,7 @@ func buildActiveUserPackageSubscriptionView(subscription model.UserPackageSubscr
 		GroupID:                    groupID,
 		GroupName:                  groupName,
 		DailyQuotaLimit:            subscription.DailyQuotaLimit,
-		MonthlyEmergencyQuotaLimit: subscription.MonthlyEmergencyQuotaLimit,
+		PackageEmergencyQuotaLimit: subscription.PackageEmergencyQuotaLimit,
 		QuotaResetTimezone:         strings.TrimSpace(subscription.QuotaResetTimezone),
 		StartedAt:                  subscription.StartedAt,
 		ExpiresAt:                  subscription.ExpiresAt,
@@ -1271,7 +1271,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
-	if updatedUser.DailyQuotaLimit < 0 || updatedUser.MonthlyEmergencyQuotaLimit < 0 {
+	if updatedUser.DailyQuotaLimit < 0 || updatedUser.PackageEmergencyQuotaLimit < 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": i18n.Translate(c, "invalid_input"),

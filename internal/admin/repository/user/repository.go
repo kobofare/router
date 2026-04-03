@@ -180,7 +180,7 @@ func Create(ctx context.Context, user *model.User, inviterId string) error {
 	}
 	user.UpdatedAt = now
 	user.DailyQuotaLimit = model.NormalizeUserDailyQuotaLimitForWrite(user.DailyQuotaLimit)
-	user.MonthlyEmergencyQuotaLimit = model.NormalizeUserMonthlyEmergencyQuotaLimitForWrite(user.MonthlyEmergencyQuotaLimit)
+	user.PackageEmergencyQuotaLimit = model.NormalizeUserPackageEmergencyQuotaLimitForWrite(user.PackageEmergencyQuotaLimit)
 	user.QuotaResetTimezone = model.NormalizeUserQuotaResetTimezoneForWrite(user.QuotaResetTimezone)
 	resolvedGroup, err := model.ResolveUserCreateGroupAssignment(user.Group)
 	if err != nil {
@@ -253,7 +253,7 @@ func Update(user *model.User, updatePassword bool) error {
 		user.Group = resolvedGroup.Id
 	}
 	user.DailyQuotaLimit = model.NormalizeUserDailyQuotaLimitForWrite(user.DailyQuotaLimit)
-	user.MonthlyEmergencyQuotaLimit = model.NormalizeUserMonthlyEmergencyQuotaLimitForWrite(user.MonthlyEmergencyQuotaLimit)
+	user.PackageEmergencyQuotaLimit = model.NormalizeUserPackageEmergencyQuotaLimitForWrite(user.PackageEmergencyQuotaLimit)
 	user.QuotaResetTimezone = model.NormalizeUserQuotaResetTimezoneForWrite(user.QuotaResetTimezone)
 	if user.Status == model.UserStatusDisabled {
 		blacklist.BanUser(user.Id)
@@ -269,7 +269,7 @@ func Update(user *model.User, updatePassword bool) error {
 		"quota":                         user.Quota,
 		"group":                         user.Group,
 		"daily_quota_limit":             user.DailyQuotaLimit,
-		"monthly_emergency_quota_limit": user.MonthlyEmergencyQuotaLimit,
+		"package_emergency_quota_limit": user.PackageEmergencyQuotaLimit,
 		"quota_reset_timezone":          user.QuotaResetTimezone,
 		"updated_at":                    helper.GetTimestamp(),
 	}

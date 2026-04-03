@@ -141,9 +141,7 @@ const resolvePackageYYCAmount = (row, type) => {
   if (type === 'daily') {
     return Number(row?.yyc_daily_limit ?? row?.daily_quota_limit ?? 0);
   }
-  return Number(
-    row?.yyc_monthly_emergency_limit ?? row?.monthly_emergency_quota_limit ?? 0
-  );
+  return Number(row?.yyc_package_emergency_limit ?? row?.package_emergency_quota_limit ?? 0);
 };
 
 const renderPackageAmountFieldValue = (row, type, displayUnit, currencyIndex) => {
@@ -456,7 +454,7 @@ const PackagesManager = () => {
         ),
         daily_amount_unit: defaultBillingUnit,
         emergency_amount: yycToBillingInputValue(
-          Number(detail?.yyc_monthly_emergency_limit ?? detail?.monthly_emergency_quota_limit ?? 0),
+          Number(detail?.yyc_package_emergency_limit ?? detail?.package_emergency_quota_limit ?? 0),
           defaultBillingUnit,
           currencyIndex
         ),
@@ -531,7 +529,7 @@ const PackagesManager = () => {
       description: (form.description || '').trim(),
       group_id: groupID,
       daily_quota_limit: Math.trunc(dailyStored),
-      monthly_emergency_quota_limit: Math.trunc(emergencyStored),
+      package_emergency_quota_limit: Math.trunc(emergencyStored),
       duration_days: Math.trunc(durationDays),
       quota_reset_timezone:
         (form.reset_timezone || '').trim() || 'Asia/Shanghai',
@@ -715,7 +713,7 @@ const PackagesManager = () => {
             </Table.HeaderCell>
             <Table.HeaderCell className='router-redemption-face-value-header'>
               <div className='router-table-header-with-control'>
-                <span>{t('package_manage.table.monthly_emergency_quota_limit')}</span>
+                <span>{t('package_manage.table.package_emergency_quota_limit')}</span>
                 <UnitDropdown
                   variant='header'
                   compact
@@ -894,7 +892,7 @@ const PackagesManager = () => {
           </div>
         </Form.Field>
         <Form.Field>
-          <label>{t('package_manage.form.monthly_emergency_quota_limit')}</label>
+          <label>{t('package_manage.form.package_emergency_quota_limit')}</label>
           <div className='router-section-input-with-unit'>
             <Form.Input
               className='router-section-input router-section-input-with-unit-field'
@@ -929,7 +927,7 @@ const PackagesManager = () => {
                   emergency_amount_unit: nextUnit,
                 }));
               }}
-              aria-label={t('package_manage.form.monthly_emergency_quota_limit')}
+              aria-label={t('package_manage.form.package_emergency_quota_limit')}
             />
           </div>
         </Form.Field>
@@ -1038,7 +1036,7 @@ const PackagesManager = () => {
             />
             <Form.Input
               className='router-section-input'
-              label={t('package_manage.table.monthly_emergency_quota_limit')}
+              label={t('package_manage.table.package_emergency_quota_limit')}
               value={renderPackageAmountFieldValue(
                 activeRow,
                 'emergency',

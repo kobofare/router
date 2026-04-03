@@ -26,7 +26,7 @@ type UserPackageSubscription struct {
 	PackageName                string `json:"package_name" gorm:"type:varchar(64);not null;default:''"`
 	GroupID                    string `json:"group_id" gorm:"type:char(36);not null;index"`
 	DailyQuotaLimit            int64  `json:"daily_quota_limit" gorm:"type:bigint;not null;default:0"`
-	MonthlyEmergencyQuotaLimit int64  `json:"monthly_emergency_quota_limit" gorm:"type:bigint;not null;default:0"`
+	PackageEmergencyQuotaLimit int64  `json:"package_emergency_quota_limit" gorm:"column:package_emergency_quota_limit;type:bigint;not null;default:0"`
 	QuotaResetTimezone         string `json:"quota_reset_timezone" gorm:"type:varchar(64);not null;default:'Asia/Shanghai'"`
 	StartedAt                  int64  `json:"started_at" gorm:"bigint;not null;index"`
 	ExpiresAt                  int64  `json:"expires_at" gorm:"bigint;not null;default:0;index"`
@@ -155,7 +155,7 @@ func AssignServicePackageToUserWithDB(db *gorm.DB, packageID string, userID stri
 		PackageName:                strings.TrimSpace(servicePackage.Name),
 		GroupID:                    strings.TrimSpace(servicePackage.GroupID),
 		DailyQuotaLimit:            normalizeServicePackageDailyQuotaLimit(servicePackage.DailyQuotaLimit),
-		MonthlyEmergencyQuotaLimit: normalizeServicePackageMonthlyEmergencyQuotaLimit(servicePackage.MonthlyEmergencyQuotaLimit),
+		PackageEmergencyQuotaLimit: normalizeServicePackagePackageEmergencyQuotaLimit(servicePackage.PackageEmergencyQuotaLimit),
 		QuotaResetTimezone:         normalizeServicePackageTimezone(servicePackage.QuotaResetTimezone),
 		StartedAt:                  effectiveStartAt,
 		ExpiresAt:                  expiresAt,
@@ -182,7 +182,7 @@ func AssignServicePackageToUserWithDB(db *gorm.DB, packageID string, userID stri
 		return tx.Model(&User{}).Where("id = ?", normalizedUserID).Updates(map[string]any{
 			"group":                         strings.TrimSpace(servicePackage.GroupID),
 			"daily_quota_limit":             normalizeUserDailyQuotaLimit(subscription.DailyQuotaLimit),
-			"monthly_emergency_quota_limit": normalizeUserMonthlyEmergencyQuotaLimit(subscription.MonthlyEmergencyQuotaLimit),
+			"package_emergency_quota_limit": normalizeUserPackageEmergencyQuotaLimit(subscription.PackageEmergencyQuotaLimit),
 			"quota_reset_timezone":          normalizeUserQuotaResetTimezone(subscription.QuotaResetTimezone),
 		}).Error
 	})
