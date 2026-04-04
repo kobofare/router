@@ -7,6 +7,8 @@
     "token": "令牌",
     "redemption": "兑换码",
     "topup": "充值",
+    "mine": "我的",
+    "records": "记录",
     "user": "用户",
     "dashboard": "总览",
     "system_overview": "系统概览",
@@ -33,6 +35,15 @@
   "topup": {
     "title": "充值中心",
     "display_currency": "展示币种",
+    "mine": {
+      "balance": "余额",
+      "package": "套餐"
+    },
+    "record_nav": {
+      "topup": "充值",
+      "package": "购买",
+      "redeem": "兑换"
+    },
     "nav": {
       "balance": "余额充值",
       "package": "购买套餐",

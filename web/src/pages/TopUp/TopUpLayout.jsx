@@ -18,6 +18,7 @@ import {
   TopUpWorkspaceContext,
   buildInitialDisplayCurrencyIndex,
   getStoredStatusConfig,
+  normalizeTopUpRecord,
   normalizeTopUpResult,
   normalizeTopUpTab,
   resolveDisplayCurrency,
@@ -29,7 +30,9 @@ const TopUpLayout = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const searchParamsString = searchParams.toString();
   const rawTab = searchParams.get('tab');
+  const rawRecord = searchParams.get('record');
   const initialCurrencyIndex = buildInitialDisplayCurrencyIndex();
   const [externalTopupLink, setExternalTopupLink] = useState('');
   const [userBalanceYYC, setUserBalanceYYC] = useState(0);
@@ -113,11 +116,29 @@ const TopUpLayout = () => {
 
   useEffect(() => {
     const normalizedTab = normalizeTopUpTab(rawTab);
-    if (rawTab === normalizedTab) {
+    const normalizedRecord = normalizeTopUpRecord(rawRecord);
+    const nextSearchParams = new URLSearchParams(searchParamsString);
+    let changed = false;
+
+    if (rawTab !== normalizedTab) {
+      nextSearchParams.set('tab', normalizedTab);
+      changed = true;
+    }
+    if (normalizedTab === 'records') {
+      if (rawRecord !== normalizedRecord) {
+        nextSearchParams.set('record', normalizedRecord);
+        changed = true;
+      }
+    } else if (nextSearchParams.has('record')) {
+      nextSearchParams.delete('record');
+      changed = true;
+    }
+
+    if (!changed) {
       return;
     }
-    navigate(`/workspace/topup?tab=${normalizedTab}`, { replace: true });
-  }, [navigate, rawTab]);
+    navigate(`/workspace/topup?${nextSearchParams.toString()}`, { replace: true });
+  }, [navigate, rawRecord, rawTab, searchParamsString]);
 
   const createTopupOrder = useCallback(
     async (payload) => {
@@ -187,6 +208,7 @@ const TopUpLayout = () => {
   );
 
   const activeKey = normalizeTopUpTab(rawTab);
+  const activeRecord = normalizeTopUpRecord(rawRecord);
 
   const contextValue = useMemo(
     () => ({
@@ -219,15 +241,30 @@ const TopUpLayout = () => {
     switch (activeKey) {
       case 'package':
         return <PackagePurchasePage />;
-      case 'redeem':
-        return <RedeemCodePage />;
       case 'records':
-        return <TopUpRecordsPage />;
+        return <TopUpRecordsPage recordKey={activeRecord} />;
       case 'balance':
       default:
-        return <BalanceTopUpPage />;
+        return (
+          <>
+            <BalanceTopUpPage />
+            <RedeemCodePage />
+          </>
+        );
     }
-  }, [activeKey]);
+  }, [activeKey, activeRecord]);
+
+  const pageTitle = useMemo(() => {
+    switch (activeKey) {
+      case 'package':
+        return t('topup.mine.package');
+      case 'records':
+        return t(`topup.record_nav.${activeRecord}`);
+      case 'balance':
+      default:
+        return t('topup.mine.balance');
+    }
+  }, [activeKey, activeRecord, t]);
 
   return (
     <TopUpWorkspaceContext.Provider value={contextValue}>
@@ -237,7 +274,7 @@ const TopUpLayout = () => {
             <Card.Header className='router-card-header'>
               <div className='router-toolbar'>
                 <Header as='h2' className='router-page-title'>
-                  {t('topup.title')}
+                  {pageTitle}
                 </Header>
                 <div
                   style={{

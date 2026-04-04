@@ -10,38 +10,20 @@ import {
 
 export const TOPUP_DISPLAY_CURRENCY_STORAGE_KEY = 'topup_display_currency';
 export const TOPUP_DEFAULT_TAB = 'balance';
-export const TOPUP_TAB_KEYS = ['balance', 'package', 'redeem', 'records'];
+export const TOPUP_TAB_KEYS = ['balance', 'package', 'records'];
+export const TOPUP_DEFAULT_RECORD = 'topup';
+export const TOPUP_RECORD_KEYS = ['topup', 'package', 'redeem'];
 export const TopUpWorkspaceContext = createContext(null);
 
-export const TOPUP_NAV_ITEMS = [
-  {
-    key: 'balance',
-    to: '/workspace/topup?tab=balance',
-    label: 'topup.nav.balance',
-    icon: 'credit card',
-  },
-  {
-    key: 'package',
-    to: '/workspace/topup?tab=package',
-    label: 'topup.nav.package',
-    icon: 'gift',
-  },
-  {
-    key: 'redeem',
-    to: '/workspace/topup?tab=redeem',
-    label: 'topup.nav.redeem',
-    icon: 'ticket alternate',
-  },
-  {
-    key: 'records',
-    to: '/workspace/topup?tab=records',
-    label: 'topup.nav.records',
-    icon: 'history',
-  },
-];
-
 export const normalizeTopUpTab = (rawTab) =>
-  TOPUP_TAB_KEYS.includes(rawTab) ? rawTab : TOPUP_DEFAULT_TAB;
+  rawTab === 'redeem'
+    ? TOPUP_DEFAULT_TAB
+    : TOPUP_TAB_KEYS.includes(rawTab)
+      ? rawTab
+      : TOPUP_DEFAULT_TAB;
+
+export const normalizeTopUpRecord = (rawRecord) =>
+  TOPUP_RECORD_KEYS.includes(rawRecord) ? rawRecord : TOPUP_DEFAULT_RECORD;
 
 export const normalizeTopUpResult = (raw) => {
   if (!raw || typeof raw !== 'object') {

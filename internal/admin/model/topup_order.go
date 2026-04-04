@@ -31,30 +31,30 @@ const (
 )
 
 type TopupOrder struct {
-	Id              string `json:"id" gorm:"type:char(36);primaryKey"`
-	UserID          string `json:"user_id" gorm:"type:char(36);index"`
-	Username        string `json:"username" gorm:"type:varchar(255);default:'';index"`
-	Status          string `json:"status" gorm:"type:varchar(32);default:'created';index"`
-	Source          string `json:"source" gorm:"type:varchar(64);default:'top_up_link';index"`
-	ProviderName    string `json:"provider_name" gorm:"type:varchar(128);default:''"`
-	ProviderOrderID string `json:"provider_order_id" gorm:"type:varchar(255);default:'';index"`
-	RedemptionID    string `json:"redemption_id" gorm:"type:char(36);index"`
-	TransactionID   string `json:"transaction_id" gorm:"type:varchar(64);uniqueIndex"`
-	BusinessType    string `json:"business_type" gorm:"type:varchar(32);default:'balance_topup';index"`
-	Title           string `json:"title" gorm:"type:varchar(255);default:''"`
+	Id              string  `json:"id" gorm:"type:char(36);primaryKey"`
+	UserID          string  `json:"user_id" gorm:"type:char(36);index"`
+	Username        string  `json:"username" gorm:"type:varchar(255);default:'';index"`
+	Status          string  `json:"status" gorm:"type:varchar(32);default:'created';index"`
+	Source          string  `json:"source" gorm:"type:varchar(64);default:'top_up_link';index"`
+	ProviderName    string  `json:"provider_name" gorm:"type:varchar(128);default:''"`
+	ProviderOrderID string  `json:"provider_order_id" gorm:"type:varchar(255);default:'';index"`
+	RedemptionID    string  `json:"redemption_id" gorm:"type:char(36);index"`
+	TransactionID   string  `json:"transaction_id" gorm:"type:varchar(64);uniqueIndex"`
+	BusinessType    string  `json:"business_type" gorm:"type:varchar(32);default:'balance_topup';index"`
+	Title           string  `json:"title" gorm:"type:varchar(255);default:''"`
 	Amount          float64 `json:"amount" gorm:"type:decimal(10,2);default:0"`
-	Currency        string `json:"currency" gorm:"type:varchar(16);default:'CNY'"`
-	Quota           int64 `json:"quota" gorm:"type:bigint;default:0"`
-	PackageID       string `json:"package_id" gorm:"type:char(36);default:'';index"`
-	PackageName     string `json:"package_name" gorm:"type:varchar(255);default:''"`
-	CallbackURL     string `json:"callback_url" gorm:"type:text;default:''"`
-	ReturnURL       string `json:"return_url" gorm:"type:text;default:''"`
-	StatusMessage   string `json:"status_message" gorm:"type:text;default:''"`
-	RedirectURL     string `json:"redirect_url" gorm:"type:text;default:''"`
-	PaidAt          int64  `json:"paid_at" gorm:"bigint;index"`
-	RedeemedAt      int64  `json:"redeemed_at" gorm:"bigint;index"`
-	CreatedAt       int64  `json:"created_at" gorm:"bigint;index"`
-	UpdatedAt       int64  `json:"updated_at" gorm:"bigint;index"`
+	Currency        string  `json:"currency" gorm:"type:varchar(16);default:'CNY'"`
+	Quota           int64   `json:"quota" gorm:"type:bigint;default:0"`
+	PackageID       string  `json:"package_id" gorm:"type:char(36);default:'';index"`
+	PackageName     string  `json:"package_name" gorm:"type:varchar(255);default:''"`
+	CallbackURL     string  `json:"callback_url" gorm:"type:text;default:''"`
+	ReturnURL       string  `json:"return_url" gorm:"type:text;default:''"`
+	StatusMessage   string  `json:"status_message" gorm:"type:text;default:''"`
+	RedirectURL     string  `json:"redirect_url" gorm:"type:text;default:''"`
+	PaidAt          int64   `json:"paid_at" gorm:"bigint;index"`
+	RedeemedAt      int64   `json:"redeemed_at" gorm:"bigint;index"`
+	CreatedAt       int64   `json:"created_at" gorm:"bigint;index"`
+	UpdatedAt       int64   `json:"updated_at" gorm:"bigint;index"`
 }
 
 type CreateTopupOrderInput struct {
@@ -103,7 +103,7 @@ func normalizeTopupOrderRow(row *TopupOrder) {
 	row.ProviderOrderID = strings.TrimSpace(row.ProviderOrderID)
 	row.RedemptionID = strings.TrimSpace(row.RedemptionID)
 	row.TransactionID = strings.TrimSpace(row.TransactionID)
-	row.BusinessType = normalizeTopupOrderBusinessType(row.BusinessType)
+	row.BusinessType = resolveTopupOrderBusinessType(row.BusinessType, row.PackageID)
 	row.Title = strings.TrimSpace(row.Title)
 	row.Amount = normalizeTopupOrderAmount(row.Amount)
 	row.Currency = normalizeTopupOrderCurrency(row.Currency)
@@ -146,6 +146,16 @@ func normalizeTopupOrderBusinessType(value string) string {
 	default:
 		return ""
 	}
+}
+
+func resolveTopupOrderBusinessType(value string, packageID string) string {
+	if normalized := normalizeTopupOrderBusinessType(value); normalized != "" {
+		return normalized
+	}
+	if strings.TrimSpace(packageID) != "" {
+		return TopupOrderBusinessPackage
+	}
+	return TopupOrderBusinessBalance
 }
 
 func normalizeTopupOrderCurrency(value string) string {
@@ -401,7 +411,7 @@ func GetTopupOrderByIDWithDB(db *gorm.DB, orderID string, userID string) (TopupO
 	return row, nil
 }
 
-func ListTopupOrdersPageWithDB(db *gorm.DB, userID string, page int, pageSize int) ([]TopupOrder, int64, error) {
+func ListTopupOrdersPageWithDB(db *gorm.DB, userID string, businessType string, page int, pageSize int) ([]TopupOrder, int64, error) {
 	if db == nil {
 		return nil, 0, fmt.Errorf("database handle is nil")
 	}
@@ -416,6 +426,9 @@ func ListTopupOrdersPageWithDB(db *gorm.DB, userID string, page int, pageSize in
 		pageSize = 20
 	}
 	query := db.Model(&TopupOrder{}).Where("user_id = ?", normalizedUserID)
+	if normalizedBusinessType := normalizeTopupOrderBusinessType(businessType); normalizedBusinessType != "" {
+		query = applyTopupOrderBusinessTypeFilter(query, db, normalizedBusinessType)
+	}
 	total := int64(0)
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -428,6 +441,29 @@ func ListTopupOrdersPageWithDB(db *gorm.DB, userID string, page int, pageSize in
 		normalizeTopupOrderRow(&rows[i])
 	}
 	return rows, total, nil
+}
+
+func applyTopupOrderBusinessTypeFilter(query *gorm.DB, db *gorm.DB, businessType string) *gorm.DB {
+	if query == nil || db == nil {
+		return query
+	}
+	normalizedBusinessType := normalizeTopupOrderBusinessType(businessType)
+	if normalizedBusinessType == "" {
+		return query
+	}
+	if db.Migrator().HasColumn(&TopupOrder{}, "business_type") {
+		return query.Where("business_type = ?", normalizedBusinessType)
+	}
+	if db.Migrator().HasColumn(&TopupOrder{}, "package_id") {
+		if normalizedBusinessType == TopupOrderBusinessPackage {
+			return query.Where("COALESCE(TRIM(package_id), '') <> ''")
+		}
+		return query.Where("COALESCE(TRIM(package_id), '') = ''")
+	}
+	if normalizedBusinessType == TopupOrderBusinessPackage {
+		return query.Where("1 = 0")
+	}
+	return query
 }
 
 func ApplyTopupOrderCallbackWithDB(db *gorm.DB, input TopupOrderCallbackInput) (TopupOrder, error) {

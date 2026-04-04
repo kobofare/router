@@ -7,6 +7,8 @@
     "token": "Token",
     "redemption": "Redemption Codes",
     "topup": "Top Up",
+    "mine": "Mine",
+    "records": "Records",
     "user": "User",
     "dashboard": "Dashboard",
     "system_overview": "System Overview",
@@ -33,6 +35,15 @@
   "topup": {
     "title": "Top Up Center",
     "display_currency": "Display",
+    "mine": {
+      "balance": "Balance",
+      "package": "Package"
+    },
+    "record_nav": {
+      "topup": "Top-up",
+      "package": "Purchase",
+      "redeem": "Redeem"
+    },
     "nav": {
       "balance": "Balance Top-up",
       "package": "Buy Package",

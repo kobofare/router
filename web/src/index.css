@@ -346,6 +346,21 @@ code {
     line-height: 1.4 !important;
 }
 
+.router-header-item-mobile-group {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #2b3674 !important;
+    padding-bottom: 0.25rem !important;
+}
+
+.router-header-item-mobile-child {
+    padding-left: 1.8rem !important;
+}
+
+.router-header-item-mobile-child .icon {
+    margin-right: 6px !important;
+}
+
 .router-header-trigger {
     padding-left: 10px !important;
     padding-right: 10px !important;

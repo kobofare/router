@@ -2,99 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icon, Menu } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
-
-const isUserRouteActive = (location, to) => {
-  const [path, queryString = ''] = String(to || '').split('?');
-  if (!path) {
-    return false;
-  }
-  if (location.pathname !== path && !location.pathname.startsWith(`${path}/`)) {
-    return false;
-  }
-  if (!queryString) {
-    return true;
-  }
-  const targetParams = new URLSearchParams(queryString);
-  const currentParams = new URLSearchParams(location.search || '');
-  for (const [key, value] of targetParams.entries()) {
-    if ((currentParams.get(key) || '') !== value) {
-      return false;
-    }
-  }
-  return true;
-};
-
-const buildUserMenuItems = (includeChat = false) => {
-  const items = [
-    {
-      name: 'header.dashboard',
-      to: '/workspace/dashboard',
-      icon: 'chart bar',
-    },
-    {
-      name: 'header.token',
-      to: '/workspace/token',
-      icon: 'key',
-    },
-  ];
-
-  if (includeChat) {
-    items.push({
-      name: 'header.chat',
-      to: '/workspace/chat',
-      icon: 'comments',
-    });
-  }
-
-  items.push(
-    {
-      key: 'topup',
-      type: 'group',
-      name: 'header.topup',
-      to: '/workspace/topup?tab=balance',
-      icon: 'cart',
-      items: [
-        {
-          name: 'topup.nav.balance',
-          to: '/workspace/topup?tab=balance',
-          icon: 'credit card',
-        },
-        {
-          name: 'topup.nav.package',
-          to: '/workspace/topup?tab=package',
-          icon: 'gift',
-        },
-        {
-          name: 'topup.nav.redeem',
-          to: '/workspace/topup?tab=redeem',
-          icon: 'ticket alternate',
-        },
-        {
-          name: 'topup.nav.records',
-          to: '/workspace/topup?tab=records',
-          icon: 'history',
-        },
-      ],
-    },
-    {
-      name: 'header.log',
-      to: '/workspace/log',
-      icon: 'book',
-    },
-    {
-      name: 'header.task',
-      to: '/workspace/task',
-      icon: 'tasks',
-    },
-    {
-      name: 'header.setting',
-      to: '/workspace/setting',
-      icon: 'setting',
-    },
-  );
-
-  return items;
-};
+import {
+  buildUserWorkspaceMenuItems,
+  isUserRouteActive,
+} from '../constants/userMenu';
 
 const UserSidebar = ({ compact = false }) => {
   const { t } = useTranslation();
@@ -102,7 +13,7 @@ const UserSidebar = ({ compact = false }) => {
   const navigate = useNavigate();
   const includeChat = Boolean(localStorage.getItem('chat_link'));
   const menuItems = useMemo(
-    () => buildUserMenuItems(includeChat),
+    () => buildUserWorkspaceMenuItems({ includeChat }),
     [includeChat],
   );
   const groupActiveMap = useMemo(() => {

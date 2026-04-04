@@ -386,6 +386,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return migratePackageEmergencyQuotaColumnsWithDB(tx)
 			},
 		},
+		{
+			Version:     "202604042200_topup_order_business_type",
+			Description: "ensure topup order business_type column exists and backfill historical rows",
+			Up: func(tx *gorm.DB) error {
+				return ensureTopupOrderBusinessTypeWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
