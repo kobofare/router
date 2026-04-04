@@ -346,6 +346,21 @@ code {
     line-height: 1.4 !important;
 }
 
+.router-header-item-mobile-group {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #2b3674 !important;
+    padding-bottom: 0.25rem !important;
+}
+
+.router-header-item-mobile-child {
+    padding-left: 1.8rem !important;
+}
+
+.router-header-item-mobile-child .icon {
+    margin-right: 6px !important;
+}
+
 .router-header-trigger {
     padding-left: 10px !important;
     padding-right: 10px !important;
@@ -2021,6 +2036,45 @@ code {
 
 .router-table-action-cell {
     width: 280px;
+}
+
+.ui.table.router-list-table th.router-package-name-cell,
+.ui.table.router-list-table td.router-package-name-cell {
+    width: 80px !important;
+    min-width: 80px;
+}
+
+.ui.table.router-list-table th.router-package-sale-price-cell,
+.ui.table.router-list-table td.router-package-sale-price-cell {
+    width: 80px !important;
+    min-width: 80px;
+}
+
+.ui.table.router-list-table th.router-package-duration-cell,
+.ui.table.router-list-table td.router-package-duration-cell {
+    width: 80px !important;
+    min-width: 80px;
+}
+
+.ui.table.router-list-table th.router-package-status-cell,
+.ui.table.router-list-table td.router-package-status-cell {
+    width: 80px !important;
+    min-width: 80px;
+}
+
+.ui.table.router-list-table th.router-package-created-at-cell,
+.ui.table.router-list-table td.router-package-created-at-cell,
+.ui.table.router-list-table th.router-package-updated-at-cell,
+.ui.table.router-list-table td.router-package-updated-at-cell {
+    width: 180px !important;
+    min-width: 180px;
+    white-space: nowrap;
+}
+
+.ui.table.router-list-table th.router-package-action-cell,
+.ui.table.router-list-table td.router-package-action-cell {
+    width: 140px !important;
+    min-width: 140px;
 }
 
 .ui.table.router-billing-currency-table {

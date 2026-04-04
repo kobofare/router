@@ -18,40 +18,11 @@ import {
   isAdminGroupActive,
   isAdminRouteActive,
 } from '../constants/adminMenu';
+import {
+  buildUserWorkspaceMenuItems,
+  isUserRouteActive as isUserWorkspaceRouteActive,
+} from '../constants/userMenu';
 import '../index.css';
-
-const USER_HEADER_BUTTONS = [
-  {
-    name: 'header.dashboard',
-    to: '/workspace/dashboard',
-    icon: 'chart bar',
-  },
-  {
-    name: 'header.token',
-    to: '/workspace/token',
-    icon: 'key',
-  },
-  {
-    name: 'header.topup',
-    to: '/workspace/topup',
-    icon: 'cart',
-  },
-  {
-    name: 'header.log',
-    to: '/workspace/log',
-    icon: 'book',
-  },
-  {
-    name: 'header.task',
-    to: '/workspace/task',
-    icon: 'tasks',
-  },
-  {
-    name: 'header.setting',
-    to: '/workspace/setting',
-    icon: 'setting',
-  },
-];
 
 const Header = ({ workspace = 'user', hideNavButtons = false }) => {
   const { t, i18n } = useTranslation();
@@ -83,29 +54,17 @@ const Header = ({ workspace = 'user', hideNavButtons = false }) => {
   const adminFlatButtons = ADMIN_MENU_GROUPS.flatMap(
     (group) => group.items,
   );
-  const buttons = (() => {
-    const baseButtons =
-      currentWorkspace === 'admin' ? adminFlatButtons : USER_HEADER_BUTTONS;
-    const next = [...baseButtons];
-    if (currentWorkspace === 'user' && localStorage.getItem('chat_link')) {
-      next.splice(2, 0, {
-        name: 'header.chat',
-        to: '/workspace/chat',
-        icon: 'comments',
-      });
-    }
-    return next;
-  })();
+  const includeChat = Boolean(localStorage.getItem('chat_link'));
+  const buttons =
+    currentWorkspace === 'admin'
+      ? adminFlatButtons
+      : buildUserWorkspaceMenuItems({ includeChat });
 
   const isRouteActive = (to) => {
     if (currentWorkspace === 'admin') {
       return isAdminRouteActive(location, to);
     }
-    const [path] = String(to || '').split('?');
-    if (!path) {
-      return false;
-    }
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    return isUserWorkspaceRouteActive(location, to);
   };
 
   const renderAdminDesktopButtons = () => {
@@ -190,10 +149,69 @@ const Header = ({ workspace = 'user', hideNavButtons = false }) => {
 
   const renderButtons = (mobileView) => {
     return buttons.map((button) => {
+      if (button.type === 'group' && Array.isArray(button.items)) {
+        const groupActive = button.items.some((item) => isRouteActive(item.to));
+        if (mobileView) {
+          return (
+            <React.Fragment key={button.key || button.name}>
+              <Menu.Item
+                className='router-header-item-mobile-group'
+                header
+              >
+                <Icon name={button.icon} />
+                {t(button.name)}
+              </Menu.Item>
+              {button.items.map((item) => (
+                <Menu.Item
+                  key={item.to}
+                  onClick={() => {
+                    navigate(item.to);
+                    setShowSidebar(false);
+                  }}
+                  className='router-header-item-mobile router-header-item-mobile-child'
+                  active={isRouteActive(item.to)}
+                >
+                  <Icon name={item.icon} />
+                  {t(item.name)}
+                </Menu.Item>
+              ))}
+            </React.Fragment>
+          );
+        }
+        return (
+          <Dropdown
+            key={button.key || button.name}
+            className={`link item router-header-dropdown router-header-trigger router-header-item ${groupActive ? 'router-header-group-active' : ''}`}
+            item
+            pointing
+            trigger={
+              <span>
+                <Icon name={button.icon} />
+                {t(button.name)}
+              </span>
+            }
+          >
+            <Dropdown.Menu>
+              {button.items.map((item) => (
+                <Dropdown.Item
+                  key={item.to}
+                  active={isRouteActive(item.to)}
+                  onClick={() => navigate(item.to)}
+                  className='router-header-item'
+                >
+                  <Icon name={item.icon} />
+                  {t(item.name)}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+        );
+      }
+
       if (mobileView) {
         return (
           <Menu.Item
-            key={button.name}
+            key={button.to || button.name}
             onClick={() => {
               navigate(button.to);
               setShowSidebar(false);
@@ -207,7 +225,7 @@ const Header = ({ workspace = 'user', hideNavButtons = false }) => {
       }
       return (
         <Menu.Item
-          key={button.name}
+          key={button.to || button.name}
           as={Link}
           to={button.to}
           className='router-header-item'

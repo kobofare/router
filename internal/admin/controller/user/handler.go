@@ -1898,7 +1898,7 @@ type createTopUpOrderRequest struct {
 	ReturnURL    string  `json:"return_url"`
 }
 
-func parseTopupOrderPageParams(c *gin.Context) (int, int) {
+func parseTopupOrderPageParams(c *gin.Context) (int, int, string, error) {
 	page, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("page", "1")))
 	if page < 1 {
 		page = 1
@@ -1907,7 +1907,17 @@ func parseTopupOrderPageParams(c *gin.Context) (int, int) {
 	if pageSize <= 0 {
 		pageSize = config.ItemsPerPage
 	}
-	return page, pageSize
+	rawBusinessType := strings.TrimSpace(c.Query("business_type"))
+	if rawBusinessType == "" {
+		return page, pageSize, "", nil
+	}
+	normalizedBusinessType := strings.TrimSpace(rawBusinessType)
+	switch normalizedBusinessType {
+	case model.TopupOrderBusinessBalance, model.TopupOrderBusinessPackage:
+		return page, pageSize, normalizedBusinessType, nil
+	default:
+		return page, pageSize, "", fmt.Errorf("无效的业务类型")
+	}
 }
 
 // GetTopUpOrders godoc
@@ -1917,13 +1927,21 @@ func parseTopupOrderPageParams(c *gin.Context) (int, int) {
 // @Produce json
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
+// @Param business_type query string false "Business type: balance_topup or package_purchase"
 // @Success 200 {object} docs.UserTopUpOrderListResponse
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/public/user/topup/orders [get]
 func GetTopUpOrders(c *gin.Context) {
 	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
-	page, pageSize := parseTopupOrderPageParams(c)
-	items, total, err := model.ListTopupOrdersPageWithDB(model.DB, userID, page, pageSize)
+	page, pageSize, businessType, err := parseTopupOrderPageParams(c)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	items, total, err := model.ListTopupOrdersPageWithDB(model.DB, userID, businessType, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

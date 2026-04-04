@@ -7,6 +7,8 @@
     "token": "Token",
     "redemption": "Redemption Codes",
     "topup": "Top Up",
+    "mine": "Mine",
+    "records": "Records",
     "user": "User",
     "dashboard": "Dashboard",
     "system_overview": "System Overview",
@@ -33,6 +35,34 @@
   "topup": {
     "title": "Top Up Center",
     "display_currency": "Display",
+    "mine": {
+      "balance": "Balance",
+      "package": "Package"
+    },
+    "record_nav": {
+      "topup": "Top-up",
+      "package": "Purchase",
+      "redeem": "Redeem"
+    },
+    "nav": {
+      "balance": "Balance Top-up",
+      "package": "Buy Package",
+      "redeem": "Redeem Code",
+      "records": "Top-up Records"
+    },
+    "records": {
+      "refresh": "Refresh",
+      "order_title": "Order Records",
+      "order_empty": "No order records yet",
+      "tabs": {
+        "orders": "Order Records",
+        "redemptions": "Redemption Records"
+      }
+    },
+    "business_type": {
+      "balance_topup": "Balance Top-up",
+      "package_purchase": "Package Purchase"
+    },
     "external_topup": {
       "title": "External Top-up",
       "current_balance": "Current Balance",
@@ -57,7 +87,10 @@
       "empty": "No external top-up orders yet",
       "columns": {
         "time": "Created At",
+        "business_type": "Type",
         "status": "Status",
+        "amount": "Amount",
+        "detail": "Detail",
         "order_id": "Order ID",
         "transaction_id": "Transaction ID"
       },
@@ -112,7 +145,7 @@
       "load_failed": "Failed to load business records"
     },
     "topup": {
-      "title": "Top-up Records",
+      "title": "Top-up",
       "search_placeholder": "Search user, order ID, transaction ID, redemption name...",
       "empty": "No top-up records",
       "columns": {
@@ -122,12 +155,12 @@
       }
     },
     "package": {
-      "title": "Package Records",
+      "title": "Package",
       "search_placeholder": "Search user, package, group, record ID...",
       "empty": "No package records"
     },
     "redemption": {
-      "title": "Redemption Records",
+      "title": "Redemption",
       "search_placeholder": "Search user, redemption name, group, record ID...",
       "empty": "No redemption records"
     }
@@ -638,7 +671,7 @@
     "title": "Package Management",
     "search": "Search package name or group",
     "table": {
-      "name": "Package Name",
+      "name": "Name",
       "group": "Group",
       "sale_price": "Sale Price",
       "daily_quota_limit": "Daily Amount",
@@ -1079,6 +1112,7 @@
     "title": "User Management",
     "detail": {
       "title": "User Detail",
+      "user_id": "User ID",
       "package_mode_title": "Package Mode",
       "balance_mode_title": "Redemption Mode",
       "remaining_amount": "Remaining",
@@ -1104,9 +1138,15 @@
         "canceled": "Canceled",
         "unknown": "Unknown"
       },
+      "assign": {
+        "package": "Package",
+        "package_placeholder": "Select package template",
+        "package_required": "Please select a package"
+      },
       "buttons": {
         "back": "Back",
-        "edit": "Edit"
+        "edit": "Edit",
+        "gift_package": "Gift Package"
       }
     },
     "edit": {

@@ -3,15 +3,24 @@ package model
 import (
 	"net/url"
 	"testing"
+
+	"github.com/yeying-community/router/common/config"
 )
 
 func TestBuildTopupOrderRedirectURL(t *testing.T) {
+	previousSecret := config.TopUpSignSecret
+	config.TopUpSignSecret = "test-sign-secret"
+	t.Cleanup(func() {
+		config.TopUpSignSecret = previousSecret
+	})
 	redirectURL, err := buildTopupOrderRedirectURL(
 		"https://pay.example.com/checkout?source=router",
-		"order_1",
-		"user_1",
-		"alice",
-		"txn_1",
+		TopupOrder{
+			Id:            "order_1",
+			UserID:        "user_1",
+			Username:      "alice",
+			TransactionID: "txn_1",
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -36,10 +45,62 @@ func TestBuildTopupOrderRedirectURL(t *testing.T) {
 	if got := query.Get("transaction_id"); got != "txn_1" {
 		t.Fatalf("expected transaction_id=txn_1, got %q", got)
 	}
+	if got := query.Get("merchant_app"); got != "router" {
+		t.Fatalf("expected merchant_app=router, got %q", got)
+	}
+	if got := query.Get("sign"); got == "" {
+		t.Fatal("expected sign to be set")
+	}
 }
 
 func TestBuildTopupOrderRedirectURLRejectsInvalidBaseLink(t *testing.T) {
-	if _, err := buildTopupOrderRedirectURL("://broken", "order_1", "user_1", "alice", "txn_1"); err == nil {
+	previousSecret := config.TopUpSignSecret
+	config.TopUpSignSecret = "test-sign-secret"
+	t.Cleanup(func() {
+		config.TopUpSignSecret = previousSecret
+	})
+	if _, err := buildTopupOrderRedirectURL("://broken", TopupOrder{
+		Id:            "order_1",
+		UserID:        "user_1",
+		Username:      "alice",
+		TransactionID: "txn_1",
+	}); err == nil {
 		t.Fatal("expected error for invalid base link")
+	}
+}
+
+func TestResolveTopupOrderBusinessType(t *testing.T) {
+	tests := []struct {
+		name       string
+		value      string
+		packageID  string
+		wantResult string
+	}{
+		{
+			name:       "explicit balance",
+			value:      TopupOrderBusinessBalance,
+			wantResult: TopupOrderBusinessBalance,
+		},
+		{
+			name:       "explicit package",
+			value:      TopupOrderBusinessPackage,
+			wantResult: TopupOrderBusinessPackage,
+		},
+		{
+			name:       "infer package from package id",
+			packageID:  "pkg_1",
+			wantResult: TopupOrderBusinessPackage,
+		},
+		{
+			name:       "fallback balance for legacy empty type",
+			wantResult: TopupOrderBusinessBalance,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveTopupOrderBusinessType(tt.value, tt.packageID); got != tt.wantResult {
+				t.Fatalf("expected %q, got %q", tt.wantResult, got)
+			}
+		})
 	}
 }
