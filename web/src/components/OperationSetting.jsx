@@ -50,7 +50,6 @@ const OperationSetting = ({ section = '' }) => {
     AutomaticEnableChannelEnabled: '',
     ChannelDisableThreshold: 0,
     LogConsumeEnabled: '',
-    RetryTimes: 0,
   });
   const [originInputs, setOriginInputs] = useState({});
   const [groupOptions, setGroupOptions] = useState([]);
@@ -363,11 +362,6 @@ const OperationSetting = ({ section = '' }) => {
           }
         }
         break;
-      case 'general':
-        if (originInputs['RetryTimes'] !== inputs.RetryTimes) {
-          await updateOption('RetryTimes', inputs.RetryTimes);
-        }
-        break;
       default:
         break;
     }
@@ -610,37 +604,6 @@ const OperationSetting = ({ section = '' }) => {
                 {t('setting.operation.log.buttons.clean')}
               </Form.Button>
               {shouldRenderDividerAfter('log') ? <Divider /> : null}
-            </>
-          ) : null}
-
-          {sectionVisible.general ? (
-            <>
-              <Header as='h3' className='router-section-title'>{t('setting.operation.general.title')}</Header>
-              <Form.Group widths={1}>
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.general.retry_times')}
-                  name='RetryTimes'
-                  type={'number'}
-                  step='1'
-                  min='0'
-                  onChange={handleInputChange}
-                  autoComplete='new-password'
-                  value={inputs.RetryTimes}
-                  placeholder={t(
-                    'setting.operation.general.retry_times_placeholder'
-                  )}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  saveSectionConfig('general').then();
-                }}
-              >
-                {t('setting.operation.general.buttons.save')}
-              </Form.Button>
-              {shouldRenderDividerAfter('general') ? <Divider /> : null}
             </>
           ) : null}
 

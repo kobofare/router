@@ -1736,8 +1736,6 @@
         "chat_link_placeholder": "例如 ChatGPT Next Web 的部署地址",
         "quota_per_unit": "USD -> YYC 折算比率",
         "quota_per_unit_placeholder": "1 USD 折算为多少 YYC",
-        "retry_times": "失败重试次数",
-        "retry_times_placeholder": "失败重试次数",
         "buttons": {
           "save": "保存通用设置"
         }

@@ -58,7 +58,6 @@ func InitOptionMap() {
 	config.OptionMap["QuotaRemindThreshold"] = strconv.FormatInt(config.QuotaRemindThreshold, 10)
 	config.OptionMap["PreConsumedQuota"] = strconv.FormatInt(config.PreConsumedQuota, 10)
 	config.OptionMap["QuotaPerUnit"] = strconv.FormatFloat(config.QuotaPerUnit, 'f', -1, 64)
-	config.OptionMap["RetryTimes"] = strconv.Itoa(config.RetryTimes)
 	config.OptionMapRWMutex.Unlock()
 	loadOptionsFromDatabase()
 	if err := syncGroupRuntimeCachesWithDB(DB); err != nil {
@@ -156,8 +155,6 @@ func UpdateOptionMap(key string, value string) (err error) {
 		config.QuotaRemindThreshold, _ = strconv.ParseInt(value, 10, 64)
 	case "PreConsumedQuota":
 		config.PreConsumedQuota, _ = strconv.ParseInt(value, 10, 64)
-	case "RetryTimes":
-		config.RetryTimes, _ = strconv.Atoi(value)
 	case "FXAutoSyncIntervalSeconds":
 		interval, _ := strconv.Atoi(value)
 		if interval < 60 {

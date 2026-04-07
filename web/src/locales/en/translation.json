@@ -1738,8 +1738,6 @@
         "chat_link_placeholder": "e.g.: ChatGPT Next Web deployment address",
         "quota_per_unit": "USD -> YYC Conversion Rate",
         "quota_per_unit_placeholder": "How many YYC 1 USD converts to",
-        "retry_times": "Retry Times on Failure",
-        "retry_times_placeholder": "Number of retry attempts on failure",
         "buttons": {
           "save": "Save General Settings"
         }
