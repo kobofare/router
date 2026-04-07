@@ -32,7 +32,6 @@ func InitOptionMap() {
 	config.OptionMap["RegisterEnabled"] = strconv.FormatBool(config.RegisterEnabled)
 	config.OptionMap["AutomaticDisableChannelEnabled"] = strconv.FormatBool(config.AutomaticDisableChannelEnabled)
 	config.OptionMap["AutomaticEnableChannelEnabled"] = strconv.FormatBool(config.AutomaticEnableChannelEnabled)
-	config.OptionMap["ApproximateTokenEnabled"] = strconv.FormatBool(config.ApproximateTokenEnabled)
 	config.OptionMap["LogConsumeEnabled"] = strconv.FormatBool(config.LogConsumeEnabled)
 	config.OptionMap["FXAutoSyncEnabled"] = strconv.FormatBool(config.FXAutoSyncEnabled)
 	config.OptionMap["FXAutoSyncIntervalSeconds"] = strconv.Itoa(config.FXAutoSyncIntervalSeconds)
@@ -121,8 +120,6 @@ func UpdateOptionMap(key string, value string) (err error) {
 			config.AutomaticDisableChannelEnabled = boolValue
 		case "AutomaticEnableChannelEnabled":
 			config.AutomaticEnableChannelEnabled = boolValue
-		case "ApproximateTokenEnabled":
-			config.ApproximateTokenEnabled = boolValue
 		case "LogConsumeEnabled":
 			config.LogConsumeEnabled = boolValue
 		case "FXAutoSyncEnabled":

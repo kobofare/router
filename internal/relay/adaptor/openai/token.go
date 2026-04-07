@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkoukk/tiktoken-go"
 
-	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/image"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/internal/relay/model"
@@ -79,9 +78,6 @@ func getTokenEncoder(model string) *tiktoken.Tiktoken {
 }
 
 func getTokenNum(tokenEncoder *tiktoken.Tiktoken, text string) int {
-	if config.ApproximateTokenEnabled {
-		return int(float64(len(text)) * 0.38)
-	}
 	return len(tokenEncoder.Encode(text, nil, nil))
 }
 

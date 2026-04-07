@@ -50,7 +50,6 @@ const OperationSetting = ({ section = '' }) => {
     AutomaticEnableChannelEnabled: '',
     ChannelDisableThreshold: 0,
     LogConsumeEnabled: '',
-    ApproximateTokenEnabled: '',
     RetryTimes: 0,
   });
   const [originInputs, setOriginInputs] = useState({});
@@ -631,15 +630,6 @@ const OperationSetting = ({ section = '' }) => {
                   placeholder={t(
                     'setting.operation.general.retry_times_placeholder'
                   )}
-                />
-              </Form.Group>
-              <Form.Group inline>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.ApproximateTokenEnabled === 'true'}
-                  label={t('setting.operation.general.approximate_token')}
-                  name='ApproximateTokenEnabled'
-                  onChange={handleInputChange}
                 />
               </Form.Group>
               <Form.Button
