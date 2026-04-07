@@ -45,7 +45,13 @@ code {
     top: 64px;
     height: calc(100vh - 64px);
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     padding: 12px 10px;
+}
+
+.router-admin-sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .router-admin-sidebar.compact {
@@ -1936,6 +1942,11 @@ code {
 
 .router-search-form-sm {
     width: 280px;
+    max-width: 100%;
+}
+
+.router-group-model-search {
+    width: 360px;
     max-width: 100%;
 }
 

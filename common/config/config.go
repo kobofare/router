@@ -22,8 +22,6 @@ var TopUpSignSecret = ""
 var TopUpCallbackToken = ""
 var ChatLink = ""
 var QuotaPerUnit = 500 * 1000.0 // $0.002 / 1K tokens
-var DisplayInCurrencyEnabled = true
-var DisplayTokenStatEnabled = true
 var FXAutoSyncEnabled = false
 var FXAutoSyncIntervalSeconds = 6 * 60 * 60
 var FXAutoSyncProvider = "frankfurter"
@@ -143,7 +141,6 @@ var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false
 var QuotaRemindThreshold int64 = 1000
 var PreConsumedQuota int64 = 500
-var ApproximateTokenEnabled = false
 var RetryTimes = 0
 
 var RootUserEmail = ""

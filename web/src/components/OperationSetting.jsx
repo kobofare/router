@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Divider, Form, Grid, Header } from 'semantic-ui-react';
+import { Divider, Form, Grid, Header, Message } from 'semantic-ui-react';
 import {
   API,
   showError,
@@ -50,9 +50,6 @@ const OperationSetting = ({ section = '' }) => {
     AutomaticEnableChannelEnabled: '',
     ChannelDisableThreshold: 0,
     LogConsumeEnabled: '',
-    DisplayInCurrencyEnabled: '',
-    DisplayTokenStatEnabled: '',
-    ApproximateTokenEnabled: '',
     RetryTimes: 0,
   });
   const [originInputs, setOriginInputs] = useState({});
@@ -79,10 +76,11 @@ const OperationSetting = ({ section = '' }) => {
   const sectionVisible = {
     balance: showBalanceSection,
     monitor: showAllSections || normalizedSection === 'monitor',
+    retry: showAllSections || normalizedSection === 'retry',
     log: showAllSections || normalizedSection === 'log',
     general: showAllSections || showConfigSection || normalizedSection === 'general',
   };
-  const sectionOrder = ['balance', 'monitor', 'log', 'general'];
+  const sectionOrder = ['balance', 'monitor', 'retry', 'log', 'general'];
   const shouldRenderDividerAfter = (key) => {
     if (!showAllSections) {
       return false;
@@ -366,9 +364,15 @@ const OperationSetting = ({ section = '' }) => {
           }
         }
         break;
-      case 'general':
-        if (originInputs['RetryTimes'] !== inputs.RetryTimes) {
-          await updateOption('RetryTimes', inputs.RetryTimes);
+      case 'retry':
+        {
+          const retryLimit = Number(inputs.RetryTimes || 0) > 0 ? 1 : 0;
+          if (
+            normalizeOptionValue(originInputs.RetryTimes, '0') !==
+            `${retryLimit}`
+          ) {
+            await updateOption('RetryTimes', `${retryLimit}`);
+          }
         }
         break;
       default:
@@ -580,6 +584,54 @@ const OperationSetting = ({ section = '' }) => {
             </>
           ) : null}
 
+          {sectionVisible.retry ? (
+            <>
+              <Header as='h3' className='router-section-title'>
+                {t('setting.operation.retry.title')}
+              </Header>
+              <Message info className='router-section-message'>
+                <Message.Header>
+                  {t('setting.operation.retry.description_title')}
+                </Message.Header>
+                <p>{t('setting.operation.retry.description')}</p>
+                <p>{t('setting.operation.retry.description_effective')}</p>
+                <p>{t('setting.operation.retry.description_disabled')}</p>
+              </Message>
+              <Form.Group widths={2}>
+                <Form.Dropdown
+                  className='router-section-input'
+                  selection
+                  name='RetryTimes'
+                  label={t('setting.operation.retry.limit')}
+                  onChange={handleInputChange}
+                  value={inputs.RetryTimes}
+                  placeholder={t('setting.operation.retry.limit_placeholder')}
+                  options={[
+                    {
+                      key: 'disabled',
+                      text: t('setting.operation.retry.options.disabled'),
+                      value: '0',
+                    },
+                    {
+                      key: 'all_candidates',
+                      text: t('setting.operation.retry.options.all_candidates'),
+                      value: '1',
+                    },
+                  ]}
+                />
+              </Form.Group>
+              <Form.Button
+                className='router-section-button'
+                onClick={() => {
+                  saveSectionConfig('retry').then();
+                }}
+              >
+                {t('setting.operation.retry.buttons.save')}
+              </Form.Button>
+              {shouldRenderDividerAfter('retry') ? <Divider /> : null}
+            </>
+          ) : null}
+
           {sectionVisible.log ? (
             <>
               <Header as='h3' className='router-section-title'>{t('setting.operation.log.title')}</Header>
@@ -613,60 +665,6 @@ const OperationSetting = ({ section = '' }) => {
                 {t('setting.operation.log.buttons.clean')}
               </Form.Button>
               {shouldRenderDividerAfter('log') ? <Divider /> : null}
-            </>
-          ) : null}
-
-          {sectionVisible.general ? (
-            <>
-              <Header as='h3' className='router-section-title'>{t('setting.operation.general.title')}</Header>
-              <Form.Group widths={1}>
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.general.retry_times')}
-                  name='RetryTimes'
-                  type={'number'}
-                  step='1'
-                  min='0'
-                  onChange={handleInputChange}
-                  autoComplete='new-password'
-                  value={inputs.RetryTimes}
-                  placeholder={t(
-                    'setting.operation.general.retry_times_placeholder'
-                  )}
-                />
-              </Form.Group>
-              <Form.Group inline>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.DisplayInCurrencyEnabled === 'true'}
-                  label={t('setting.operation.general.display_in_currency')}
-                  name='DisplayInCurrencyEnabled'
-                  onChange={handleInputChange}
-                />
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.DisplayTokenStatEnabled === 'true'}
-                  label={t('setting.operation.general.display_token_stat')}
-                  name='DisplayTokenStatEnabled'
-                  onChange={handleInputChange}
-                />
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.ApproximateTokenEnabled === 'true'}
-                  label={t('setting.operation.general.approximate_token')}
-                  name='ApproximateTokenEnabled'
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  saveSectionConfig('general').then();
-                }}
-              >
-                {t('setting.operation.general.buttons.save')}
-              </Form.Button>
-              {shouldRenderDividerAfter('general') ? <Divider /> : null}
             </>
           ) : null}
 

@@ -715,6 +715,7 @@
       "delete": "删除"
     },
     "form": {
+      "id": "套餐ID",
       "name": "套餐名称",
       "name_placeholder": "请输入套餐名称",
       "description": "描述",
@@ -1558,6 +1559,15 @@
       }
     },
     "system": {
+      "basic": {
+        "title": "基础设置"
+      },
+      "content": {
+        "title": "内容设置"
+      },
+      "runtime": {
+        "title": "运行设置"
+      },
       "general": {
         "title": "通用设置",
         "server_address": "服务器地址",
@@ -1718,6 +1728,22 @@
           "save": "保存监控设置"
         }
       },
+      "retry": {
+        "title": "重试配置",
+        "description_title": "请求内切换说明",
+        "description": "该配置控制同一个请求在首次上游失败后，Router 是否继续尝试当前分组内该模型的其他候选渠道。",
+        "description_effective": "启用后，只要错误可重试、没有指定具体渠道，并且还有未失败的候选渠道，Router 就会把剩余候选渠道依次尝试一遍。",
+        "description_disabled": "关闭时首次失败就直接返回。启用时，同一次请求里已经失败过的渠道不会重复尝试，直到所有候选渠道都失败或某次成功为止。",
+        "limit": "重试策略",
+        "limit_placeholder": "请选择重试策略",
+        "options": {
+          "disabled": "不重试",
+          "all_candidates": "重试所有候选渠道"
+        },
+        "buttons": {
+          "save": "保存重试配置"
+        }
+      },
       "general": {
         "title": "通用设置",
         "topup_link": "充值链接",
@@ -1726,11 +1752,6 @@
         "chat_link_placeholder": "例如 ChatGPT Next Web 的部署地址",
         "quota_per_unit": "USD -> YYC 折算比率",
         "quota_per_unit_placeholder": "1 USD 折算为多少 YYC",
-        "retry_times": "失败重试次数",
-        "retry_times_placeholder": "失败重试次数",
-        "display_in_currency": "以法币形式显示 YYC",
-        "display_token_stat": "Billing 相关 API 显示令牌余额而非用户余额",
-        "approximate_token": "使用近似的方式估算 token 数以减少计算量",
         "buttons": {
           "save": "保存通用设置"
         }

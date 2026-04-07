@@ -715,6 +715,7 @@
       "delete": "Delete"
     },
     "form": {
+      "id": "Package ID",
       "name": "Package Name",
       "name_placeholder": "Enter package name",
       "description": "Description",
@@ -1558,6 +1559,15 @@
       }
     },
     "system": {
+      "basic": {
+        "title": "Basic Settings"
+      },
+      "content": {
+        "title": "Content Settings"
+      },
+      "runtime": {
+        "title": "Runtime Settings"
+      },
       "general": {
         "title": "General Settings",
         "server_address": "Server Address",
@@ -1720,6 +1730,22 @@
           "save": "Save Monitor Settings"
         }
       },
+      "retry": {
+        "title": "Retry Settings",
+        "description_title": "In-request switch behavior",
+        "description": "This setting controls whether Router should continue trying other candidate channels for the same model in the current group after the first upstream failure within the same request.",
+        "description_effective": "When enabled, as long as the error is retryable, no specific channel is pinned, and there are still unused candidate channels, Router will try all remaining candidates once.",
+        "description_disabled": "When disabled, the first failure is returned immediately. When enabled, channels that already failed in the same request will not be retried again, and Router stops only after all candidates fail or one attempt succeeds.",
+        "limit": "Retry strategy",
+        "limit_placeholder": "Select a retry strategy",
+        "options": {
+          "disabled": "No retry",
+          "all_candidates": "Retry all candidate channels"
+        },
+        "buttons": {
+          "save": "Save Retry Settings"
+        }
+      },
       "general": {
         "title": "General Settings",
         "topup_link": "Top-up Link",
@@ -1728,11 +1754,6 @@
         "chat_link_placeholder": "e.g.: ChatGPT Next Web deployment address",
         "quota_per_unit": "USD -> YYC Conversion Rate",
         "quota_per_unit_placeholder": "How many YYC 1 USD converts to",
-        "retry_times": "Retry Times on Failure",
-        "retry_times_placeholder": "Number of retry attempts on failure",
-        "display_in_currency": "Display YYC as Fiat Amount",
-        "display_token_stat": "Show token balance instead of user balance in billing APIs",
-        "approximate_token": "Use Approximate Method to Estimate Token Count",
         "buttons": {
           "save": "Save General Settings"
         }

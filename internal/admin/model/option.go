@@ -32,10 +32,7 @@ func InitOptionMap() {
 	config.OptionMap["RegisterEnabled"] = strconv.FormatBool(config.RegisterEnabled)
 	config.OptionMap["AutomaticDisableChannelEnabled"] = strconv.FormatBool(config.AutomaticDisableChannelEnabled)
 	config.OptionMap["AutomaticEnableChannelEnabled"] = strconv.FormatBool(config.AutomaticEnableChannelEnabled)
-	config.OptionMap["ApproximateTokenEnabled"] = strconv.FormatBool(config.ApproximateTokenEnabled)
 	config.OptionMap["LogConsumeEnabled"] = strconv.FormatBool(config.LogConsumeEnabled)
-	config.OptionMap["DisplayInCurrencyEnabled"] = strconv.FormatBool(config.DisplayInCurrencyEnabled)
-	config.OptionMap["DisplayTokenStatEnabled"] = strconv.FormatBool(config.DisplayTokenStatEnabled)
 	config.OptionMap["FXAutoSyncEnabled"] = strconv.FormatBool(config.FXAutoSyncEnabled)
 	config.OptionMap["FXAutoSyncIntervalSeconds"] = strconv.Itoa(config.FXAutoSyncIntervalSeconds)
 	config.OptionMap["FXAutoSyncProvider"] = config.FXAutoSyncProvider
@@ -123,14 +120,8 @@ func UpdateOptionMap(key string, value string) (err error) {
 			config.AutomaticDisableChannelEnabled = boolValue
 		case "AutomaticEnableChannelEnabled":
 			config.AutomaticEnableChannelEnabled = boolValue
-		case "ApproximateTokenEnabled":
-			config.ApproximateTokenEnabled = boolValue
 		case "LogConsumeEnabled":
 			config.LogConsumeEnabled = boolValue
-		case "DisplayInCurrencyEnabled":
-			config.DisplayInCurrencyEnabled = boolValue
-		case "DisplayTokenStatEnabled":
-			config.DisplayTokenStatEnabled = boolValue
 		case "FXAutoSyncEnabled":
 			config.FXAutoSyncEnabled = boolValue
 		}
@@ -166,7 +157,12 @@ func UpdateOptionMap(key string, value string) (err error) {
 	case "PreConsumedQuota":
 		config.PreConsumedQuota, _ = strconv.ParseInt(value, 10, 64)
 	case "RetryTimes":
-		config.RetryTimes, _ = strconv.Atoi(value)
+		limit, _ := strconv.Atoi(value)
+		if limit < 0 {
+			limit = 0
+			config.OptionMap[key] = strconv.Itoa(limit)
+		}
+		config.RetryTimes = limit
 	case "FXAutoSyncIntervalSeconds":
 		interval, _ := strconv.Atoi(value)
 		if interval < 60 {

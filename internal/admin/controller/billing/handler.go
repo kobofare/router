@@ -340,15 +340,13 @@ func GetSubscription(c *gin.Context) {
 	var err error
 	var token *model.Token
 	var expiredTime int64
-	if config.DisplayTokenStatEnabled {
-		tokenId := c.GetString(ctxkey.TokenId)
-		if tokenId != "" {
-			token, err = billingsvc.GetTokenByID(tokenId)
-			if err == nil {
-				expiredTime = token.ExpiredTime
-				remainQuota = token.RemainQuota
-				usedQuota = token.UsedQuota
-			}
+	tokenId := c.GetString(ctxkey.TokenId)
+	if tokenId != "" {
+		token, err = billingsvc.GetTokenByID(tokenId)
+		if err == nil {
+			expiredTime = token.ExpiredTime
+			remainQuota = token.RemainQuota
+			usedQuota = token.UsedQuota
 		}
 	}
 	if token == nil {
@@ -372,10 +370,7 @@ func GetSubscription(c *gin.Context) {
 		return
 	}
 	quota := remainQuota + usedQuota
-	amount := float64(quota)
-	if config.DisplayInCurrencyEnabled {
-		amount /= usdYYCPerUnit()
-	}
+	amount := float64(quota) / usdYYCPerUnit()
 	if token != nil && token.UnlimitedQuota {
 		amount = 100000000
 	}
@@ -395,13 +390,11 @@ func GetUsage(c *gin.Context) {
 	var quota int64
 	var err error
 	var token *model.Token
-	if config.DisplayTokenStatEnabled {
-		tokenId := c.GetString(ctxkey.TokenId)
-		if tokenId != "" {
-			token, err = billingsvc.GetTokenByID(tokenId)
-			if err == nil {
-				quota = token.UsedQuota
-			}
+	tokenId := c.GetString(ctxkey.TokenId)
+	if tokenId != "" {
+		token, err = billingsvc.GetTokenByID(tokenId)
+		if err == nil {
+			quota = token.UsedQuota
 		}
 	}
 	if token == nil {
@@ -418,10 +411,7 @@ func GetUsage(c *gin.Context) {
 		})
 		return
 	}
-	amount := float64(quota)
-	if config.DisplayInCurrencyEnabled {
-		amount /= usdYYCPerUnit()
-	}
+	amount := float64(quota) / usdYYCPerUnit()
 	usage := billingsvc.OpenAIUsageResponse{
 		Object:     "list",
 		TotalUsage: amount * 100,
