@@ -340,15 +340,13 @@ func GetSubscription(c *gin.Context) {
 	var err error
 	var token *model.Token
 	var expiredTime int64
-	if config.DisplayTokenStatEnabled {
-		tokenId := c.GetString(ctxkey.TokenId)
-		if tokenId != "" {
-			token, err = billingsvc.GetTokenByID(tokenId)
-			if err == nil {
-				expiredTime = token.ExpiredTime
-				remainQuota = token.RemainQuota
-				usedQuota = token.UsedQuota
-			}
+	tokenId := c.GetString(ctxkey.TokenId)
+	if tokenId != "" {
+		token, err = billingsvc.GetTokenByID(tokenId)
+		if err == nil {
+			expiredTime = token.ExpiredTime
+			remainQuota = token.RemainQuota
+			usedQuota = token.UsedQuota
 		}
 	}
 	if token == nil {
@@ -392,13 +390,11 @@ func GetUsage(c *gin.Context) {
 	var quota int64
 	var err error
 	var token *model.Token
-	if config.DisplayTokenStatEnabled {
-		tokenId := c.GetString(ctxkey.TokenId)
-		if tokenId != "" {
-			token, err = billingsvc.GetTokenByID(tokenId)
-			if err == nil {
-				quota = token.UsedQuota
-			}
+	tokenId := c.GetString(ctxkey.TokenId)
+	if tokenId != "" {
+		token, err = billingsvc.GetTokenByID(tokenId)
+		if err == nil {
+			quota = token.UsedQuota
 		}
 	}
 	if token == nil {

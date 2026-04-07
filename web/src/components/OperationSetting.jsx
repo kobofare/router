@@ -50,7 +50,6 @@ const OperationSetting = ({ section = '' }) => {
     AutomaticEnableChannelEnabled: '',
     ChannelDisableThreshold: 0,
     LogConsumeEnabled: '',
-    DisplayTokenStatEnabled: '',
     ApproximateTokenEnabled: '',
     RetryTimes: 0,
   });
@@ -635,13 +634,6 @@ const OperationSetting = ({ section = '' }) => {
                 />
               </Form.Group>
               <Form.Group inline>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.DisplayTokenStatEnabled === 'true'}
-                  label={t('setting.operation.general.display_token_stat')}
-                  name='DisplayTokenStatEnabled'
-                  onChange={handleInputChange}
-                />
                 <Form.Checkbox
                   className='router-section-checkbox'
                   checked={inputs.ApproximateTokenEnabled === 'true'}
