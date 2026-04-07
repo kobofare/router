@@ -31,6 +31,14 @@ func (plan relayBillingPlan) ChargeUserBalance() bool {
 	return plan.Source != relayBillingSourcePackage
 }
 
+func buildBalanceRelayBillingPlan(packageActive bool) relayBillingPlan {
+	source := relayBillingSourceBalance
+	if packageActive {
+		source = relayBillingSourcePackageFallbackBalance
+	}
+	return relayBillingPlan{Source: source}
+}
+
 func hasActivePackageForGroup(userID string, groupID string) (bool, error) {
 	normalizedUserID := strings.TrimSpace(userID)
 	normalizedGroupID := strings.TrimSpace(groupID)
@@ -71,16 +79,6 @@ func reserveRelayQuota(ctx context.Context, groupID string, userID string, quota
 			quota,
 		)
 	}
-	userReservation, userQuotaErr := reserveUserQuota(userID, quota)
-	if userQuotaErr != nil {
-		return relayBillingPlan{}, userQuotaErr
-	}
-	source := relayBillingSourceBalance
-	if packageActive {
-		source = relayBillingSourcePackageFallbackBalance
-	}
-	return relayBillingPlan{
-		Source:          source,
-		UserReservation: userReservation,
-	}, nil
+	// Balance-mode requests are admitted by main balance and token quota only.
+	return buildBalanceRelayBillingPlan(packageActive), nil
 }
