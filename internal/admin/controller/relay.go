@@ -23,7 +23,7 @@ import (
 	"github.com/yeying-community/router/internal/transport/http/middleware"
 )
 
-const relayRetryLimit = 2
+const relayRetryLimit = 0
 
 // https://platform.openai.com/docs/api-reference/chat
 
