@@ -406,6 +406,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return ensureTopupOrderBusinessTypeWithDB(tx)
 			},
 		},
+		{
+			Version:     "202604071030_anthropic_claude46_provider_catalog",
+			Description: "sync default provider catalog to add anthropic claude 4.6/4.5/3.5 pricing rows",
+			Up: func(tx *gorm.DB) error {
+				return syncDefaultProviderCatalogWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
