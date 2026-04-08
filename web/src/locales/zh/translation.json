@@ -399,6 +399,7 @@
       "title_detail": "渠道详情",
       "title_edit": "更新渠道信息",
       "title_create": "创建新的渠道",
+      "id": "渠道ID",
       "identifier": "渠道标识",
       "identifier_placeholder": "例如：openai-main",
       "type": "协议类型",

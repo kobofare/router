@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Header, Label, Pagination, Table } from 'semantic-ui-react';
+import { Button, Card, Label, Pagination, Table } from 'semantic-ui-react';
 import { API, timestamp2string, showError } from '../../helpers';
 import {
   formatTopupBusinessType,
@@ -136,7 +136,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       case 'package':
         return {
           label: t('topup.record_nav.package'),
-          onClick: () => navigate('/workspace/topup?tab=package'),
+          onClick: () => navigate('/workspace/service/pricing'),
         };
       case 'redeem':
         return {
@@ -157,11 +157,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       <Card.Content>
         <Card.Header className='router-card-header'>
           <div className='router-toolbar'>
-            <div className='router-toolbar-start'>
-              <Header as='h3' className='router-section-title'>
-                {t(`topup.record_nav.${recordKey}`)}
-              </Header>
-            </div>
+            <div className='router-toolbar-start' />
             <div className='router-toolbar-end'>
               <Button
                 primary

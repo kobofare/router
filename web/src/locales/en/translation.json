@@ -399,6 +399,7 @@
       "title_detail": "Channel Details",
       "title_edit": "Update Channel Information",
       "title_create": "Create New Channel",
+      "id": "Channel ID",
       "identifier": "Channel Identifier",
       "identifier_placeholder": "e.g. openai-main",
       "type": "Protocol Type",
