@@ -59,8 +59,10 @@
       "order_title": "Order Records",
       "order_empty": "No order records yet",
       "continue_pay": "Continue Pay",
+      "cancel_pay": "Cancel Payment",
       "refresh_status": "Refresh Status",
       "order_paid": "The order has been paid and refreshed",
+      "order_canceled": "The order has been canceled",
       "redirect_missing": "This order is missing a payment link. Please create a new order or contact admin.",
       "tabs": {
         "orders": "Order Records",

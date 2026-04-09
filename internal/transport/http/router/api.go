@@ -94,6 +94,7 @@ func SetApiRouter(engine *gin.Engine) {
 				publicSelfRoute.GET("/topup/orders", user.GetTopUpOrders)
 				publicSelfRoute.GET("/topup/orders/:id", user.GetTopUpOrder)
 				publicSelfRoute.POST("/topup/orders/:id/refresh", user.RefreshTopUpOrder)
+				publicSelfRoute.POST("/topup/orders/:id/cancel", user.CancelTopUpOrder)
 				publicSelfRoute.POST("/topup/orders", user.CreateTopUpOrder)
 				publicSelfRoute.POST("/topup", user.TopUp)
 			}

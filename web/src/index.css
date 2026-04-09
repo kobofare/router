@@ -611,6 +611,12 @@ code {
     padding: 0.8rem 0.96rem !important;
 }
 
+.ui.selection.dropdown.router-flow-filter-dropdown > .text,
+.ui.selection.dropdown.router-flow-filter-dropdown > .default.text,
+.ui.selection.dropdown.router-flow-filter-dropdown .menu > .item {
+    font-weight: 400 !important;
+}
+
 .ui.selection.dropdown.router-detail-filter-dropdown > .text,
 .ui.selection.dropdown.router-detail-filter-dropdown > .default.text,
 .ui.selection.dropdown.router-detail-filter-dropdown .menu > .item {
@@ -1370,6 +1376,25 @@ code {
     font-size: 13px !important;
     padding-top: 18px !important;
     padding-bottom: 18px !important;
+}
+
+.ui.table.router-list-table th.router-topup-reconcile-message-cell,
+.ui.table.router-list-table td.router-topup-reconcile-message-cell {
+    width: 180px !important;
+    max-width: 180px !important;
+}
+
+.router-topup-reconcile-message-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.router-topup-reconcile-message-popup {
+    max-width: 420px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.45;
 }
 
 .ui.header.router-page-title,

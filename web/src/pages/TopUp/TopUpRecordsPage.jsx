@@ -158,6 +158,12 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
             item.id === normalizedOrderID ? { ...item, ...data } : item,
           ),
         );
+        setActiveOrderDetail((previous) => {
+          if (!previous || previous.id !== normalizedOrderID) {
+            return previous;
+          }
+          return { ...previous, ...(data || {}) };
+        });
         return data || null;
       } catch (error) {
         showError(error?.message || t('topup.external_topup.request_failed'));
@@ -202,6 +208,43 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       }
     },
     [refreshOrderStatus, t],
+  );
+
+  const cancelPay = useCallback(
+    async (orderID) => {
+      const normalizedOrderID = (orderID || '').trim();
+      if (!normalizedOrderID) {
+        return;
+      }
+      setRefreshingOrderID(normalizedOrderID);
+      try {
+        const res = await API.post(
+          `/api/v1/public/user/topup/orders/${normalizedOrderID}/cancel`,
+        );
+        const { success, message, data } = res?.data || {};
+        if (!success) {
+          showError(message || t('topup.external_topup.request_failed'));
+          return;
+        }
+        setOrders((previous) =>
+          previous.map((item) =>
+            item.id === normalizedOrderID ? { ...item, ...(data || {}) } : item,
+          ),
+        );
+        setActiveOrderDetail((previous) => {
+          if (!previous || previous.id !== normalizedOrderID) {
+            return previous;
+          }
+          return { ...previous, ...(data || {}) };
+        });
+        showSuccess(t('topup.records.order_canceled'));
+      } catch (error) {
+        showError(error?.message || t('topup.external_topup.request_failed'));
+      } finally {
+        setRefreshingOrderID('');
+      }
+    },
+    [t],
   );
 
   const openOrderDetail = useCallback(
@@ -361,17 +404,15 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                       ? t('topup.external_topup_orders.columns.package_name')
                       : t('topup.external_topup_orders.columns.detail')}
                   </Table.HeaderCell>
-                  {!isPackageRecord ? (
-                    <Table.HeaderCell width={3}>
-                      {t('topup.external_topup_orders.columns.action')}
-                    </Table.HeaderCell>
-                  ) : null}
+                  <Table.HeaderCell width={4}>
+                    {t('topup.external_topup_orders.columns.action')}
+                  </Table.HeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
                 {orders.length === 0 ? (
                   <Table.Row>
-                    <Table.Cell colSpan={isPackageRecord ? '5' : '6'} className='router-text-muted'>
+                    <Table.Cell colSpan='6' className='router-text-muted'>
                       {loadingOrders
                         ? t('common.loading')
                         : t('topup.records.order_empty')}
@@ -419,30 +460,48 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                             </>
                           )}
                       </Table.Cell>
-                      {!isPackageRecord ? (
-                        <Table.Cell>
-                          <Button
-                            size='tiny'
-                            basic
-                            onClick={() => manualRefreshOrder(order.id)}
-                            loading={refreshingOrderID === order.id}
-                            disabled={refreshingOrderID === order.id}
-                          >
-                            {t('topup.records.refresh_status')}
-                          </Button>
-                          {['created', 'pending'].includes(order.status) ? (
+                      <Table.Cell>
+                        <Button
+                          size='tiny'
+                          basic
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            manualRefreshOrder(order.id);
+                          }}
+                          loading={refreshingOrderID === order.id}
+                          disabled={refreshingOrderID === order.id}
+                        >
+                          {t('topup.records.refresh_status')}
+                        </Button>
+                        {['created', 'pending'].includes(order.status) ? (
+                          <>
                             <Button
                               size='tiny'
                               primary
-                              onClick={() => continuePay(order)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                continuePay(order);
+                              }}
                               loading={refreshingOrderID === order.id}
                               disabled={refreshingOrderID === order.id}
                             >
                               {t('topup.records.continue_pay')}
                             </Button>
-                          ) : null}
-                        </Table.Cell>
-                      ) : null}
+                            <Button
+                              size='tiny'
+                              basic
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                cancelPay(order.id);
+                              }}
+                              loading={refreshingOrderID === order.id}
+                              disabled={refreshingOrderID === order.id}
+                            >
+                              {t('topup.records.cancel_pay')}
+                            </Button>
+                          </>
+                        ) : null}
+                      </Table.Cell>
                     </Table.Row>
                   ))
                 )}
@@ -556,6 +615,50 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                   </Table>
                 </Modal.Content>
                 <Modal.Actions>
+                  <Button
+                    className='router-section-button'
+                    onClick={() => {
+                      if ((activeOrderDetail?.id || '').trim() === '') {
+                        return;
+                      }
+                      manualRefreshOrder(activeOrderDetail?.id);
+                    }}
+                    loading={(activeOrderDetail?.id || '') !== '' && refreshingOrderID === activeOrderDetail?.id}
+                    disabled={(activeOrderDetail?.id || '') === ''}
+                  >
+                    {t('topup.records.refresh_status')}
+                  </Button>
+                  {['created', 'pending'].includes(activeOrderDetail?.status) ? (
+                    <>
+                      <Button
+                        primary
+                        className='router-section-button'
+                        onClick={() => {
+                          if (!activeOrderDetail) {
+                            return;
+                          }
+                          continuePay(activeOrderDetail);
+                        }}
+                        loading={(activeOrderDetail?.id || '') !== '' && refreshingOrderID === activeOrderDetail?.id}
+                        disabled={!activeOrderDetail}
+                      >
+                        {t('topup.records.continue_pay')}
+                      </Button>
+                      <Button
+                        className='router-section-button'
+                        onClick={() => {
+                          if ((activeOrderDetail?.id || '').trim() === '') {
+                            return;
+                          }
+                          cancelPay(activeOrderDetail?.id);
+                        }}
+                        loading={(activeOrderDetail?.id || '') !== '' && refreshingOrderID === activeOrderDetail?.id}
+                        disabled={(activeOrderDetail?.id || '') === ''}
+                      >
+                        {t('topup.records.cancel_pay')}
+                      </Button>
+                    </>
+                  ) : null}
                   <Button
                     className='router-section-button'
                     onClick={() => {

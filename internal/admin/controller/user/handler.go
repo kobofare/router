@@ -2141,6 +2141,33 @@ func RefreshTopUpOrder(c *gin.Context) {
 	})
 }
 
+// CancelTopUpOrder godoc
+// @Summary Cancel current user top up order
+// @Tags public
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Order ID"
+// @Success 200 {object} docs.UserTopUpOrderDetailResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/public/user/topup/orders/{id}/cancel [post]
+func CancelTopUpOrder(c *gin.Context) {
+	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
+	orderID := strings.TrimSpace(c.Param("id"))
+	order, err := model.CancelTopupOrderWithDB(model.DB, orderID, userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    order,
+	})
+}
+
 // TopUp godoc
 // @Summary User top up
 // @Tags public

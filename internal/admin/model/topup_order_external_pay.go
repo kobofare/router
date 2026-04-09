@@ -467,3 +467,75 @@ func RefreshTopupOrderStatusWithDB(db *gorm.DB, orderID string, userID string) (
 
 	return order, nil
 }
+
+func CancelTopupOrderWithDB(db *gorm.DB, orderID string, userID string) (TopupOrder, error) {
+	if db == nil {
+		return TopupOrder{}, fmt.Errorf("database handle is nil")
+	}
+	normalizedOrderID := strings.TrimSpace(orderID)
+	normalizedUserID := strings.TrimSpace(userID)
+	if normalizedOrderID == "" || normalizedUserID == "" {
+		return TopupOrder{}, gorm.ErrRecordNotFound
+	}
+
+	order, err := GetTopupOrderByIDWithDB(db, normalizedOrderID, normalizedUserID)
+	if err != nil {
+		return TopupOrder{}, err
+	}
+
+	// Best effort: sync latest upstream state before canceling.
+	if order.Source == TopupOrderSourceTopUpAPI &&
+		(order.Status == TopupOrderStatusCreated || order.Status == TopupOrderStatusPending) &&
+		strings.TrimSpace(order.ProviderOrderID) != "" {
+		if refreshedOrder, refreshErr := RefreshTopupOrderStatusWithDB(db, normalizedOrderID, normalizedUserID); refreshErr == nil {
+			order = refreshedOrder
+		}
+	}
+
+	switch order.Status {
+	case TopupOrderStatusPaid, TopupOrderStatusFulfilled:
+		return TopupOrder{}, fmt.Errorf("订单已支付，无法取消")
+	case TopupOrderStatusCanceled:
+		return order, nil
+	case TopupOrderStatusFailed:
+		return TopupOrder{}, fmt.Errorf("订单已关闭，无法取消")
+	}
+
+	result := TopupOrder{}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		lockedOrder := TopupOrder{}
+		if err := tx.
+			Set("gorm:query_option", "FOR UPDATE").
+			Where("id = ? AND user_id = ?", normalizedOrderID, normalizedUserID).
+			First(&lockedOrder).Error; err != nil {
+			return err
+		}
+		normalizeTopupOrderRow(&lockedOrder)
+
+		switch lockedOrder.Status {
+		case TopupOrderStatusPaid, TopupOrderStatusFulfilled:
+			return fmt.Errorf("订单已支付，无法取消")
+		case TopupOrderStatusCanceled:
+			result = lockedOrder
+			return nil
+		case TopupOrderStatusFailed:
+			return fmt.Errorf("订单已关闭，无法取消")
+		}
+
+		lockedOrder.Status = TopupOrderStatusCanceled
+		if strings.TrimSpace(lockedOrder.StatusMessage) == "" {
+			lockedOrder.StatusMessage = "用户主动取消支付"
+		}
+		lockedOrder.UpdatedAt = helper.GetTimestamp()
+		normalizeTopupOrderRow(&lockedOrder)
+		if err := tx.Save(&lockedOrder).Error; err != nil {
+			return err
+		}
+		result = lockedOrder
+		return nil
+	})
+	if err != nil {
+		return TopupOrder{}, err
+	}
+	return result, nil
+}
