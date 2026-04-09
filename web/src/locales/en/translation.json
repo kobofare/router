@@ -59,8 +59,10 @@
       "order_title": "Order Records",
       "order_empty": "No order records yet",
       "continue_pay": "Continue Pay",
+      "cancel_pay": "Cancel Payment",
       "refresh_status": "Refresh Status",
       "order_paid": "The order has been paid and refreshed",
+      "order_canceled": "The order has been canceled",
       "redirect_missing": "This order is missing a payment link. Please create a new order or contact admin.",
       "tabs": {
         "orders": "Order Records",
@@ -84,6 +86,7 @@
       "package_title": "Package Purchase",
       "package_empty": "No purchasable packages",
       "package_select_required": "Please select a package",
+      "plan_invalid": "Invalid top-up plan. Please refresh and try again.",
       "amount_invalid": "Please enter an amount greater than 0",
       "request_failed": "Failed to create top-up order",
       "popup_blocked": "The browser blocked the new window. Please allow pop-ups and try again.",
@@ -142,9 +145,17 @@
         "status": "Status",
         "amount": "Amount",
         "detail": "Detail",
+        "package_name": "Package Name",
         "action": "Action",
         "order_id": "Order ID",
         "transaction_id": "Transaction ID"
+      },
+      "detail_title": "Purchase Record Detail",
+      "fields": {
+        "title": "Order Title",
+        "provider_order_id": "Provider Order ID",
+        "status_message": "Status Message",
+        "updated_at": "Updated At"
       },
       "status": {
         "created": "Awaiting Payment",
@@ -215,11 +226,11 @@
       }
     },
     "topup_reconcile": {
-      "title": "Payment Reconcile",
+      "title": "Payment",
       "search_placeholder": "Search user, order ID, provider order, title, or status message...",
-      "empty": "No payment reconcile records",
+      "empty": "No payment records",
       "columns": {
-        "stage": "Reconcile Stage",
+        "stage": "Payment Stage",
         "order": "Order",
         "message": "Status Message"
       },
@@ -228,11 +239,38 @@
         "payment_processing": "Payment Processing",
         "awaiting_fulfillment": "Awaiting Fulfillment",
         "done": "Completed",
+        "closed": "Closed",
         "payment_failed": "Payment Failed",
         "canceled": "Canceled"
       },
       "actions": {
-        "refresh": "Reconcile Now"
+        "refresh": "Sync Now"
+      },
+      "detail": {
+        "sections": {
+          "basic": "Order Detail",
+          "message": "Status Message"
+        },
+        "fields": {
+          "id": "Order ID",
+          "user": "User",
+          "business_type": "Type",
+          "amount": "Amount",
+          "stage": "Payment Stage",
+          "status": "Status",
+          "title": "Order Title",
+          "source": "Source",
+          "transaction_id": "Transaction ID",
+          "provider_order_id": "Provider Order ID",
+          "created_at": "Created At",
+          "updated_at": "Updated At",
+          "paid_at": "Paid At",
+          "redeemed_at": "Fulfilled At"
+        },
+        "messages": {
+          "load_failed": "Failed to load payment order",
+          "refresh_failed": "Failed to sync order"
+        }
       }
     },
     "package": {

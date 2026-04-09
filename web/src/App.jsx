@@ -41,6 +41,7 @@ import AdminTopup from './pages/AdminTopup';
 import Task from './pages/Task';
 import TaskDetail from './pages/Task/Detail';
 import FlowPage from './pages/Flow';
+import TopupReconcileDetail from './pages/Flow/TopupReconcileDetail';
 import ServicePricing from './pages/ServicePricing';
 import HelpDoc from './pages/HelpDoc';
 import AdminLayout from './layouts/AdminLayout';
@@ -460,6 +461,14 @@ function App() {
           element={
             <Suspense fallback={<Loading />}>
               <FlowPage kind='topup-reconcile' />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/flow/topup-reconcile/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <TopupReconcileDetail />
             </Suspense>
           }
         />

@@ -37,6 +37,11 @@ export const buildUserWorkspaceMenuItems = ({ includeChat = false } = {}) => {
           to: '/workspace/service/pricing',
           icon: 'tags',
         },
+        {
+          name: 'header.task',
+          to: '/workspace/task',
+          icon: 'tasks',
+        },
       ],
     },
   ];
@@ -99,17 +104,12 @@ export const buildUserWorkspaceMenuItems = ({ includeChat = false } = {}) => {
           to: '/workspace/topup?tab=records&record=redeem',
           icon: 'ticket alternate',
         },
+        {
+          name: 'header.log',
+          to: '/workspace/log',
+          icon: 'book',
+        },
       ],
-    },
-    {
-      name: 'header.log',
-      to: '/workspace/log',
-      icon: 'book',
-    },
-    {
-      name: 'header.task',
-      to: '/workspace/task',
-      icon: 'tasks',
     },
     {
       key: 'help',

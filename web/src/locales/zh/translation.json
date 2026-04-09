@@ -59,8 +59,10 @@
       "order_title": "订单记录",
       "order_empty": "暂无订单记录",
       "continue_pay": "继续支付",
+      "cancel_pay": "取消支付",
       "refresh_status": "刷新状态",
       "order_paid": "订单已支付，状态已更新",
+      "order_canceled": "订单已取消",
       "redirect_missing": "当前订单缺少支付链接，请重新下单或联系管理员",
       "tabs": {
         "orders": "订单记录",
@@ -84,6 +86,7 @@
       "package_title": "套餐购买",
       "package_empty": "暂无可购买套餐",
       "package_select_required": "请选择套餐",
+      "plan_invalid": "充值档位无效，请刷新后重试",
       "amount_invalid": "请输入大于 0 的充值金额",
       "request_failed": "创建充值订单失败",
       "popup_blocked": "浏览器拦截了新窗口，请允许弹窗后重试",
@@ -142,9 +145,17 @@
         "status": "状态",
         "amount": "金额",
         "detail": "明细",
+        "package_name": "套餐名称",
         "action": "操作",
         "order_id": "订单号",
         "transaction_id": "交易号"
+      },
+      "detail_title": "购买记录详情",
+      "fields": {
+        "title": "订单标题",
+        "provider_order_id": "渠道单号",
+        "status_message": "状态说明",
+        "updated_at": "更新时间"
       },
       "status": {
         "created": "待支付",
@@ -215,11 +226,11 @@
       }
     },
     "topup_reconcile": {
-      "title": "支付补偿",
+      "title": "支付",
       "search_placeholder": "搜索用户、订单号、渠道单号、标题、状态说明...",
-      "empty": "暂无支付补偿记录",
+      "empty": "暂无支付记录",
       "columns": {
-        "stage": "补偿阶段",
+        "stage": "支付阶段",
         "order": "订单信息",
         "message": "状态说明"
       },
@@ -228,11 +239,38 @@
         "payment_processing": "支付处理中",
         "awaiting_fulfillment": "待补发放",
         "done": "已完成",
+        "closed": "已关闭",
         "payment_failed": "支付失败",
         "canceled": "已取消"
       },
       "actions": {
-        "refresh": "手动补偿"
+        "refresh": "立即查单"
+      },
+      "detail": {
+        "sections": {
+          "basic": "订单详情",
+          "message": "状态说明"
+        },
+        "fields": {
+          "id": "订单 ID",
+          "user": "用户",
+          "business_type": "类型",
+          "amount": "金额",
+          "stage": "支付阶段",
+          "status": "状态",
+          "title": "订单标题",
+          "source": "支付来源",
+          "transaction_id": "交易号",
+          "provider_order_id": "渠道单号",
+          "created_at": "创建时间",
+          "updated_at": "更新时间",
+          "paid_at": "支付时间",
+          "redeemed_at": "发放时间"
+        },
+        "messages": {
+          "load_failed": "读取支付订单失败",
+          "refresh_failed": "查单失败"
+        }
       }
     },
     "package": {
