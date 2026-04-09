@@ -236,11 +236,38 @@
         "payment_processing": "Payment Processing",
         "awaiting_fulfillment": "Awaiting Fulfillment",
         "done": "Completed",
+        "closed": "Closed",
         "payment_failed": "Payment Failed",
         "canceled": "Canceled"
       },
       "actions": {
         "refresh": "Sync Now"
+      },
+      "detail": {
+        "sections": {
+          "basic": "Order Detail",
+          "message": "Status Message"
+        },
+        "fields": {
+          "id": "Order ID",
+          "user": "User",
+          "business_type": "Type",
+          "amount": "Amount",
+          "stage": "Payment Stage",
+          "status": "Status",
+          "title": "Order Title",
+          "source": "Source",
+          "transaction_id": "Transaction ID",
+          "provider_order_id": "Provider Order ID",
+          "created_at": "Created At",
+          "updated_at": "Updated At",
+          "paid_at": "Paid At",
+          "redeemed_at": "Fulfilled At"
+        },
+        "messages": {
+          "load_failed": "Failed to load payment order",
+          "refresh_failed": "Failed to sync order"
+        }
       }
     },
     "package": {

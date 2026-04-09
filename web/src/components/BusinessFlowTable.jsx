@@ -81,9 +81,8 @@ const renderReconcileStage = (row, t) => {
     case 'fulfilled':
       return <Label basic color='green' className='router-tag'>{t('flow.topup_reconcile.stage.done')}</Label>;
     case 'failed':
-      return <Label basic color='red' className='router-tag'>{t('flow.topup_reconcile.stage.payment_failed')}</Label>;
     case 'canceled':
-      return <Label basic color='grey' className='router-tag'>{t('flow.topup_reconcile.stage.canceled')}</Label>;
+      return <Label basic color='grey' className='router-tag'>{t('flow.topup_reconcile.stage.closed')}</Label>;
     default:
       return <Label basic color='grey' className='router-tag'>{readOnlyText(row?.status)}</Label>;
   }
@@ -128,7 +127,8 @@ const BusinessFlowTable = ({ kind }) => {
             compact
             size='mini'
             className='router-inline-button'
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               if (userId === '-') {
                 return;
               }
@@ -154,7 +154,8 @@ const BusinessFlowTable = ({ kind }) => {
             compact
             size='mini'
             className='router-inline-button'
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               if (userId === '-') {
                 return;
               }
@@ -255,6 +256,15 @@ const BusinessFlowTable = ({ kind }) => {
         endpoint: '/api/v1/admin/flow/topup-reconcile-records',
         searchPlaceholder: t('flow.topup_reconcile.search_placeholder'),
         emptyText: t('flow.topup_reconcile.empty'),
+        onRowClick: (row) => {
+          const rowID = readOnlyText(row?.id);
+          if (rowID === '-') {
+            return;
+          }
+          navigate(`/admin/flow/topup-reconcile/${encodeURIComponent(rowID)}`, {
+            state: { from: currentPagePath },
+          });
+        },
         statusOptions: [
           { key: 'all', value: '', text: t('task.filters.status_all') },
           { key: 'created', value: 'created', text: t('topup.external_topup_orders.status.created') },
@@ -293,25 +303,18 @@ const BusinessFlowTable = ({ kind }) => {
             key: 'order',
             label: t('flow.topup_reconcile.columns.order'),
             render: (row) => (
-              <div>
-                <div>{renderText(readOnlyText(row.title), 24)}</div>
-                <div className='router-text-muted'>
-                  {renderText(readOnlyText(row.transaction_id || row.provider_order_id), 20)}
-                </div>
-              </div>
+              <div>{renderText(readOnlyText(row.title || formatTopupBusinessType(row.business_type, t)), 28)}</div>
             ),
           },
           {
             key: 'message',
             label: t('flow.topup_reconcile.columns.message'),
-            render: (row) => (
-              <div>
-                <div>{readOnlyText(row.status_message)}</div>
-                <div className='router-text-muted'>
-                  {formatDateTime(row.updated_at)}
-                </div>
-              </div>
-            ),
+            render: (row) => readOnlyText(row.status_message),
+          },
+          {
+            key: 'updated_at',
+            label: t('user.table.updated_at'),
+            render: (row) => formatDateTime(row.updated_at),
           },
           {
             key: 'actions',
@@ -323,7 +326,8 @@ const BusinessFlowTable = ({ kind }) => {
                 className='router-inline-button'
                 loading={refreshingRowID === row.id}
                 disabled={refreshingRowID === row.id}
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   handleRefreshReconcileRow(row?.id);
                 }}
               >
@@ -678,7 +682,11 @@ const BusinessFlowTable = ({ kind }) => {
               </Table.Row>
             ) : (
               items.map((row) => (
-                <Table.Row key={row.id || row.transaction_id || row.package_id}>
+                <Table.Row
+                  key={row.id || row.transaction_id || row.package_id}
+                  onClick={typeof config.onRowClick === 'function' ? () => config.onRowClick(row) : undefined}
+                  style={typeof config.onRowClick === 'function' ? { cursor: 'pointer' } : undefined}
+                >
                   {config.columns.map((column) => (
                     <Table.Cell key={column.key} collapsing={column.collapsing === true}>
                       {column.render(row)}

@@ -278,6 +278,7 @@ func SetApiRouter(engine *gin.Engine) {
 		{
 			adminFlowRoute.GET("/topup-orders", flow.GetTopupOrderRecords)
 			adminFlowRoute.GET("/topup-reconcile-records", flow.GetTopupReconcileRecords)
+			adminFlowRoute.GET("/topup-reconcile-records/:id", flow.GetTopupReconcileRecord)
 			adminFlowRoute.POST("/topup-reconcile-records/:id/refresh", flow.RefreshTopupReconcileRecord)
 			adminFlowRoute.GET("/package-records", flow.GetPackageRecords)
 			adminFlowRoute.GET("/redemption-records", flow.GetRedemptionRecords)

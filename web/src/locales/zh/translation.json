@@ -236,11 +236,38 @@
         "payment_processing": "支付处理中",
         "awaiting_fulfillment": "待补发放",
         "done": "已完成",
+        "closed": "已关闭",
         "payment_failed": "支付失败",
         "canceled": "已取消"
       },
       "actions": {
         "refresh": "立即查单"
+      },
+      "detail": {
+        "sections": {
+          "basic": "订单详情",
+          "message": "状态说明"
+        },
+        "fields": {
+          "id": "订单 ID",
+          "user": "用户",
+          "business_type": "类型",
+          "amount": "金额",
+          "stage": "支付阶段",
+          "status": "状态",
+          "title": "订单标题",
+          "source": "支付来源",
+          "transaction_id": "交易号",
+          "provider_order_id": "渠道单号",
+          "created_at": "创建时间",
+          "updated_at": "更新时间",
+          "paid_at": "支付时间",
+          "redeemed_at": "发放时间"
+        },
+        "messages": {
+          "load_failed": "读取支付订单失败",
+          "refresh_failed": "查单失败"
+        }
       }
     },
     "package": {

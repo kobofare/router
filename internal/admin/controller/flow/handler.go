@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -78,6 +79,24 @@ func GetTopupReconcileRecords(c *gin.Context) {
 		return
 	}
 	writeFlowList(c, rows, total, page, pageSize)
+}
+
+func GetTopupReconcileRecord(c *gin.Context) {
+	orderID := strings.TrimSpace(c.Param("id"))
+	order, err := model.GetTopupOrderByIDForAdminWithDB(model.DB, orderID)
+	if err != nil {
+		writeFlowError(c, err)
+		return
+	}
+	if strings.TrimSpace(order.Source) != model.TopupOrderSourceTopUpAPI {
+		writeFlowError(c, fmt.Errorf("该订单不属于支付记录"))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    order,
+	})
 }
 
 func RefreshTopupReconcileRecord(c *gin.Context) {
