@@ -151,7 +151,8 @@
       "fields": {
         "title": "Order Title",
         "provider_order_id": "Provider Order ID",
-        "status_message": "Status Message"
+        "status_message": "Status Message",
+        "updated_at": "Updated At"
       },
       "status": {
         "created": "Awaiting Payment",
@@ -222,11 +223,11 @@
       }
     },
     "topup_reconcile": {
-      "title": "Payment Reconcile",
+      "title": "Payment",
       "search_placeholder": "Search user, order ID, provider order, title, or status message...",
-      "empty": "No payment reconcile records",
+      "empty": "No payment records",
       "columns": {
-        "stage": "Reconcile Stage",
+        "stage": "Payment Stage",
         "order": "Order",
         "message": "Status Message"
       },
@@ -239,7 +240,7 @@
         "canceled": "Canceled"
       },
       "actions": {
-        "refresh": "Reconcile Now"
+        "refresh": "Sync Now"
       }
     },
     "package": {

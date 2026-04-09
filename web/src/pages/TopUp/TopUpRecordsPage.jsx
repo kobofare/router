@@ -544,7 +544,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                       </Table.Row>
                       <Table.Row>
                         <Table.Cell width={5}>
-                          {t('updated_at')}
+                          {t('topup.external_topup_orders.fields.updated_at')}
                         </Table.Cell>
                         <Table.Cell>
                           {activeOrderDetail?.updated_at

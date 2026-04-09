@@ -151,7 +151,8 @@
       "fields": {
         "title": "订单标题",
         "provider_order_id": "渠道单号",
-        "status_message": "状态说明"
+        "status_message": "状态说明",
+        "updated_at": "更新时间"
       },
       "status": {
         "created": "待支付",
@@ -222,11 +223,11 @@
       }
     },
     "topup_reconcile": {
-      "title": "支付补偿",
+      "title": "支付",
       "search_placeholder": "搜索用户、订单号、渠道单号、标题、状态说明...",
-      "empty": "暂无支付补偿记录",
+      "empty": "暂无支付记录",
       "columns": {
-        "stage": "补偿阶段",
+        "stage": "支付阶段",
         "order": "订单信息",
         "message": "状态说明"
       },
@@ -239,7 +240,7 @@
         "canceled": "已取消"
       },
       "actions": {
-        "refresh": "手动补偿"
+        "refresh": "立即查单"
       }
     },
     "package": {
