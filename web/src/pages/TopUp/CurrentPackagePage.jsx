@@ -162,7 +162,7 @@ const PackageUsageCard = ({ title, period, timezone, items, footer }) => (
         <Statistic.Group widths='three' size='small'>
           {items.map((item) => (
             <Statistic key={item.key}>
-              <Statistic.Value style={{ fontSize: '1.35rem' }}>
+              <Statistic.Value className='router-topup-statistic-value'>
                 {item.value}
               </Statistic.Value>
               <Statistic.Label>{item.label}</Statistic.Label>
@@ -387,6 +387,18 @@ const CurrentPackagePage = () => {
     ];
   }, [activeSubscription, emergencySnapshot, renderIntegerAmount, t]);
 
+  const goPricing = useCallback(
+    (intent = '') => {
+      const normalizedIntent = String(intent || '').trim().toLowerCase();
+      const search = new URLSearchParams();
+      if (normalizedIntent === 'renew' || normalizedIntent === 'upgrade') {
+        search.set('intent', normalizedIntent);
+      }
+      navigate(`/workspace/service/pricing${search.toString() ? `?${search.toString()}` : ''}`);
+    },
+    [navigate],
+  );
+
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
       <Card fluid className='router-soft-card'>
@@ -396,12 +408,30 @@ const CurrentPackagePage = () => {
               <Header as='h3' className='router-section-title router-title-accent-positive'>
                 {t('user.detail.package_title')}
               </Header>
-              <Button
-                className='router-section-button'
-                onClick={() => navigate('/workspace/service/pricing')}
-              >
-                {t('topup.package_status.view_pricing')}
-              </Button>
+              <div className='router-toolbar-end'>
+                <Button
+                  className='router-section-button'
+                  onClick={() => goPricing('')}
+                >
+                  {t('topup.package_status.view_pricing')}
+                </Button>
+                <Button
+                  className='router-section-button'
+                  basic
+                  disabled={!activeSubscription}
+                  onClick={() => goPricing('renew')}
+                >
+                  {t('topup.external_topup.package_operation.renew')}
+                </Button>
+                <Button
+                  className='router-section-button'
+                  basic
+                  disabled={!activeSubscription}
+                  onClick={() => goPricing('upgrade')}
+                >
+                  {t('topup.external_topup.package_operation.upgrade')}
+                </Button>
+              </div>
             </div>
           </Card.Header>
 

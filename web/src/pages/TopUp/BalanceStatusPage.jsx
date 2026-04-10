@@ -33,7 +33,7 @@ const BalanceStatusPage = () => {
               >
                 <div className='router-center-panel' style={{ paddingTop: 0 }}>
                   <Statistic className='router-accent-statistic' size='small'>
-                    <Statistic.Value>
+                    <Statistic.Value className='router-topup-statistic-value'>
                       {renderTopupIntegerAmountWithExactPopup({
                         yycAmount: userBalanceYYC,
                         displayCurrency,
@@ -47,7 +47,7 @@ const BalanceStatusPage = () => {
                 </div>
                 <div className='router-center-panel' style={{ paddingTop: 0 }}>
                   <Statistic size='small'>
-                    <Statistic.Value>
+                    <Statistic.Value className='router-topup-statistic-value'>
                       {renderTopupIntegerAmountWithExactPopup({
                         yycAmount: topupBalanceYYC,
                         displayCurrency,
@@ -61,7 +61,7 @@ const BalanceStatusPage = () => {
                 </div>
                 <div className='router-center-panel' style={{ paddingTop: 0 }}>
                   <Statistic size='small'>
-                    <Statistic.Value>
+                    <Statistic.Value className='router-topup-statistic-value'>
                       {renderTopupIntegerAmountWithExactPopup({
                         yycAmount: redeemBalanceYYC,
                         displayCurrency,

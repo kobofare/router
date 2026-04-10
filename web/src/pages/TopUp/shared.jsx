@@ -171,6 +171,55 @@ export const formatTopupBusinessType = (type, t) => {
   }
 };
 
+const splitTopupDisplayTextUnit = (displayText) => {
+  const trimmed = String(displayText || '').trim();
+  if (trimmed === '') {
+    return {
+      amount: '-',
+      unit: '',
+    };
+  }
+  // YYC already contains leading symbol, keep as a single text block.
+  if (trimmed.startsWith('Ɏ ')) {
+    return {
+      amount: trimmed,
+      unit: '',
+    };
+  }
+  const separatorIndex = trimmed.lastIndexOf(' ');
+  if (separatorIndex <= 0) {
+    return {
+      amount: trimmed,
+      unit: '',
+    };
+  }
+  const amount = trimmed.slice(0, separatorIndex).trim();
+  const unit = trimmed.slice(separatorIndex + 1).trim().toUpperCase();
+  if (!/^[A-Z]{2,8}$/.test(unit)) {
+    return {
+      amount: trimmed,
+      unit: '',
+    };
+  }
+  return {
+    amount,
+    unit,
+  };
+};
+
+const renderTopupAmountTrigger = (displayText) => {
+  const { amount, unit } = splitTopupDisplayTextUnit(displayText);
+  if (!unit) {
+    return <span>{amount}</span>;
+  }
+  return (
+    <span className='router-topup-amount-trigger'>
+      <span>{amount}</span>
+      <span className='router-topup-amount-unit'>{unit}</span>
+    </span>
+  );
+};
+
 const buildTopupAmountDisplayTexts = ({
   yycAmount,
   displayCurrency,
@@ -242,7 +291,7 @@ export const renderTopupIntegerAmountWithExactPopup = ({
   return (
     <Popup
       content={exactText}
-      trigger={<span>{integerText}</span>}
+      trigger={renderTopupAmountTrigger(integerText)}
     />
   );
 };

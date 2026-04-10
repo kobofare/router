@@ -1562,6 +1562,25 @@ code {
     width: min(100%, 280px);
 }
 
+.ui.statistic .value.router-topup-statistic-value,
+.ui.statistics .statistic .value.router-topup-statistic-value {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+    font-weight: 600 !important;
+}
+
+.router-topup-amount-trigger {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.32rem;
+}
+
+.router-topup-amount-unit {
+    font-size: 0.72em;
+    color: #6b7280;
+    font-weight: 500;
+}
+
 .router-page-panel {
     max-width: 720px;
     margin: 0 auto;
