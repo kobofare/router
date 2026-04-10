@@ -278,7 +278,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       default:
         return {
           label: t('topup.record_nav.topup'),
-          onClick: () => navigate('/workspace/topup?tab=balance'),
+          onClick: () => navigate('/workspace/service/pricing'),
         };
     }
   }, [navigate, recordKey, t]);
@@ -390,7 +390,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                   <Table.HeaderCell>
                     {isPackageRecord
                       ? t('topup.external_topup_orders.columns.package_name')
-                      : t('topup.external_topup_orders.columns.detail')}
+                      : t('topup.external_topup_orders.columns.quota')}
                   </Table.HeaderCell>
                   <Table.HeaderCell width={4}>
                     {t('topup.external_topup_orders.columns.action')}
@@ -456,14 +456,9 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
                       <Table.Cell>
                         {isPackageRecord
                           ? order.package_name || '-'
-                          : (
-                            <>
-                              <div>{order.title || order.package_name || order.id || '-'}</div>
-                              <div className='router-text-muted'>
-                                {order.transaction_id || order.provider_order_id || '-'}
-                              </div>
-                            </>
-                          )}
+                          : order.quota > 0
+                            ? renderDisplayAmount(order.quota)
+                            : '-'}
                       </Table.Cell>
                       <Table.Cell>
                         <Button

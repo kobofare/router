@@ -170,6 +170,7 @@
         "status": "Status",
         "amount": "Amount",
         "detail": "Detail",
+        "quota": "Quota",
         "package_name": "Package Name",
         "action": "Action",
         "order_id": "Order ID",

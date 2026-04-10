@@ -170,6 +170,7 @@
         "status": "状态",
         "amount": "金额",
         "detail": "明细",
+        "quota": "额度",
         "package_name": "套餐名称",
         "action": "操作",
         "order_id": "订单号",
