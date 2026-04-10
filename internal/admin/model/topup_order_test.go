@@ -201,7 +201,7 @@ func TestBuildTopupOrderPlanTitle(t *testing.T) {
 			QuotaCurrency:  BillingCurrencyCodeUSD,
 		},
 	}
-	if got, want := buildTopupOrderPlanTitle(plan), "1 元 / 20 USD / 基础版"; got != want {
+	if got, want := buildTopupOrderPlanTitle(plan), "1 元 / 20 USD"; got != want {
 		t.Fatalf("unexpected title: got %q want %q", got, want)
 	}
 }

@@ -47,12 +47,6 @@ const BalanceTopUpPage = () => {
         </Card.Header>
         <Card.Description className='router-card-fill'>
           <div className='router-card-body-spread'>
-            <div className='router-center-panel'>
-              <div className='router-text-muted' style={{ marginTop: '0.5rem' }}>
-                {t('topup.external_topup.plan_hint')}
-              </div>
-            </div>
-
             <div className='router-grid-top-md' style={{ width: '100%' }}>
               <Card.Group itemsPerRow={5} stackable>
                 {(Array.isArray(topupPlans) ? topupPlans : []).map((plan, index) => {

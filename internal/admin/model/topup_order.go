@@ -229,16 +229,12 @@ func buildTopupOrderPlanTitle(plan ResolvedTopupPlan) string {
 	quotaPart := strings.TrimSpace(
 		formatTopupPlanNumber(plan.QuotaAmount) + " " + normalizeBillingCurrencyCode(plan.QuotaCurrency),
 	)
-	planName := strings.TrimSpace(plan.Name)
-	parts := make([]string, 0, 3)
+	parts := make([]string, 0, 2)
 	if amountPart != "" {
 		parts = append(parts, amountPart)
 	}
 	if quotaPart != "" {
 		parts = append(parts, quotaPart)
-	}
-	if planName != "" {
-		parts = append(parts, planName)
 	}
 	return strings.Join(parts, " / ")
 }
