@@ -135,6 +135,7 @@
     },
     "pricing": {
       "title": "Pricing",
+      "page_title": "Pricing Guide",
       "subtitle": "You can buy a package directly, or top up balance first and use the service on demand.",
       "package_mode_title": "Package Plans",
       "package_hint": "Best for stable usage. You get a daily allowance plus emergency capacity with clearer cost boundaries.",

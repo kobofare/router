@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Header, Statistic } from 'semantic-ui-react';
+import { Button, Card, Header } from 'semantic-ui-react';
 import { showError } from '../../helpers';
 import { useTopUpWorkspace } from './shared.jsx';
 
@@ -16,12 +16,7 @@ const resolvePlanID = (plan) =>
 
 const BalanceTopUpPage = () => {
   const { t } = useTranslation();
-  const {
-    userBalanceYYC,
-    topupPlans,
-    renderDisplayAmount,
-    createTopupOrder,
-  } = useTopUpWorkspace();
+  const { topupPlans, createTopupOrder } = useTopUpWorkspace();
   const [creatingPlanID, setCreatingPlanID] = useState('');
 
   const handleSubmit = async (plan) => {
@@ -53,13 +48,6 @@ const BalanceTopUpPage = () => {
         <Card.Description className='router-card-fill'>
           <div className='router-card-body-spread'>
             <div className='router-center-panel'>
-              <Statistic className='router-accent-statistic'>
-                <Statistic.Value>{renderDisplayAmount(userBalanceYYC)}</Statistic.Value>
-                <Statistic.Label>{t('topup.external_topup.current_balance')}</Statistic.Label>
-              </Statistic>
-              <div className='router-text-muted' style={{ marginTop: '0.75rem' }}>
-                {t('topup.external_topup.description')}
-              </div>
               <div className='router-text-muted' style={{ marginTop: '0.5rem' }}>
                 {t('topup.external_topup.plan_hint')}
               </div>

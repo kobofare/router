@@ -135,6 +135,7 @@
     },
     "pricing": {
       "title": "报价",
+      "page_title": "报价说明",
       "subtitle": "你可以直接购买套餐，也可以先充值余额按需体验服务。",
       "package_mode_title": "套餐使用",
       "package_hint": "适合稳定使用，按套餐获取每日额度和应急额度，成本与边界更清晰。",

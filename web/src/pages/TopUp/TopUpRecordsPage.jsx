@@ -309,8 +309,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       <Card.Content>
         <Card.Header className='router-card-header'>
           <div className='router-toolbar'>
-            <div className='router-toolbar-start' />
-            <div className='router-toolbar-end'>
+            <div className='router-toolbar-start'>
               <Button
                 primary
                 className='router-section-button'

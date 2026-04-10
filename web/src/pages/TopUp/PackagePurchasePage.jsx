@@ -121,7 +121,6 @@ const PackagePurchasePage = () => {
       <Card.Content className='router-card-fill'>
         <Card.Header className='router-card-header'>
           <Header as='h3' className='router-section-title router-title-accent-positive'>
-            <i className='boxes icon' />
             {t('topup.external_topup.package_title')}
           </Header>
         </Card.Header>
