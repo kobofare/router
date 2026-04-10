@@ -718,6 +718,13 @@ code {
     padding: 0.78em 1em !important;
 }
 
+.router-section-field-description {
+    margin-top: 0.35rem;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #6b7280;
+}
+
 .ui.message.router-section-message,
 .ui.message.router-auth-message {
     font-size: 13px !important;

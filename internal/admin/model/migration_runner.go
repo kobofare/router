@@ -437,6 +437,16 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return ensureTopupOrderOperationTypeWithDB(tx)
 			},
 		},
+		{
+			Version:     "202604101600_drop_legacy_reward_option_keys",
+			Description: "remove legacy reward option keys from system settings",
+			Up: func(tx *gorm.DB) error {
+				return tx.Exec(
+					"DELETE FROM system_settings WHERE key IN ?",
+					[]string{"QuotaForNewUser", "QuotaForInviter", "QuotaForInvitee"},
+				).Error
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

@@ -1832,18 +1832,19 @@
     "operation": {
       "quota": {
         "title": "Balance Settings",
-        "new_user": "New User Starting Amount",
-        "new_user_placeholder": "e.g.: 100",
+        "new_user_reward": "New User Reward",
+        "new_user_reward_description": "Granted after a new user completes registration. Select a topup plan as reward source; leave empty to disable.",
+        "reward_plan_placeholder": "Select a topup plan (empty means disabled)",
         "default_group": "Default User Group",
         "default_group_placeholder": "No automatic assignment when unset",
         "pre_consume": "Pre-consumed Amount per Request",
         "pre_consume_placeholder": "Refund or charge difference after request",
-        "inviter_reward": "Inviter Reward Amount",
-        "inviter_reward_placeholder": "e.g.: 2000",
-        "invitee_reward": "Invitee Reward Amount",
-        "invitee_reward_placeholder": "e.g.: 1000",
+        "pre_consume_description": "Reserve estimated quota at request start, then settle by actual usage with refund/charge delta.",
+        "inviter_reward": "Invite Reward",
+        "inviter_reward_description": "When a user registers through an invite link, the inviter receives this reward. Select a topup plan as reward source; leave empty to disable.",
         "messages": {
-          "amount_invalid": "Amount must be greater than or equal to 0"
+          "amount_invalid": "Amount must be greater than or equal to 0",
+          "plan_invalid": "Invalid topup plan, please refresh and try again"
         },
         "buttons": {
           "save": "Save Balance Settings"

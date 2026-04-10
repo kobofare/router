@@ -1830,18 +1830,19 @@
     "operation": {
       "quota": {
         "title": "余额设置",
-        "new_user": "新用户初始金额",
-        "new_user_placeholder": "例如：100",
+        "new_user_reward": "新客奖励",
+        "new_user_reward_description": "新用户注册成功后发放奖励。请选择一个充值档位作为奖励来源，留空表示不发放。",
+        "reward_plan_placeholder": "请选择充值档位（默认不发放）",
         "default_group": "默认用户分组",
         "default_group_placeholder": "未配置则不自动分配",
         "pre_consume": "请求预扣金额",
         "pre_consume_placeholder": "请求结束后多退少补",
-        "inviter_reward": "邀请奖励金额",
-        "inviter_reward_placeholder": "例如：2000",
-        "invitee_reward": "邀请码奖励金额",
-        "invitee_reward_placeholder": "例如：1000",
+        "pre_consume_description": "用于请求开始时的预估预扣，成功后按实际消耗结算，多退少补。",
+        "inviter_reward": "邀请奖励",
+        "inviter_reward_description": "用户通过邀请链接完成注册后，给邀请人发放奖励。请选择一个充值档位作为奖励来源，留空表示不发放。",
         "messages": {
-          "amount_invalid": "金额必须大于或等于 0"
+          "amount_invalid": "金额必须大于或等于 0",
+          "plan_invalid": "充值档位无效，请刷新后重试"
         },
         "buttons": {
           "save": "保存余额设置"
