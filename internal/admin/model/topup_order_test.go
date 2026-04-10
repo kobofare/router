@@ -146,6 +146,47 @@ func TestResolveTopupOrderBusinessType(t *testing.T) {
 	}
 }
 
+func TestResolveTopupOrderOperationType(t *testing.T) {
+	tests := []struct {
+		name         string
+		businessType string
+		value        string
+		wantResult   string
+	}{
+		{
+			name:         "balance does not carry operation",
+			businessType: TopupOrderBusinessBalance,
+			value:        TopupOrderOperationUpgrade,
+			wantResult:   "",
+		},
+		{
+			name:         "explicit renew",
+			businessType: TopupOrderBusinessPackage,
+			value:        TopupOrderOperationRenew,
+			wantResult:   TopupOrderOperationRenew,
+		},
+		{
+			name:         "explicit upgrade",
+			businessType: TopupOrderBusinessPackage,
+			value:        TopupOrderOperationUpgrade,
+			wantResult:   TopupOrderOperationUpgrade,
+		},
+		{
+			name:         "fallback to new for package",
+			businessType: TopupOrderBusinessPackage,
+			value:        "",
+			wantResult:   TopupOrderOperationNew,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveTopupOrderOperationType(tt.businessType, tt.value); got != tt.wantResult {
+				t.Fatalf("expected %q, got %q", tt.wantResult, got)
+			}
+		})
+	}
+}
+
 func TestTopupOrderSigningStringHelpers(t *testing.T) {
 	payload := map[string]string{
 		"b":    "2",

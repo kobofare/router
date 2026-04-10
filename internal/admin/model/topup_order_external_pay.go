@@ -132,6 +132,7 @@ func buildExternalPayCreatePayload(order TopupOrder, clientType string) map[stri
 		"user_id":        strings.TrimSpace(order.UserID),
 		"username":       strings.TrimSpace(order.Username),
 		"business_type":  strings.TrimSpace(order.BusinessType),
+		"operation_type": strings.TrimSpace(order.OperationType),
 		"title":          strings.TrimSpace(order.Title),
 		"amount":         fmt.Sprintf("%.2f", order.Amount),
 		"currency":       strings.TrimSpace(order.Currency),

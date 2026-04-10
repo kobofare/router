@@ -127,6 +127,12 @@ const renderPackageStatus = (status, t) => {
           {t('user.detail.package_status_types.canceled')}
         </Label>
       );
+    case 5:
+      return (
+        <Label basic color='teal' className='router-tag'>
+          {t('user.detail.package_status_types.pending')}
+        </Label>
+      );
     default:
       return (
         <Label basic className='router-tag'>
@@ -375,7 +381,6 @@ const CurrentPackagePage = () => {
           <Card.Header className='router-card-header'>
             <div className='router-toolbar'>
               <Header as='h3' className='router-section-title router-title-accent-positive'>
-                <i className='gift icon' />
                 {t('user.detail.package_title')}
               </Header>
               <Button

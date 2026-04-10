@@ -189,6 +189,30 @@ const TopUpWorkspaceProvider = ({ children }) => {
     [loadUserBalance, t],
   );
 
+  const previewPackagePurchase = useCallback(
+    async (payload) => {
+      try {
+        const res = await API.post(
+          '/api/v1/public/user/topup/package/preview',
+          payload || {},
+        );
+        const { success, message, data } = res?.data || {};
+        if (!success) {
+          showError(message || t('topup.external_topup.request_failed'));
+          return null;
+        }
+        if (!data || typeof data !== 'object') {
+          return null;
+        }
+        return data;
+      } catch (error) {
+        showError(error?.message || t('topup.external_topup.request_failed'));
+        return null;
+      }
+    },
+    [t],
+  );
+
   const submitRedemption = useCallback(
     async (code) => {
       const res = await API.post('/api/v1/public/user/topup', {
@@ -229,6 +253,7 @@ const TopUpWorkspaceProvider = ({ children }) => {
       renderDisplayAmount,
       loadUserBalance,
       createTopupOrder,
+      previewPackagePurchase,
       submitRedemption,
     }),
     [
@@ -239,6 +264,7 @@ const TopUpWorkspaceProvider = ({ children }) => {
       loadTopupPlans,
       loadUserBalance,
       loadingDisplayCurrencies,
+      previewPackagePurchase,
       renderDisplayAmount,
       submitRedemption,
       topupPlans,

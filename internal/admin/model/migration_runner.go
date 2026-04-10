@@ -430,6 +430,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return migrateUserQuotaCounterTypePackageEmergencyWithDB(tx)
 			},
 		},
+		{
+			Version:     "202604091100_topup_order_operation_type",
+			Description: "add topup order operation_type and backfill package purchases to new_purchase",
+			Up: func(tx *gorm.DB) error {
+				return ensureTopupOrderOperationTypeWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

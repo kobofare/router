@@ -16,6 +16,7 @@ import (
 	"github.com/yeying-community/router/common"
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/i18n"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/common/random"
@@ -1924,15 +1925,21 @@ type topUpOrderListData struct {
 }
 
 type createTopUpOrderRequest struct {
-	BusinessType string  `json:"business_type"`
-	ClientType   string  `json:"client_type"`
-	Title        string  `json:"title"`
-	Amount       float64 `json:"amount"`
-	Currency     string  `json:"currency"`
-	Quota        int64   `json:"quota"`
-	PlanID       string  `json:"plan_id"`
-	PackageID    string  `json:"package_id"`
-	ReturnURL    string  `json:"return_url"`
+	BusinessType  string  `json:"business_type"`
+	OperationType string  `json:"operation_type"`
+	ClientType    string  `json:"client_type"`
+	Title         string  `json:"title"`
+	Amount        float64 `json:"amount"`
+	Currency      string  `json:"currency"`
+	Quota         int64   `json:"quota"`
+	PlanID        string  `json:"plan_id"`
+	PackageID     string  `json:"package_id"`
+	ReturnURL     string  `json:"return_url"`
+}
+
+type previewPackagePurchaseRequest struct {
+	PackageID     string `json:"package_id"`
+	OperationType string `json:"operation_type"`
 }
 
 func parseTopupOrderPageParams(c *gin.Context) (int, int, string, error) {
@@ -1998,6 +2005,53 @@ func GetTopUpOrders(c *gin.Context) {
 	})
 }
 
+// PreviewPackagePurchase godoc
+// @Summary Preview current user package purchase/renew/upgrade
+// @Tags public
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/public/user/topup/package/preview [post]
+func PreviewPackagePurchase(c *gin.Context) {
+	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
+	if userID == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "无效的 user id",
+		})
+		return
+	}
+	req := previewPackagePurchaseRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	preview, err := model.PreviewPackagePurchaseWithDB(
+		model.DB,
+		userID,
+		strings.TrimSpace(req.PackageID),
+		strings.TrimSpace(req.OperationType),
+		helper.GetTimestamp(),
+	)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    preview,
+	})
+}
+
 // CreateTopUpOrder godoc
 // @Summary Create user top up order
 // @Tags public
@@ -2041,15 +2095,16 @@ func CreateTopUpOrder(c *gin.Context) {
 		}
 	}
 	order, err := model.CreateTopupOrderWithDB(model.DB, userID, username, model.CreateTopupOrderInput{
-		BusinessType: req.BusinessType,
-		ClientType:   resolveTopUpClientType(req.ClientType, c.Request.UserAgent()),
-		Title:        req.Title,
-		Amount:       req.Amount,
-		Currency:     req.Currency,
-		Quota:        req.Quota,
-		PlanID:       req.PlanID,
-		PackageID:    req.PackageID,
-		ReturnURL:    req.ReturnURL,
+		BusinessType:  req.BusinessType,
+		OperationType: req.OperationType,
+		ClientType:    resolveTopUpClientType(req.ClientType, c.Request.UserAgent()),
+		Title:         req.Title,
+		Amount:        req.Amount,
+		Currency:      req.Currency,
+		Quota:         req.Quota,
+		PlanID:        req.PlanID,
+		PackageID:     req.PackageID,
+		ReturnURL:     req.ReturnURL,
 	})
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
