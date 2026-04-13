@@ -71,6 +71,20 @@ func GetTopupOrderRecords(c *gin.Context) {
 	writeFlowList(c, rows, total, page, pageSize)
 }
 
+func GetTopupOrderRecord(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	row, err := model.GetAdminTopupOrderRecordByIDWithDB(model.DB, id)
+	if err != nil {
+		writeFlowError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    row,
+	})
+}
+
 func GetTopupReconcileRecords(c *gin.Context) {
 	page, pageSize, keyword, status := parseFlowPageParams(c)
 	rows, total, err := model.ListAdminTopupReconcileRecordsPageWithDB(model.DB, page, pageSize, keyword, status)
@@ -134,6 +148,20 @@ func GetPackageRecords(c *gin.Context) {
 	writeFlowList(c, rows, total, page, pageSize)
 }
 
+func GetPackageRecord(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	row, err := model.GetAdminUserPackageRecordByIDWithDB(model.DB, id)
+	if err != nil {
+		writeFlowError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    row,
+	})
+}
+
 func GetRedemptionRecords(c *gin.Context) {
 	page, pageSize, keyword, _ := parseFlowPageParams(c)
 	rows, total, err := model.ListAdminRedemptionRecordsPageWithDB(model.DB, page, pageSize, keyword)
@@ -142,4 +170,18 @@ func GetRedemptionRecords(c *gin.Context) {
 		return
 	}
 	writeFlowList(c, rows, total, page, pageSize)
+}
+
+func GetRedemptionRecord(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	row, err := model.GetAdminRedemptionRecordByIDWithDB(model.DB, id)
+	if err != nil {
+		writeFlowError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    row,
+	})
 }

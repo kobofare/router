@@ -44,6 +44,9 @@ import Task from './pages/Task';
 import TaskDetail from './pages/Task/Detail';
 import FlowPage from './pages/Flow';
 import TopupReconcileDetail from './pages/Flow/TopupReconcileDetail';
+import TopupDetail from './pages/Flow/TopupDetail';
+import PackageFlowDetail from './pages/Flow/PackageDetail';
+import RedemptionFlowDetail from './pages/Flow/RedemptionDetail';
 import ServicePricing from './pages/ServicePricing';
 import HelpDoc from './pages/HelpDoc';
 import AdminLayout from './layouts/AdminLayout';
@@ -468,6 +471,14 @@ function App() {
           }
         />
         <Route
+          path='/admin/flow/topup/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <TopupDetail />
+            </Suspense>
+          }
+        />
+        <Route
           path='/admin/flow/topup-reconcile'
           element={
             <Suspense fallback={<Loading />}>
@@ -492,10 +503,26 @@ function App() {
           }
         />
         <Route
+          path='/admin/flow/package/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <PackageFlowDetail />
+            </Suspense>
+          }
+        />
+        <Route
           path='/admin/flow/redemption'
           element={
             <Suspense fallback={<Loading />}>
               <FlowPage kind='redemption' />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/flow/redemption/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <RedemptionFlowDetail />
             </Suspense>
           }
         />

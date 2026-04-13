@@ -447,6 +447,27 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				).Error
 			},
 		},
+		{
+			Version:     "202604131130_topup_validity_balance_lots",
+			Description: "add topup plan validity and per-credit user balance lots",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&TopupPlan{}, &TopupOrder{}, &UserBalanceLot{})
+			},
+		},
+		{
+			Version:     "202604131930_balance_lot_transactions",
+			Description: "add user balance lot transaction ledger table",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&UserBalanceLotTransaction{})
+			},
+		},
+		{
+			Version:     "202604132230_redemption_validity_fields",
+			Description: "add redemption code validity and redeemed credit validity fields",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Redemption{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

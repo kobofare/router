@@ -6,7 +6,7 @@ import { API, showError, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
 import UnitDropdown from './UnitDropdown';
 import { buildBillingCurrencyIndex, buildDisplayUnitOptions, formatDisplayAmountFromYYC } from '../helpers/billing';
-import { formatAmountWithUnit, formatYYCValue, renderText } from '../helpers/render';
+import { formatAmountWithUnit, renderText } from '../helpers/render';
 
 const STATUS_FILTER_ALL_VALUE = '__all_status__';
 
@@ -179,6 +179,15 @@ const BusinessFlowTable = ({ kind }) => {
         endpoint: '/api/v1/admin/flow/topup-orders',
         searchPlaceholder: t('flow.topup.search_placeholder'),
         emptyText: t('flow.topup.empty'),
+        onRowClick: (row) => {
+          const rowID = readOnlyText(row?.id);
+          if (rowID === '-') {
+            return;
+          }
+          navigate(`/admin/flow/topup/${encodeURIComponent(rowID)}`, {
+            state: { from: currentPagePath },
+          });
+        },
         statusOptions: [
           { key: 'all', value: '', text: t('task.filters.status_all') },
           { key: 'created', value: 'created', text: t('topup.external_topup_orders.status.created') },
@@ -206,40 +215,48 @@ const BusinessFlowTable = ({ kind }) => {
             ),
           },
           {
-            key: 'redemption',
-            label: t('flow.topup.columns.redemption'),
-            render: (row) => (
-              <div>
-                <div>{readOnlyText(row.redemption_name)}</div>
-                <div className='router-text-muted'>
-                  {readOnlyText(row.group_name || row.group_id)}
-                </div>
-              </div>
-            ),
-          },
-          {
             key: 'amount',
-            label: t('redemption.table.face_value'),
-            render: (row) => (
-              <div>
-                <div>
-                  {row.face_value_unit
-                    ? formatAmountWithUnit(row.face_value_amount, row.face_value_unit, 6)
-                    : '-'}
-                </div>
-                <div className='router-text-muted'>{formatYYCValue(row.yyc_value || 0)}</div>
-              </div>
-            ),
+            label: t('topup.external_topup_orders.columns.amount'),
+            render: (row) => {
+              const amountValue = Number(
+                row?.amount ?? row?.face_value_amount ?? 0,
+              );
+              const amountUnit = String(
+                row?.currency || row?.face_value_unit || '',
+              )
+                .trim()
+                .toUpperCase();
+              return amountValue > 0 && amountUnit
+                ? formatAmountWithUnit(amountValue, amountUnit, 6)
+                : '-';
+            },
           },
           {
-            key: 'order',
-            label: t('flow.topup.columns.order'),
-            render: (row) => (
-              <div>
-                <div>{renderText(readOnlyText(row.transaction_id), 20)}</div>
-                <div className='router-text-muted'>{renderText(readOnlyText(row.id), 16)}</div>
+            key: 'quota',
+            label: (
+              <div className='router-table-header-with-control'>
+                <span>{t('topup.external_topup_orders.columns.quota')}</span>
+                <UnitDropdown
+                  variant='header'
+                  compact
+                  options={displayUnitOptions}
+                  value={displayUnit}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onChange={(_, { value }) => {
+                    setDisplayUnit((value || '').toString());
+                  }}
+                />
               </div>
             ),
+            render: (row) =>
+              formatDisplayAmountFromYYC(
+                row?.yyc_value || 0,
+                displayUnit,
+                currencyIndex,
+                { fractionDigits: 6, includeSymbol: false, yycMode: 'fixed' },
+              ),
           },
           {
             key: 'created_at',
@@ -373,6 +390,15 @@ const BusinessFlowTable = ({ kind }) => {
         tableWrapperClassName: 'router-business-flow-package-scroll',
         searchPlaceholder: t('flow.package.search_placeholder'),
         emptyText: t('flow.package.empty'),
+        onRowClick: (row) => {
+          const rowID = readOnlyText(row?.id);
+          if (rowID === '-') {
+            return;
+          }
+          navigate(`/admin/flow/package/${encodeURIComponent(rowID)}`, {
+            state: { from: currentPagePath },
+          });
+        },
         statusOptions: [
           { key: 'all', value: '', text: t('task.filters.status_all') },
           { key: '1', value: '1', text: t('user.detail.package_status_types.active') },
@@ -392,6 +418,17 @@ const BusinessFlowTable = ({ kind }) => {
             key: 'group',
             label: t('user.detail.package_group'),
             render: (row) => readOnlyText(row.group_name || row.group_id),
+          },
+          {
+            key: 'amount',
+            label: t('flow.package.columns.amount'),
+            render: (row) => {
+              const amount = Number(row?.amount || 0);
+              const currency = readOnlyText(row?.currency);
+              return amount > 0 && currency !== '-'
+                ? formatAmountWithUnit(amount, currency, 6)
+                : '-';
+            },
           },
           {
             key: 'daily_quota_limit',
@@ -479,6 +516,15 @@ const BusinessFlowTable = ({ kind }) => {
       endpoint: '/api/v1/admin/flow/redemption-records',
       searchPlaceholder: t('flow.redemption.search_placeholder'),
       emptyText: t('flow.redemption.empty'),
+      onRowClick: (row) => {
+        const rowID = readOnlyText(row?.id);
+        if (rowID === '-') {
+          return;
+        }
+        navigate(`/admin/flow/redemption/${encodeURIComponent(rowID)}`, {
+          state: { from: currentPagePath },
+        });
+      },
       statusOptions: [],
       columns: [
         commonUserColumn,
@@ -499,8 +545,33 @@ const BusinessFlowTable = ({ kind }) => {
         },
         {
           key: 'credited_yyc',
-          label: t('redemption.table.credited_yyc'),
-          render: (row) => formatYYCValue(row.yyc_value || 0),
+          label: (
+            <div className='router-table-header-with-control'>
+              <span>{t('topup.external_topup_orders.columns.quota')}</span>
+              <UnitDropdown
+                variant='header'
+                compact
+                options={displayUnitOptions}
+                value={displayUnit}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                onChange={(_, { value }) => {
+                  setDisplayUnit((value || '').toString());
+                }}
+              />
+            </div>
+          ),
+          render: (row) => {
+            const unit = (displayUnit || 'USD').toString().trim().toUpperCase();
+            const amountText = formatDisplayAmountFromYYC(
+              row.yyc_value || 0,
+              unit,
+              currencyIndex,
+              { fractionDigits: 6, includeSymbol: false, yycMode: 'fixed' },
+            );
+            return amountText === '-' ? '-' : `${amountText} ${unit}`;
+          },
         },
         {
           key: 'redeemed_time',
@@ -511,24 +582,6 @@ const BusinessFlowTable = ({ kind }) => {
           key: 'created_time',
           label: t('redemption.table.created_time'),
           render: (row) => formatDateTime(row.created_time),
-        },
-        {
-          key: 'actions',
-          label: t('redemption.table.actions'),
-          collapsing: true,
-          render: (row) => (
-            <Button
-              type='button'
-              className='router-inline-button'
-              onClick={() => {
-                navigate(`/admin/redemption/${encodeURIComponent(row.id)}`, {
-                  state: { from: currentPagePath },
-                });
-              }}
-            >
-              {t('task.buttons.view')}
-            </Button>
-          ),
         },
       ],
     };

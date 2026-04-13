@@ -19,9 +19,10 @@ const (
 const RedemptionFaceValueUnitYYC = "YYC"
 
 type Redemption struct {
-	Id                 string  `json:"id" gorm:"type:char(36);primaryKey"`
-	UserId             string  `json:"user_id" gorm:"type:char(36);index"`
-	TopupOrderID       string  `json:"topup_order_id" gorm:"type:char(36);index"`
+	Id     string `json:"id" gorm:"type:char(36);primaryKey"`
+	UserId string `json:"user_id" gorm:"type:char(36);index"`
+	// Keep for historical linkage compatibility in storage only; do not expose in query APIs.
+	TopupOrderID       string  `json:"-" gorm:"type:char(36);index"`
 	RedeemedByUserId   string  `json:"redeemed_by_user_id" gorm:"type:char(36);index"`
 	RedeemedByUsername string  `json:"redeemed_by_username,omitempty" gorm:"-"`
 	GroupID            string  `json:"group_id" gorm:"column:group_id;type:char(36);index"`
@@ -32,6 +33,10 @@ type Redemption struct {
 	FaceValueAmount    float64 `json:"face_value_amount" gorm:"type:numeric(30,8);not null;default:0"`
 	FaceValueUnit      string  `json:"face_value_unit" gorm:"type:varchar(16);not null;default:'YYC'"`
 	Quota              int64   `json:"quota" gorm:"bigint;default:100"`
+	CodeValidityDays   int     `json:"code_validity_days" gorm:"type:int;not null;default:0"`
+	CodeExpiresAt      int64   `json:"code_expires_at" gorm:"bigint;not null;default:0;index"`
+	CreditValidityDays int     `json:"credit_validity_days" gorm:"type:int;not null;default:0"`
+	CreditExpiresAt    int64   `json:"credit_expires_at" gorm:"bigint;not null;default:0;index"`
 	CreatedTime        int64   `json:"created_time" gorm:"bigint"`
 	RedeemedTime       int64   `json:"redeemed_time" gorm:"bigint"`
 	Count              int     `json:"count" gorm:"-:all"`
@@ -48,6 +53,18 @@ type RedemptionResult struct {
 	FaceValueAmount  float64 `json:"face_value_amount,omitempty"`
 	FaceValueUnit    string  `json:"face_value_unit,omitempty"`
 	RedeemedAt       int64   `json:"redeemed_at"`
+	CreditExpiresAt  int64   `json:"credit_expires_at,omitempty"`
+}
+
+func normalizeRedemptionValidityDays(value int) int {
+	switch {
+	case value < 0:
+		return 0
+	case value > UserBalanceLotMaxValidityDay:
+		return UserBalanceLotMaxValidityDay
+	default:
+		return value
+	}
 }
 
 func normalizeRedemptionFaceValueUnit(value string) string {
