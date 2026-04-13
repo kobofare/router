@@ -27,20 +27,22 @@ type AdminTopupOrderRecord struct {
 }
 
 type AdminUserPackageRecord struct {
-	ID                         string `json:"id"`
-	UserID                     string `json:"user_id"`
-	Username                   string `json:"username"`
-	PackageID                  string `json:"package_id"`
-	PackageName                string `json:"package_name"`
-	GroupID                    string `json:"group_id"`
-	GroupName                  string `json:"group_name"`
-	DailyQuotaLimit            int64  `json:"daily_quota_limit"`
-	PackageEmergencyQuotaLimit int64  `json:"package_emergency_quota_limit"`
-	QuotaResetTimezone         string `json:"quota_reset_timezone"`
-	StartedAt                  int64  `json:"started_at"`
-	ExpiresAt                  int64  `json:"expires_at"`
-	Status                     int    `json:"status"`
-	UpdatedAt                  int64  `json:"updated_at"`
+	ID                         string  `json:"id"`
+	UserID                     string  `json:"user_id"`
+	Username                   string  `json:"username"`
+	PackageID                  string  `json:"package_id"`
+	PackageName                string  `json:"package_name"`
+	GroupID                    string  `json:"group_id"`
+	GroupName                  string  `json:"group_name"`
+	Amount                     float64 `json:"amount"`
+	Currency                   string  `json:"currency"`
+	DailyQuotaLimit            int64   `json:"daily_quota_limit"`
+	PackageEmergencyQuotaLimit int64   `json:"package_emergency_quota_limit"`
+	QuotaResetTimezone         string  `json:"quota_reset_timezone"`
+	StartedAt                  int64   `json:"started_at"`
+	ExpiresAt                  int64   `json:"expires_at"`
+	Status                     int     `json:"status"`
+	UpdatedAt                  int64   `json:"updated_at"`
 }
 
 type AdminRedemptionRecord struct {
@@ -152,6 +154,42 @@ func ListAdminTopupOrderRecordsPageWithDB(db *gorm.DB, page int, pageSize int, k
 	return rows, total, nil
 }
 
+func GetAdminTopupOrderRecordByIDWithDB(db *gorm.DB, id string) (AdminTopupOrderRecord, error) {
+	if db == nil {
+		return AdminTopupOrderRecord{}, fmt.Errorf("database handle is nil")
+	}
+	normalizedID := strings.TrimSpace(id)
+	if normalizedID == "" {
+		return AdminTopupOrderRecord{}, gorm.ErrRecordNotFound
+	}
+	row := AdminTopupOrderRecord{}
+	err := db.Table(TopupOrdersTableName+" AS o").
+		Joins("LEFT JOIN users u ON u.id = o.user_id").
+		Where("o.id = ?", normalizedID).
+		Select(`
+			o.id,
+			o.user_id,
+			COALESCE(NULLIF(o.username, ''), u.username, '') AS username,
+			o.status,
+			o.source,
+			o.provider_name,
+			o.provider_order_id,
+			o.amount,
+			o.currency,
+			COALESCE(o.quota, 0) AS yyc_value,
+			o.transaction_id,
+			o.status_message,
+			o.paid_at,
+			o.redeemed_at,
+			o.created_at,
+			o.updated_at`).
+		Take(&row).Error
+	if err != nil {
+		return AdminTopupOrderRecord{}, err
+	}
+	return row, nil
+}
+
 func ListAdminUserPackageRecordsPageWithDB(db *gorm.DB, page int, pageSize int, keyword string, status int) ([]AdminUserPackageRecord, int64, error) {
 	if db == nil {
 		return nil, 0, fmt.Errorf("database handle is nil")
@@ -159,7 +197,8 @@ func ListAdminUserPackageRecordsPageWithDB(db *gorm.DB, page int, pageSize int, 
 	page, pageSize = normalizeBusinessFlowPage(page, pageSize)
 	query := db.Table(UserPackageSubscriptionsTableName + " AS s").
 		Joins("LEFT JOIN users u ON u.id = s.user_id").
-		Joins("LEFT JOIN " + GroupCatalog{}.TableName() + " g ON g.id = s.group_id")
+		Joins("LEFT JOIN " + GroupCatalog{}.TableName() + " g ON g.id = s.group_id").
+		Joins("LEFT JOIN " + ServicePackage{}.TableName() + " p ON p.id = s.package_id")
 	if status > 0 {
 		query = query.Where("s.status = ?", status)
 	}
@@ -183,6 +222,8 @@ func ListAdminUserPackageRecordsPageWithDB(db *gorm.DB, page int, pageSize int, 
 			s.package_name,
 			s.group_id,
 			COALESCE(g.name, '') AS group_name,
+			COALESCE(p.sale_price, 0) AS amount,
+			COALESCE(p.sale_currency, '') AS currency,
 			s.daily_quota_limit,
 			s.package_emergency_quota_limit,
 			s.quota_reset_timezone,
@@ -197,6 +238,44 @@ func ListAdminUserPackageRecordsPageWithDB(db *gorm.DB, page int, pageSize int, 
 		return nil, 0, err
 	}
 	return rows, total, nil
+}
+
+func GetAdminUserPackageRecordByIDWithDB(db *gorm.DB, id string) (AdminUserPackageRecord, error) {
+	if db == nil {
+		return AdminUserPackageRecord{}, fmt.Errorf("database handle is nil")
+	}
+	normalizedID := strings.TrimSpace(id)
+	if normalizedID == "" {
+		return AdminUserPackageRecord{}, gorm.ErrRecordNotFound
+	}
+	row := AdminUserPackageRecord{}
+	err := db.Table(UserPackageSubscriptionsTableName+" AS s").
+		Joins("LEFT JOIN users u ON u.id = s.user_id").
+		Joins("LEFT JOIN "+GroupCatalog{}.TableName()+" g ON g.id = s.group_id").
+		Joins("LEFT JOIN "+ServicePackage{}.TableName()+" p ON p.id = s.package_id").
+		Where("s.id = ?", normalizedID).
+		Select(`
+			s.id,
+			s.user_id,
+			COALESCE(u.username, '') AS username,
+			s.package_id,
+			s.package_name,
+			s.group_id,
+			COALESCE(g.name, '') AS group_name,
+			COALESCE(p.sale_price, 0) AS amount,
+			COALESCE(p.sale_currency, '') AS currency,
+			s.daily_quota_limit,
+			s.package_emergency_quota_limit,
+			s.quota_reset_timezone,
+			s.started_at,
+			s.expires_at,
+			s.status,
+			s.updated_at`).
+		Take(&row).Error
+	if err != nil {
+		return AdminUserPackageRecord{}, err
+	}
+	return row, nil
 }
 
 func ListAdminRedemptionRecordsPageWithDB(db *gorm.DB, page int, pageSize int, keyword string) ([]AdminRedemptionRecord, int64, error) {
@@ -239,6 +318,38 @@ func ListAdminRedemptionRecordsPageWithDB(db *gorm.DB, page int, pageSize int, k
 		return nil, 0, err
 	}
 	return rows, total, nil
+}
+
+func GetAdminRedemptionRecordByIDWithDB(db *gorm.DB, id string) (AdminRedemptionRecord, error) {
+	if db == nil {
+		return AdminRedemptionRecord{}, fmt.Errorf("database handle is nil")
+	}
+	normalizedID := strings.TrimSpace(id)
+	if normalizedID == "" {
+		return AdminRedemptionRecord{}, gorm.ErrRecordNotFound
+	}
+	row := AdminRedemptionRecord{}
+	err := db.Table("redemptions AS r").
+		Joins("LEFT JOIN users u ON u.id = r.redeemed_by_user_id").
+		Joins("LEFT JOIN "+GroupCatalog{}.TableName()+" g ON g.id = r.group_id").
+		Where("r.id = ? AND r.redeemed_time > 0 AND r.status = ?", normalizedID, RedemptionCodeStatusUsed).
+		Select(`
+			r.id,
+			r.redeemed_by_user_id,
+			COALESCE(u.username, '') AS redeemed_by_username,
+			r.group_id,
+			COALESCE(g.name, '') AS group_name,
+			r.name,
+			r.face_value_amount,
+			r.face_value_unit,
+			r.quota AS yyc_value,
+			r.redeemed_time,
+			r.created_time`).
+		Take(&row).Error
+	if err != nil {
+		return AdminRedemptionRecord{}, err
+	}
+	return row, nil
 }
 
 func ListAdminTopupReconcileRecordsPageWithDB(db *gorm.DB, page int, pageSize int, keyword string, status string) ([]AdminTopupReconcileRecord, int64, error) {

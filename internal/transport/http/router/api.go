@@ -285,11 +285,14 @@ func SetApiRouter(engine *gin.Engine) {
 		adminFlowRoute.Use(middleware.AdminAuth())
 		{
 			adminFlowRoute.GET("/topup-orders", flow.GetTopupOrderRecords)
+			adminFlowRoute.GET("/topup-orders/:id", flow.GetTopupOrderRecord)
 			adminFlowRoute.GET("/topup-reconcile-records", flow.GetTopupReconcileRecords)
 			adminFlowRoute.GET("/topup-reconcile-records/:id", flow.GetTopupReconcileRecord)
 			adminFlowRoute.POST("/topup-reconcile-records/:id/refresh", flow.RefreshTopupReconcileRecord)
 			adminFlowRoute.GET("/package-records", flow.GetPackageRecords)
+			adminFlowRoute.GET("/package-records/:id", flow.GetPackageRecord)
 			adminFlowRoute.GET("/redemption-records", flow.GetRedemptionRecords)
+			adminFlowRoute.GET("/redemption-records/:id", flow.GetRedemptionRecord)
 		}
 		adminGroupsRoute := adminRouter.Group("/groups")
 		adminGroupsRoute.Use(middleware.AdminAuth())
