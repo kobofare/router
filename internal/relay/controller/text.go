@@ -180,31 +180,29 @@ func getRequestBody(c *gin.Context, meta *meta.Meta, textRequest *model.GeneralO
 		return bytes.NewBuffer(jsonData), nil
 	}
 	if meta.Mode == relaymode.Responses && upstreamMode == relaymode.Responses {
-		rawBody, err := common.GetRequestBody(c)
-		if err != nil {
-			return nil, err
-		}
-		jsonData, err := normalizeResponsesRequestBody(rawBody, meta.ActualModelName)
-		if err != nil {
-			return nil, err
-		}
-		logger.Debugf(
-			c.Request.Context(),
-			"[responses_body] len=%d model=%s stream=%t",
-			len(jsonData),
-			strings.TrimSpace(meta.ActualModelName),
-			meta.IsStream,
-		)
 		if config.DebugEnabled {
+			rawBody, err := common.GetRequestBody(c)
+			if err != nil {
+				return nil, err
+			}
+			logger.Debugf(
+				c.Request.Context(),
+				"[responses_body] len=%d model=%s stream=%t",
+				len(rawBody),
+				strings.TrimSpace(meta.ActualModelName),
+				meta.IsStream,
+			)
 			logger.Debugf(
 				c.Request.Context(),
 				"[upstream_request_body] downstream=%s upstream=%s body=%s",
 				relayModeLabel(meta.Mode),
 				relayModeLabel(upstreamMode),
-				sanitizePayloadForRelayDebug(jsonData),
+				sanitizePayloadForRelayDebug(rawBody),
 			)
+			// keep direct pass-through behavior while restoring body for downstream sender
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 		}
-		return bytes.NewBuffer(jsonData), nil
+		return c.Request.Body, nil
 	}
 	if upstreamMode == relaymode.Responses {
 		if textRequest.Input == nil && len(textRequest.Messages) > 0 {
