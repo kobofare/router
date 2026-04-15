@@ -8,6 +8,7 @@ import (
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/internal/relay/relaymode"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -289,13 +290,23 @@ func replaceChannelModelEndpointRowsWithDB(db *gorm.DB, channelID string, rows [
 		normalizedRows = append(normalizedRows, normalized)
 	}
 	return db.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
 		if err := tx.Where("channel_id = ?", normalizedChannelID).Delete(&ChannelModelEndpoint{}).Error; err != nil {
 			return err
 		}
 		if len(normalizedRows) == 0 {
 			return nil
 		}
-		return tx.Create(&normalizedRows).Error
+		return tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "channel_id"},
+				{Name: "model"},
+				{Name: "endpoint"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{"enabled", "updated_at"}),
+		}).Create(&normalizedRows).Error
 	})
 }
 

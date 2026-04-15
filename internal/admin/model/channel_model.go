@@ -22,7 +22,6 @@ type ChannelModel struct {
 	Endpoints     []string `json:"endpoints,omitempty" gorm:"-"`
 	Inactive      bool     `json:"inactive,omitempty" gorm:"not null;default:false;index"`
 	Selected      bool     `json:"selected" gorm:"default:false;index"`
-	IsStreamOnly  bool     `json:"is_stream_only,omitempty" gorm:"not null;default:false"`
 	InputPrice    *float64 `json:"input_price,omitempty" gorm:"type:double precision"`
 	OutputPrice   *float64 `json:"output_price,omitempty" gorm:"type:double precision"`
 	PriceUnit     string   `json:"price_unit,omitempty" gorm:"type:varchar(64);default:''"`
@@ -592,6 +591,9 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		dbRows = append(dbRows, row)
 	}
 	return db.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
 		if err := SyncChannelModelEndpointsWithDB(tx, normalizedChannelID, dbRows); err != nil {
 			return err
 		}
@@ -603,6 +605,26 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		}
 		return tx.Select("*").Create(&dbRows).Error
 	})
+}
+
+func lockChannelRowForUpdateWithDB(db *gorm.DB, channelID string) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return nil
+	}
+	type channelIDRow struct {
+		ID string `gorm:"column:id"`
+	}
+	row := channelIDRow{}
+	return db.
+		Set("gorm:query_option", "FOR UPDATE").
+		Model(&Channel{}).
+		Select("id").
+		Where("id = ?", normalizedChannelID).
+		Take(&row).Error
 }
 
 func ApplyChannelTestResultsToModelConfigs(rows []ChannelModel, results []ChannelTest) []ChannelModel {

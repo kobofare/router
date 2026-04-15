@@ -510,17 +510,17 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
-			Version:     "202604141700_channel_model_is_stream_only",
-			Description: "add is_stream_only flag to channel model configs",
-			Up: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&ChannelModel{})
-			},
-		},
-		{
 			Version:     "202604151130_channel_test_is_stream",
 			Description: "add is_stream flag to channel model test results",
 			Up: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&ChannelTest{})
+			},
+		},
+		{
+			Version:     "202604151900_drop_channel_model_stream_only",
+			Description: "drop legacy is_stream_only column from channel model configs",
+			Up: func(tx *gorm.DB) error {
+				return dropChannelModelStreamOnlyWithDB(tx)
 			},
 		},
 	}

@@ -135,7 +135,7 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, meta *meta.Met
 			respErr, usage := StreamResponsesAsChatHandler(c, resp, meta.ActualModelName, meta.PromptTokens)
 			return usage, respErr
 		}
-		return relayResponsesStreamAsChatResponse(c, resp, meta.ActualModelName, meta.PromptTokens)
+		return relayResponsesAsChatResponse(c, resp, meta.ActualModelName, meta.PromptTokens)
 	}
 	if meta.Mode == relaymode.Responses && upstreamMode == relaymode.ChatCompletions {
 		if meta.IsStream {
@@ -158,9 +158,6 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, meta *meta.Met
 				usage.CompletionTokens = usage.TotalTokens - meta.PromptTokens
 			}
 			return usage, nil
-		}
-		if meta.ForceUpstreamStream {
-			return relayResponsesStreamAsResponsesResponse(c, resp, meta.ActualModelName, meta.PromptTokens)
 		}
 		usage, respErr := relayResponsesResponse(c, resp)
 		if respErr != nil {

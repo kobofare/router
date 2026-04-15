@@ -579,7 +579,6 @@
         "summary": "已选择 {{selected}} / {{total}}",
         "table": {
           "selected": "启用",
-          "stream_only": "仅流式",
           "name": "名称",
           "alias": "别名",
           "type": "类型",

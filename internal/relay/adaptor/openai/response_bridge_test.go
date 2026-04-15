@@ -84,6 +84,36 @@ func TestRelayResponsesAsChatResponse_ExtractsMessageOutputTextFromOutput(t *tes
 	}
 }
 
+func TestRelayResponsesAsChatResponse_ExtractsMessageTextTypeFromOutput(t *testing.T) {
+	ctx, recorder := newBridgeTestContext()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{},
+		Body: io.NopCloser(strings.NewReader(`{
+			"id":"resp_789",
+			"object":"response",
+			"model":"gpt-5.4",
+			"created_at":1756315696,
+			"output":[
+				{"id":"msg_x","type":"message","role":"assistant","content":[{"type":"text","text":"hello from text type"}]}
+			],
+			"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15}
+		}`)),
+	}
+
+	usage, relayErr := relayResponsesAsChatResponse(ctx, resp, "gpt-5.4", 10)
+	if relayErr != nil {
+		t.Fatalf("relayResponsesAsChatResponse returned error: %+v", relayErr)
+	}
+	if usage == nil || usage.TotalTokens != 15 || usage.PromptTokens != 10 || usage.CompletionTokens != 5 {
+		t.Fatalf("unexpected usage: %#v", usage)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"content":"hello from text type"`) {
+		t.Fatalf("expected text-type output to be bridged, got body: %s", body)
+	}
+}
+
 func TestRelayChatAsResponsesResponse(t *testing.T) {
 	ctx, recorder := newBridgeTestContext()
 	resp := &http.Response{
@@ -178,79 +208,6 @@ func TestRelayMessagesStreamResponse(t *testing.T) {
 	}
 }
 
-func TestRelayResponsesStreamAsChatResponse(t *testing.T) {
-	ctx, recorder := newBridgeTestContext()
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header: http.Header{
-			"Content-Type": []string{"text/event-stream"},
-			"X-Upstream":   []string{"ok"},
-		},
-		Body: io.NopCloser(strings.NewReader(
-			"event: response.output_text.delta\n" +
-				"data: {\"delta\":\"hello \"}\n\n" +
-				"event: response.output_text.delta\n" +
-				"data: {\"delta\":\"world\"}\n\n" +
-				"event: response.completed\n" +
-				"data: {\"response\":{\"id\":\"resp_abc\",\"model\":\"gpt-5.4\",\"created_at\":1710000000,\"usage\":{\"input_tokens\":11,\"output_tokens\":7,\"total_tokens\":18}}}\n\n" +
-				"data: [DONE]\n",
-		)),
-	}
-
-	usage, relayErr := relayResponsesStreamAsChatResponse(ctx, resp, "gpt-5.4", 11)
-	if relayErr != nil {
-		t.Fatalf("relayResponsesStreamAsChatResponse returned error: %+v", relayErr)
-	}
-	if usage == nil || usage.PromptTokens != 11 || usage.CompletionTokens != 7 || usage.TotalTokens != 18 {
-		t.Fatalf("unexpected usage: %#v", usage)
-	}
-	body := recorder.Body.String()
-	if !strings.Contains(body, `"object":"chat.completion"`) || !strings.Contains(body, `"content":"hello world"`) {
-		t.Fatalf("unexpected bridged chat payload: %s", body)
-	}
-	if recorder.Header().Get("X-Upstream") != "ok" {
-		t.Fatalf("expected upstream header to be copied, got %q", recorder.Header().Get("X-Upstream"))
-	}
-}
-
-func TestRelayResponsesStreamAsResponsesResponse(t *testing.T) {
-	ctx, recorder := newBridgeTestContext()
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header: http.Header{
-			"Content-Type": []string{"text/event-stream"},
-			"X-Upstream":   []string{"ok"},
-		},
-		Body: io.NopCloser(strings.NewReader(
-			"event: response.output_text.delta\n" +
-				"data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello \"}\n\n" +
-				"event: response.output_text.delta\n" +
-				"data: {\"type\":\"response.output_text.delta\",\"delta\":\"world\"}\n\n" +
-				"event: response.completed\n" +
-				"data: {\"response\":{\"id\":\"resp_abc\",\"model\":\"gpt-5.4\",\"created_at\":1710000000,\"usage\":{\"input_tokens\":11,\"output_tokens\":7,\"total_tokens\":18}}}\n\n" +
-				"data: [DONE]\n",
-		)),
-	}
-
-	usage, relayErr := relayResponsesStreamAsResponsesResponse(ctx, resp, "gpt-5.4", 11)
-	if relayErr != nil {
-		t.Fatalf("relayResponsesStreamAsResponsesResponse returned error: %+v", relayErr)
-	}
-	if usage == nil || usage.PromptTokens != 11 || usage.CompletionTokens != 7 || usage.TotalTokens != 18 {
-		t.Fatalf("unexpected usage: %#v", usage)
-	}
-	body := recorder.Body.String()
-	if !strings.Contains(body, `"object":"response"`) || !strings.Contains(body, `"output_text":"hello world"`) {
-		t.Fatalf("unexpected bridged responses payload: %s", body)
-	}
-	if !strings.Contains(body, `"type":"message"`) || !strings.Contains(body, `"type":"output_text"`) {
-		t.Fatalf("expected output message block in payload: %s", body)
-	}
-	if recorder.Header().Get("X-Upstream") != "ok" {
-		t.Fatalf("expected upstream header to be copied, got %q", recorder.Header().Get("X-Upstream"))
-	}
-}
-
 func TestStreamResponsesAsChatHandlerNoDuplicateContentFromCompleted(t *testing.T) {
 	ctx, recorder := newBridgeTestContext()
 	resp := &http.Response{
@@ -310,5 +267,35 @@ func TestStreamResponsesAsChatHandlerUsesCompletedTextWhenNoDelta(t *testing.T) 
 	body := recorder.Body.String()
 	if !strings.Contains(body, `"content":"ONLY_COMPLETED"`) {
 		t.Fatalf("expected completed text to be forwarded, got body: %s", body)
+	}
+}
+
+func TestStreamResponsesAsChatHandlerUsesCompletedOutputWhenNoDelta(t *testing.T) {
+	ctx, recorder := newBridgeTestContext()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header: http.Header{
+			"Content-Type": []string{"text/event-stream"},
+		},
+		Body: io.NopCloser(strings.NewReader(
+			"event: response.completed\n" +
+				"data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_stream_completed\",\"model\":\"gpt-5.4\",\"created_at\":1710000000,\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"hello from stream completed\"}]}],\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16}}}\n\n" +
+				"data: [DONE]\n",
+		)),
+	}
+
+	relayErr, usage := StreamResponsesAsChatHandler(ctx, resp, "gpt-5.4", 10)
+	if relayErr != nil {
+		t.Fatalf("StreamResponsesAsChatHandler returned error: %+v", relayErr)
+	}
+	if usage == nil || usage.PromptTokens != 10 || usage.CompletionTokens != 6 || usage.TotalTokens != 16 {
+		t.Fatalf("unexpected usage: %#v", usage)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"content":"hello from stream completed"`) {
+		t.Fatalf("expected completed output text to be forwarded, got body: %s", body)
+	}
+	if !strings.Contains(body, `"finish_reason":"stop"`) {
+		t.Fatalf("expected finish chunk, got body: %s", body)
 	}
 }

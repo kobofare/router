@@ -599,7 +599,7 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 			row.Model,
 			channelModelTestRetryMax,
 		)
-		if execution.Err != nil && !row.IsStreamOnly {
+		if execution.Err != nil {
 			// Keep a non-stream fallback for channels that reject streaming test probes.
 			fallbackBody := buildResponsesTextModelTestRequestBody(row.Model, false)
 			fallback := executeChannelTextModelTestRawBodyWithRetry(

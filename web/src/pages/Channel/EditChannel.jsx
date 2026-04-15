@@ -634,8 +634,7 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     endpoints: normalizedEndpoints,
     inactive: row.inactive === true,
     selected: row.selected === true,
-    is_stream_only:
-      row.is_stream_only === true || row.isStreamOnly === true,
+    is_stream: row.is_stream === true || row.isStream === true,
     input_price: normalizePriceOverrideValue(row.input_price),
     output_price: normalizePriceOverrideValue(row.output_price),
     price_unit: normalizePriceUnitValue(row.price_unit),
@@ -3076,7 +3075,7 @@ const EditChannel = () => {
             row.endpoint,
             inputs.protocol,
           ),
-          is_stream: !!row.is_stream_only,
+          is_stream: !!row.is_stream,
         }));
       setModelTesting(true);
       setModelTestingScope(scope === 'single' ? 'single' : 'batch');
@@ -3214,7 +3213,7 @@ const EditChannel = () => {
         return;
       }
       const nextConfigs = visibleModelConfigs.map((row) =>
-        row.model === modelName ? { ...row, is_stream_only: !!isStream } : row,
+        row.model === modelName ? { ...row, is_stream: !!isStream } : row,
       );
       if (isDetailMode) {
         await persistDetailModelConfigs(nextConfigs);
@@ -3345,39 +3344,6 @@ const EditChannel = () => {
     ],
   );
 
-  const toggleModelStreamOnly = useCallback(
-    async (upstreamModel, checked) => {
-      const nextConfigs = visibleModelConfigs.map((row) =>
-        row.upstream_model === upstreamModel
-          ? { ...row, is_stream_only: !!checked }
-          : row,
-      );
-      if (isDetailMode) {
-        if (
-          detailModelsEditing &&
-          detailEditingModelKey === (upstreamModel || '').toString().trim()
-        ) {
-          setInputs((prev) =>
-            buildNextInputsWithModelConfigs(prev, nextConfigs, prev.protocol),
-          );
-          return;
-        }
-        await persistDetailModelConfigs(nextConfigs);
-        return;
-      }
-      setInputs((prev) =>
-        buildNextInputsWithModelConfigs(prev, nextConfigs, prev.protocol),
-      );
-    },
-    [
-      detailEditingModelKey,
-      detailModelsEditing,
-      isDetailMode,
-      persistDetailModelConfigs,
-      visibleModelConfigs,
-    ],
-  );
-
   const updateModelConfigField = useCallback(
     (upstreamModel, field, value) => {
       const targetModel = (upstreamModel || '').toString().trim();
@@ -3473,49 +3439,24 @@ const EditChannel = () => {
       row,
       canSelect,
       selectDisabled = false,
-      streamDisabled = false,
       inDetailMode = false,
-      streamCellClassName = '',
     }) => {
       const selectCellClassName = inDetailMode
         ? 'router-cell-checkbox'
         : undefined;
-      const defaultStreamCellClassName = inDetailMode
-        ? 'router-cell-checkbox router-cell-checkbox-stream'
-        : 'router-cell-checkbox-stream';
-      const resolvedStreamCellClassName = [
-        defaultStreamCellClassName,
-        streamCellClassName,
-      ]
-        .filter(Boolean)
-        .join(' ');
       return (
-        <>
-          <Table.Cell textAlign='center' className={selectCellClassName}>
-            <Checkbox
-              checked={!!row.selected}
-              disabled={selectDisabled || (!canSelect && !row.selected)}
-              onChange={(e, { checked }) =>
-                toggleModelSelection(row.upstream_model, checked)
-              }
-            />
-          </Table.Cell>
-          <Table.Cell
-            textAlign='center'
-            className={resolvedStreamCellClassName}
-          >
-            <Checkbox
-              checked={!!row.is_stream_only}
-              disabled={streamDisabled}
-              onChange={(e, { checked }) =>
-                toggleModelStreamOnly(row.upstream_model, checked)
-              }
-            />
-          </Table.Cell>
-        </>
+        <Table.Cell textAlign='center' className={selectCellClassName}>
+          <Checkbox
+            checked={!!row.selected}
+            disabled={selectDisabled || (!canSelect && !row.selected)}
+            onChange={(e, { checked }) =>
+              toggleModelSelection(row.upstream_model, checked)
+            }
+          />
+        </Table.Cell>
       );
     },
-    [toggleModelSelection, toggleModelStreamOnly],
+    [toggleModelSelection],
   );
 
   const toggleCreateStepCurrentPageSelections = useCallback(
@@ -5209,17 +5150,10 @@ const EditChannel = () => {
                         compact='very'
                         style={{ tableLayout: 'fixed' }}
                       >
-                        <Table.Header>
-                          <Table.Row>
-                            <Table.HeaderCell width={1} textAlign='center'>
+                      <Table.Header>
+                        <Table.Row>
+                          <Table.HeaderCell width={1} textAlign='center'>
                               {t('channel.edit.model_selector.table.selected')}
-                            </Table.HeaderCell>
-                            <Table.HeaderCell
-                              width={1}
-                              textAlign='center'
-                              className='router-cell-checkbox-stream'
-                            >
-                              {t('channel.edit.model_selector.table.stream_only')}
                             </Table.HeaderCell>
                             <Table.HeaderCell width={3}>
                               {t('channel.edit.model_selector.table.name')}
@@ -5252,7 +5186,7 @@ const EditChannel = () => {
                             <Table.Row>
                               <Table.Cell
                                 className='router-empty-cell'
-                                colSpan={10}
+                                colSpan={9}
                               >
                                 {modelSearchKeyword.trim() !== ''
                                   ? t('channel.edit.model_selector.empty_search')
@@ -5298,8 +5232,6 @@ const EditChannel = () => {
                                       detailModelMutating ||
                                       detailModelsEditing ||
                                       providerCatalogLoading,
-                                    streamDisabled:
-                                      detailModelMutating || detailModelsEditing,
                                     inDetailMode: true,
                                   })}
                                   <Table.Cell
@@ -5530,13 +5462,6 @@ const EditChannel = () => {
                               />
                             </div>
                           </Table.HeaderCell>
-                          <Table.HeaderCell
-                            width={1}
-                            textAlign='center'
-                            className='router-cell-checkbox-stream router-cell-checkbox-stream-create'
-                          >
-                            {t('channel.edit.model_selector.table.stream_only')}
-                          </Table.HeaderCell>
                           <Table.HeaderCell width={5}>
                             {t('channel.edit.model_selector.table.name')}
                           </Table.HeaderCell>
@@ -5565,7 +5490,7 @@ const EditChannel = () => {
                           <Table.Row>
                             <Table.Cell
                               className='router-empty-cell'
-                              colSpan={9}
+                              colSpan={8}
                             >
                               {modelSearchKeyword.trim() !== ''
                                 ? t('channel.edit.model_selector.empty_search')
@@ -5602,8 +5527,6 @@ const EditChannel = () => {
                                 {renderModelToggleCells({
                                   row,
                                   canSelect: canSelectRow,
-                                  streamCellClassName:
-                                    'router-cell-checkbox-stream-create',
                                 })}
                                 <Table.Cell title={row.upstream_model}>
                                   <span className='router-nowrap'>
@@ -6030,7 +5953,7 @@ const EditChannel = () => {
                                   </Table.Cell>
                                   <Table.Cell textAlign='center'>
                                     <Checkbox
-                                      checked={!!row.is_stream_only}
+                                      checked={!!row.is_stream}
                                       disabled={
                                         detailTestingReadonly ||
                                         detailModelMutating
@@ -6348,7 +6271,7 @@ const EditChannel = () => {
                                 </Table.Cell>
                                 <Table.Cell textAlign='center'>
                                   <Checkbox
-                                    checked={!!row.is_stream_only}
+                                    checked={!!row.is_stream}
                                     disabled={detailModelMutating}
                                     onChange={(e, { checked }) =>
                                       updateModelTestStream(row.model, !!checked)

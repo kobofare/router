@@ -579,7 +579,6 @@
         "summary": "Selected {{selected}} / {{total}}",
         "table": {
           "selected": "Enabled",
-          "stream_only": "Upstream Stream Only",
           "name": "Name",
           "alias": "Alias",
           "type": "Type",
