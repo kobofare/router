@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/yeying-community/router/common/helper"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"gorm.io/gorm"
 )
 
@@ -514,12 +515,26 @@ func normalizeChannelModelRow(row *ChannelModel) {
 		row.UpstreamModel = row.Model
 	}
 	row.Type = normalizeExplicitChannelModelType(row.Type)
+	rawEndpoint := strings.TrimSpace(row.Endpoint)
+	explicitEndpoint := ""
+	if rawEndpoint != "" {
+		explicitEndpoint = NormalizeChannelModelEndpoint(row.Type, rawEndpoint)
+	}
 	row.Endpoints = NormalizeChannelModelDirectEndpoints(row.Type, row.Endpoints, row.Endpoint)
 	if len(row.Endpoints) > 0 {
+		if explicitEndpoint != "" {
+			for _, endpoint := range row.Endpoints {
+				if endpoint == explicitEndpoint {
+					row.Endpoint = explicitEndpoint
+					goto endpointResolved
+				}
+			}
+		}
 		row.Endpoint = row.Endpoints[0]
 	} else {
 		row.Endpoint = NormalizeChannelModelEndpoint(row.Type, row.Endpoint)
 	}
+endpointResolved:
 	row.PriceUnit = strings.TrimSpace(strings.ToLower(row.PriceUnit))
 	row.Currency = normalizeChannelModelCurrency(row.Currency)
 	row.InputPrice = cloneNormalizedChannelModelPrice(row.InputPrice)
@@ -777,14 +792,42 @@ func completeChannelModelRowDefaults(row *ChannelModel, channelProtocol int) {
 	if row == nil {
 		return
 	}
+	rawEndpoint := strings.TrimSpace(row.Endpoint)
+	hasExplicitEndpointList := false
+	for _, endpoint := range row.Endpoints {
+		if strings.TrimSpace(endpoint) != "" {
+			hasExplicitEndpointList = true
+			break
+		}
+	}
 	normalizeChannelModelRow(row)
 	row.Type = resolveChannelModelType(row.Type, channelProtocol, row.UpstreamModel, row.Model)
-	row.Endpoints = NormalizeChannelModelDirectEndpoints(row.Type, row.Endpoints, row.Endpoint)
+	endpointFallback := rawEndpoint
+	if endpointFallback == "" && !hasExplicitEndpointList {
+		// Use protocol-priority endpoint only for first-time defaults.
+		endpointFallback = DefaultChannelModelEndpointWithProtocol(row.Type, channelProtocol)
+		// Drop generic defaults injected before protocol is resolved.
+		row.Endpoints = nil
+	}
+	row.Endpoints = NormalizeChannelModelDirectEndpoints(row.Type, row.Endpoints, endpointFallback)
+	explicitEndpoint := ""
+	if strings.TrimSpace(endpointFallback) != "" {
+		explicitEndpoint = NormalizeChannelModelEndpoint(row.Type, endpointFallback)
+	}
 	if len(row.Endpoints) > 0 {
+		if explicitEndpoint != "" {
+			for _, endpoint := range row.Endpoints {
+				if endpoint == explicitEndpoint {
+					row.Endpoint = explicitEndpoint
+					goto endpointDefaultResolved
+				}
+			}
+		}
 		row.Endpoint = row.Endpoints[0]
 	} else {
-		row.Endpoint = NormalizeChannelModelEndpoint(row.Type, row.Endpoint)
+		row.Endpoint = NormalizeChannelModelEndpoint(row.Type, endpointFallback)
 	}
+endpointDefaultResolved:
 	row.PriceUnit = normalizeChannelModelPriceUnit(row.PriceUnit, row.Type, channelProtocol, row.UpstreamModel, row.Model)
 	row.Currency = normalizeChannelModelCurrency(row.Currency)
 	row.InputPrice = cloneNormalizedChannelModelPrice(row.InputPrice)
@@ -876,6 +919,11 @@ func applyChannelModelEndpointState(row *ChannelModel, state channelModelEndpoin
 	if row == nil {
 		return
 	}
+	rawEndpoint := strings.TrimSpace(row.Endpoint)
+	explicitEndpoint := ""
+	if rawEndpoint != "" {
+		explicitEndpoint = NormalizeChannelModelEndpoint(row.Type, rawEndpoint)
+	}
 	candidates := make([]string, 0, len(row.Endpoints)+len(state.Endpoints)+1)
 	candidates = append(candidates, row.Endpoints...)
 	candidates = append(candidates, state.Endpoints...)
@@ -884,6 +932,14 @@ func applyChannelModelEndpointState(row *ChannelModel, state channelModelEndpoin
 	if len(row.Endpoints) == 0 {
 		row.Endpoint = NormalizeChannelModelEndpoint(row.Type, row.Endpoint)
 		return
+	}
+	if explicitEndpoint != "" {
+		for _, endpoint := range row.Endpoints {
+			if endpoint == explicitEndpoint {
+				row.Endpoint = explicitEndpoint
+				return
+			}
+		}
 	}
 	if len(state.Enabled) > 0 {
 		for _, endpoint := range row.Endpoints {
@@ -999,6 +1055,16 @@ func DefaultChannelModelEndpoint(modelType string) string {
 	default:
 		return ChannelModelEndpointResponses
 	}
+}
+
+func DefaultChannelModelEndpointWithProtocol(modelType string, channelProtocol int) string {
+	switch normalizeModelType(modelType, "") {
+	case ProviderModelTypeText:
+		if channelProtocol == relaychannel.Anthropic {
+			return ChannelModelEndpointMessages
+		}
+	}
+	return DefaultChannelModelEndpoint(modelType)
 }
 
 func NormalizeChannelModelEndpoint(modelType string, endpoint string) string {

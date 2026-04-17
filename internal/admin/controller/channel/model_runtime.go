@@ -647,52 +647,24 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 				Endpoint:      endpoint,
 			}, execution), execution
 		}
+		stream := false
 		if requestedStream != nil {
-			requestBody := buildResponsesTextModelTestRequestBody(row.Model, *requestedStream)
-			execution := executeChannelTextModelTestRawBodyWithRetry(
-				ctx,
-				channel,
-				model.ChannelModelEndpointResponses,
-				requestBody,
-				row.Model,
-				channelModelTestRetryMax,
-			)
-			return buildChannelModelTestResult(model.ChannelModel{
-				Model:         row.Model,
-				UpstreamModel: row.UpstreamModel,
-				Type:          modelType,
-				Endpoint:      model.ChannelModelEndpointResponses,
-			}, execution), execution
+			stream = *requestedStream
 		}
-		requestBody := buildResponsesTextModelTestRequestBody(row.Model, true)
+		requestBody := buildResponsesTextModelTestRequestBody(row.Model, stream)
 		execution := executeChannelTextModelTestRawBodyWithRetry(
 			ctx,
 			channel,
-			model.ChannelModelEndpointResponses,
+			endpoint,
 			requestBody,
 			row.Model,
 			channelModelTestRetryMax,
 		)
-		if execution.Err != nil {
-			// Keep a non-stream fallback for channels that reject streaming test probes.
-			fallbackBody := buildResponsesTextModelTestRequestBody(row.Model, false)
-			fallback := executeChannelTextModelTestRawBodyWithRetry(
-				ctx,
-				channel,
-				model.ChannelModelEndpointResponses,
-				fallbackBody,
-				row.Model,
-				1,
-			)
-			if fallback.Err == nil {
-				execution = fallback
-			}
-		}
 		return buildChannelModelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
-			Endpoint:      model.ChannelModelEndpointResponses,
+			Endpoint:      endpoint,
 		}, execution), execution
 	}
 }

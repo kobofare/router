@@ -187,9 +187,7 @@ const normalizeChannelModelEndpoint = (type, value, protocol) => {
       case '/v1/messages':
         return '/v1/messages';
       case '/v1/responses':
-        return normalizeChannelProtocol(protocol) === 'anthropic'
-          ? '/v1/messages'
-          : '/v1/responses';
+        return '/v1/responses';
       default:
         return defaultChannelModelEndpoint(normalizedType, protocol);
     }
