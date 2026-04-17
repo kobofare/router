@@ -11,7 +11,7 @@ import (
 	"github.com/yeying-community/router/internal/relay/relaymode"
 )
 
-func TestResolveChannelTextUpstreamOpenAIResponsesModelDownstreamChatBridgesToResponses(t *testing.T) {
+func TestResolveChannelTextUpstreamOpenAIResponsesModelDownstreamChatRejected(t *testing.T) {
 	meta := &meta.Meta{
 		Mode:           relaymode.ChatCompletions,
 		RequestURLPath: adminmodel.ChannelModelEndpointChat,
@@ -24,12 +24,9 @@ func TestResolveChannelTextUpstreamOpenAIResponsesModelDownstreamChatBridgesToRe
 		}},
 	}
 
-	mode, path, err := resolveChannelTextUpstream(meta, "gpt-4.1", "gpt-4.1")
-	if err != nil {
-		t.Fatalf("resolveChannelTextUpstream returned error: %v", err)
-	}
-	if mode != relaymode.Responses || path != adminmodel.ChannelModelEndpointResponses {
-		t.Fatalf("resolveChannelTextUpstream selected responses bridge = (%d, %q), want (%d, %q)", mode, path, relaymode.Responses, adminmodel.ChannelModelEndpointResponses)
+	_, _, err := resolveChannelTextUpstream(meta, "gpt-4.1", "gpt-4.1")
+	if err == nil {
+		t.Fatalf("resolveChannelTextUpstream returned nil error, want endpoint-not-supported error")
 	}
 }
 
@@ -79,7 +76,7 @@ func TestResolveChannelTextUpstreamAnthropicMessagesModelDownstreamMessagesUsesM
 	}
 }
 
-func TestResolveChannelTextUpstreamAnthropicMessagesModelDownstreamChatBridgesToMessages(t *testing.T) {
+func TestResolveChannelTextUpstreamAnthropicMessagesModelDownstreamChatRejected(t *testing.T) {
 	meta := &meta.Meta{
 		Mode:           relaymode.ChatCompletions,
 		RequestURLPath: adminmodel.ChannelModelEndpointChat,
@@ -93,12 +90,9 @@ func TestResolveChannelTextUpstreamAnthropicMessagesModelDownstreamChatBridgesTo
 		}},
 	}
 
-	mode, path, err := resolveChannelTextUpstream(meta, "claude-sonnet-4-6", "claude-sonnet-4-6")
-	if err != nil {
-		t.Fatalf("resolveChannelTextUpstream returned error: %v", err)
-	}
-	if mode != relaymode.Messages || path != adminmodel.ChannelModelEndpointMessages {
-		t.Fatalf("resolveChannelTextUpstream selected messages bridge = (%d, %q), want (%d, %q)", mode, path, relaymode.Messages, adminmodel.ChannelModelEndpointMessages)
+	_, _, err := resolveChannelTextUpstream(meta, "claude-sonnet-4-6", "claude-sonnet-4-6")
+	if err == nil {
+		t.Fatalf("resolveChannelTextUpstream returned nil error, want endpoint-not-supported error")
 	}
 }
 
@@ -161,7 +155,7 @@ func TestResolveChannelTextUpstreamRejectsWhenRequestedModelNotSelected(t *testi
 	}
 }
 
-func TestResolveChannelTextUpstreamNoModelConfigsOpenAIDefaultsResponses(t *testing.T) {
+func TestResolveChannelTextUpstreamNoModelConfigsOpenAIDownstreamChatUsesChat(t *testing.T) {
 	meta := &meta.Meta{
 		Mode:           relaymode.ChatCompletions,
 		RequestURLPath: adminmodel.ChannelModelEndpointChat,
@@ -172,15 +166,15 @@ func TestResolveChannelTextUpstreamNoModelConfigsOpenAIDefaultsResponses(t *test
 	if err != nil {
 		t.Fatalf("resolveChannelTextUpstream returned error: %v", err)
 	}
-	if mode != relaymode.Responses || path != adminmodel.ChannelModelEndpointResponses {
-		t.Fatalf("resolveChannelTextUpstream no-config openai responses = (%d, %q), want (%d, %q)", mode, path, relaymode.Responses, adminmodel.ChannelModelEndpointResponses)
+	if mode != relaymode.ChatCompletions || path != adminmodel.ChannelModelEndpointChat {
+		t.Fatalf("resolveChannelTextUpstream no-config openai chat = (%d, %q), want (%d, %q)", mode, path, relaymode.ChatCompletions, adminmodel.ChannelModelEndpointChat)
 	}
 }
 
-func TestResolveChannelTextUpstreamNoModelConfigsAnthropicDefaultsMessages(t *testing.T) {
+func TestResolveChannelTextUpstreamNoModelConfigsAnthropicDownstreamMessagesUsesMessages(t *testing.T) {
 	meta := &meta.Meta{
-		Mode:           relaymode.ChatCompletions,
-		RequestURLPath: adminmodel.ChannelModelEndpointChat,
+		Mode:           relaymode.Messages,
+		RequestURLPath: adminmodel.ChannelModelEndpointMessages,
 		APIType:        apitype.Anthropic,
 	}
 
@@ -190,6 +184,19 @@ func TestResolveChannelTextUpstreamNoModelConfigsAnthropicDefaultsMessages(t *te
 	}
 	if mode != relaymode.Messages || path != adminmodel.ChannelModelEndpointMessages {
 		t.Fatalf("resolveChannelTextUpstream no-config anthropic messages = (%d, %q), want (%d, %q)", mode, path, relaymode.Messages, adminmodel.ChannelModelEndpointMessages)
+	}
+}
+
+func TestResolveChannelTextUpstreamNoModelConfigsAnthropicDownstreamChatRejected(t *testing.T) {
+	meta := &meta.Meta{
+		Mode:           relaymode.ChatCompletions,
+		RequestURLPath: adminmodel.ChannelModelEndpointChat,
+		APIType:        apitype.Anthropic,
+	}
+
+	_, _, err := resolveChannelTextUpstream(meta, "claude-sonnet-4-6", "claude-sonnet-4-6")
+	if err == nil {
+		t.Fatalf("resolveChannelTextUpstream returned nil error, want unsupported chat error")
 	}
 }
 

@@ -2,7 +2,7 @@ package model
 
 import "testing"
 
-func TestResolveChannelModelCapabilityEndpointsForResponsesTextIncludesChatAndResponses(t *testing.T) {
+func TestResolveChannelModelCapabilityEndpointsForResponsesTextIncludesResponsesOnly(t *testing.T) {
 	row := ChannelModel{
 		Model:         "gpt-5.4",
 		UpstreamModel: "gpt-5.4",
@@ -12,14 +12,11 @@ func TestResolveChannelModelCapabilityEndpointsForResponsesTextIncludesChatAndRe
 	}
 
 	got := ResolveChannelModelCapabilityEndpoints(row)
-	if len(got) != 2 {
-		t.Fatalf("ResolveChannelModelCapabilityEndpoints len = %d, want 2", len(got))
+	if len(got) != 1 {
+		t.Fatalf("ResolveChannelModelCapabilityEndpoints len = %d, want 1", len(got))
 	}
-	if got[0] != ChannelModelEndpointChat {
-		t.Fatalf("got[0] = %q, want %q", got[0], ChannelModelEndpointChat)
-	}
-	if got[1] != ChannelModelEndpointResponses {
-		t.Fatalf("got[1] = %q, want %q", got[1], ChannelModelEndpointResponses)
+	if got[0] != ChannelModelEndpointResponses {
+		t.Fatalf("got[0] = %q, want %q", got[0], ChannelModelEndpointResponses)
 	}
 }
 
@@ -41,7 +38,7 @@ func TestResolveChannelModelCapabilityEndpointsForAudioUsesGenericAudioCapabilit
 	}
 }
 
-func TestResolveChannelModelCapabilityEndpointsForMessagesTextIncludesMessagesAndChat(t *testing.T) {
+func TestResolveChannelModelCapabilityEndpointsForMessagesTextIncludesMessagesOnly(t *testing.T) {
 	row := ChannelModel{
 		Model:         "claude-sonnet-4-6",
 		UpstreamModel: "claude-sonnet-4-6",
@@ -51,14 +48,11 @@ func TestResolveChannelModelCapabilityEndpointsForMessagesTextIncludesMessagesAn
 	}
 
 	got := ResolveChannelModelCapabilityEndpoints(row)
-	if len(got) != 2 {
-		t.Fatalf("ResolveChannelModelCapabilityEndpoints len = %d, want 2", len(got))
+	if len(got) != 1 {
+		t.Fatalf("ResolveChannelModelCapabilityEndpoints len = %d, want 1", len(got))
 	}
 	if got[0] != ChannelModelEndpointMessages {
 		t.Fatalf("got[0] = %q, want %q", got[0], ChannelModelEndpointMessages)
-	}
-	if got[1] != ChannelModelEndpointChat {
-		t.Fatalf("got[1] = %q, want %q", got[1], ChannelModelEndpointChat)
 	}
 }
 
@@ -125,8 +119,8 @@ func TestIsChannelModelRequestEndpointSupportedByConfigs(t *testing.T) {
 		},
 	}
 
-	if !IsChannelModelRequestEndpointSupportedByConfigs(rows, "gpt-5.4", ChannelModelEndpointChat) {
-		t.Fatalf("chat endpoint support = false, want true")
+	if IsChannelModelRequestEndpointSupportedByConfigs(rows, "gpt-5.4", ChannelModelEndpointChat) {
+		t.Fatalf("chat endpoint support = true, want false")
 	}
 	if !IsChannelModelRequestEndpointSupportedByConfigs(rows, "gpt-5.4", ChannelModelEndpointResponses) {
 		t.Fatalf("responses endpoint support = false, want true")
@@ -212,24 +206,24 @@ func TestNormalizeRequestedChannelModelEndpointMessagesMapsToMessages(t *testing
 	}
 }
 
-func TestIsChannelModelRequestEndpointSupportedByEndpointMapMessagesBackCompat(t *testing.T) {
+func TestIsChannelModelRequestEndpointSupportedByEndpointMapMessagesNoLongerBackCompat(t *testing.T) {
 	endpointMap := map[string]bool{
 		ChannelModelEndpointChat: true,
 	}
 	supported, explicit := IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap, ChannelModelEndpointMessages)
-	if !explicit || !supported {
-		t.Fatalf("messages support from legacy chat endpoint = (%t, %t), want (true, true)", supported, explicit)
+	if !explicit || supported {
+		t.Fatalf("messages support from legacy chat endpoint = (%t, %t), want (false, true)", supported, explicit)
 	}
 }
 
-func TestIsChannelModelRequestEndpointSupportedByEndpointMapBridgeCompatibility(t *testing.T) {
+func TestIsChannelModelRequestEndpointSupportedByEndpointMapNoBridgeCompatibility(t *testing.T) {
 	endpointMap := map[string]bool{
 		ChannelModelEndpointResponses: true,
 	}
-	if supported, explicit := IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap, ChannelModelEndpointChat); !explicit || !supported {
-		t.Fatalf("chat request support via responses endpoint = (%t, %t), want (true, true)", supported, explicit)
+	if supported, explicit := IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap, ChannelModelEndpointChat); !explicit || supported {
+		t.Fatalf("chat request support via responses endpoint = (%t, %t), want (false, true)", supported, explicit)
 	}
-	if supported, explicit := IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap, ChannelModelEndpointMessages); !explicit || !supported {
-		t.Fatalf("messages request support via responses endpoint = (%t, %t), want (true, true)", supported, explicit)
+	if supported, explicit := IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap, ChannelModelEndpointMessages); !explicit || supported {
+		t.Fatalf("messages request support via responses endpoint = (%t, %t), want (false, true)", supported, explicit)
 	}
 }

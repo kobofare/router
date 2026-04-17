@@ -63,36 +63,7 @@ func ResolveChannelModelCapabilityEndpoints(row ChannelModel) []string {
 	case ProviderModelTypeVideo:
 		return []string{ChannelModelEndpointVideos}
 	default:
-		directEndpoints := ResolveChannelModelDirectEndpoints(normalized)
-		result := make([]string, 0, len(directEndpoints)*2)
-		seen := make(map[string]struct{}, len(directEndpoints)*2)
-		appendEndpoint := func(endpoint string) {
-			normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
-			if normalizedEndpoint == "" {
-				return
-			}
-			if _, ok := seen[normalizedEndpoint]; ok {
-				return
-			}
-			seen[normalizedEndpoint] = struct{}{}
-			result = append(result, normalizedEndpoint)
-		}
-		for _, endpoint := range directEndpoints {
-			switch NormalizeRequestedChannelModelEndpoint(endpoint) {
-			case ChannelModelEndpointResponses:
-				appendEndpoint(ChannelModelEndpointChat)
-				appendEndpoint(ChannelModelEndpointResponses)
-			case ChannelModelEndpointMessages:
-				appendEndpoint(ChannelModelEndpointMessages)
-				appendEndpoint(ChannelModelEndpointChat)
-			default:
-				appendEndpoint(endpoint)
-			}
-		}
-		if len(result) == 0 {
-			return []string{ChannelModelEndpointChat}
-		}
-		return result
+		return ResolveChannelModelDirectEndpoints(normalized)
 	}
 }
 
@@ -471,55 +442,25 @@ func IsChannelModelRequestEndpointSupportedByEndpointMap(endpointMap map[string]
 		return false, false
 	}
 	hasTextEndpoint := false
-	readEndpointEnabled := func(endpoint string) (bool, bool) {
-		enabled, ok := endpointMap[endpoint]
+	for _, endpoint := range []string{
+		ChannelModelEndpointChat,
+		ChannelModelEndpointResponses,
+		ChannelModelEndpointMessages,
+	} {
+		if _, ok := endpointMap[endpoint]; ok {
+			hasTextEndpoint = true
+			break
+		}
+	}
+	if normalizedEndpoint == ChannelModelEndpointChat ||
+		normalizedEndpoint == ChannelModelEndpointResponses ||
+		normalizedEndpoint == ChannelModelEndpointMessages {
+		enabled, ok := endpointMap[normalizedEndpoint]
 		if ok {
 			return enabled, true
 		}
-		return false, false
-	}
-	if _, ok := endpointMap[ChannelModelEndpointChat]; ok {
-		hasTextEndpoint = true
-	}
-	if _, ok := endpointMap[ChannelModelEndpointResponses]; ok {
-		hasTextEndpoint = true
-	}
-	if _, ok := endpointMap[ChannelModelEndpointMessages]; ok {
-		hasTextEndpoint = true
-	}
-	if hasTextEndpoint {
-		switch normalizedEndpoint {
-		case ChannelModelEndpointChat, ChannelModelEndpointResponses, ChannelModelEndpointMessages:
-			// Direct endpoint match first.
-			if enabled, ok := readEndpointEnabled(normalizedEndpoint); ok {
-				return enabled, true
-			}
-			// Compatibility bridge for text requests.
-			if enabled, ok := readEndpointEnabled(ChannelModelEndpointChat); ok && enabled {
-				return true, true
-			}
-			if enabled, ok := readEndpointEnabled(ChannelModelEndpointResponses); ok && enabled {
-				return true, true
-			}
-			if enabled, ok := readEndpointEnabled(ChannelModelEndpointMessages); ok && enabled {
-				return true, true
-			}
-			// Backward compatibility for historical rows where /v1/messages was normalized to chat.
-			if normalizedEndpoint == ChannelModelEndpointMessages {
-				if enabled, ok := readEndpointEnabled(ChannelModelEndpointChat); ok {
-					return enabled, true
-				}
-			}
+		if hasTextEndpoint {
 			return false, true
-		}
-	}
-	if normalizedEndpoint == ChannelModelEndpointMessages {
-		if enabled, ok := endpointMap[ChannelModelEndpointMessages]; ok {
-			return enabled, true
-		}
-		// Backward compatibility for historical rows where /v1/messages was normalized to chat.
-		if enabled, ok := endpointMap[ChannelModelEndpointChat]; ok {
-			return enabled, true
 		}
 		return false, false
 	}

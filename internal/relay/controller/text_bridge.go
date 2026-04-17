@@ -515,12 +515,6 @@ func resolveChannelTextUpstream(meta *meta.Meta, originModelName string, actualM
 			if supportsChat {
 				return relaymode.ChatCompletions, adminmodel.ChannelModelEndpointChat, nil
 			}
-			if supportsMessages {
-				return relaymode.Messages, adminmodel.ChannelModelEndpointMessages, nil
-			}
-			if supportsResponses {
-				return relaymode.Responses, adminmodel.ChannelModelEndpointResponses, nil
-			}
 		case adminmodel.ChannelModelEndpointMessages:
 			if supportsMessages {
 				return relaymode.Messages, adminmodel.ChannelModelEndpointMessages, nil
@@ -548,18 +542,15 @@ func resolveChannelTextUpstream(meta *meta.Meta, originModelName string, actualM
 		return 0, "", fmt.Errorf("requested model %q is not selected for this channel", requestModel)
 	}
 	if supportsMessagesUpstream(meta) {
-		if requestEndpoint == adminmodel.ChannelModelEndpointResponses {
-			return 0, "", fmt.Errorf("channel does not support %s without selected model endpoint config", adminmodel.ChannelModelEndpointResponses)
-		}
-		if requestEndpoint == adminmodel.ChannelModelEndpointChat {
-			return relaymode.Messages, adminmodel.ChannelModelEndpointMessages, nil
+		if requestEndpoint != adminmodel.ChannelModelEndpointMessages {
+			return 0, "", fmt.Errorf("channel does not support %s without selected model endpoint config", requestEndpoint)
 		}
 		return relaymode.Messages, adminmodel.ChannelModelEndpointMessages, nil
 	}
 	switch requestEndpoint {
-	case adminmodel.ChannelModelEndpointResponses:
-		return relaymode.Responses, adminmodel.ChannelModelEndpointResponses, nil
 	case adminmodel.ChannelModelEndpointChat:
+		return relaymode.ChatCompletions, adminmodel.ChannelModelEndpointChat, nil
+	case adminmodel.ChannelModelEndpointResponses:
 		return relaymode.Responses, adminmodel.ChannelModelEndpointResponses, nil
 	default:
 		return 0, "", fmt.Errorf("channel does not support %s without selected model endpoint config", requestEndpoint)
