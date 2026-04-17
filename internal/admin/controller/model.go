@@ -77,7 +77,7 @@ type OpenAIModels struct {
 	Object             string                  `json:"object"`
 	Created            int                     `json:"created"`
 	OwnedBy            string                  `json:"owned_by"`
-	SupportedEndpoints []string                `json:"supported_endpoints,omitempty"`
+	SupportedEndpoints []string                `json:"supported_endpoints"`
 	Permission         []OpenAIModelPermission `json:"permission"`
 	Root               string                  `json:"root"`
 	Parent             *string                 `json:"parent"`
@@ -212,8 +212,10 @@ func listGroupModelSupportedEndpoints(groupID string, modelNames []string) (map[
 				if normalizedEndpoint == "" {
 					continue
 				}
-				// /v1/models only exposes endpoints that are both enabled and recently tested as supported.
-				if supported, ok := channelModelSupportMap[normalizedEndpoint]; !ok || !supported {
+				// /v1/models exposure rule:
+				// - If latest test exists for an endpoint, it must be supported.
+				// - If no latest test exists, fallback to enabled endpoint config.
+				if supported, ok := channelModelSupportMap[normalizedEndpoint]; ok && !supported {
 					continue
 				}
 				endpointSet[normalizedEndpoint] = struct{}{}
