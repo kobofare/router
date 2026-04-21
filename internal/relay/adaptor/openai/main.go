@@ -19,15 +19,22 @@ import (
 )
 
 const (
-	dataPrefix       = "data: "
-	done             = "[DONE]"
-	dataPrefixLength = len(dataPrefix)
+	dataPrefix                = "data: "
+	done                      = "[DONE]"
+	dataPrefixLength          = len(dataPrefix)
+	openaiScannerMaxTokenSize = 8 * 1024 * 1024
 )
+
+func newOpenAIStreamScanner(body io.Reader) *bufio.Scanner {
+	scanner := bufio.NewScanner(body)
+	scanner.Split(bufio.ScanLines)
+	scanner.Buffer(make([]byte, 0, 64*1024), openaiScannerMaxTokenSize)
+	return scanner
+}
 
 func StreamHandler(c *gin.Context, resp *http.Response, relayMode int) (*model.ErrorWithStatusCode, string, *model.Usage) {
 	responseText := ""
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Split(bufio.ScanLines)
+	scanner := newOpenAIStreamScanner(resp.Body)
 	var usage *model.Usage
 
 	common.SetEventStreamHeaders(c)
@@ -111,8 +118,7 @@ type responsesStreamTextPayload struct {
 
 func StreamResponsesHandler(c *gin.Context, resp *http.Response, modelName string, promptTokens int) (*model.ErrorWithStatusCode, *model.Usage) {
 	responseText := ""
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Split(bufio.ScanLines)
+	scanner := newOpenAIStreamScanner(resp.Body)
 	var usage *model.Usage
 	currentEvent := ""
 	doneRendered := false
