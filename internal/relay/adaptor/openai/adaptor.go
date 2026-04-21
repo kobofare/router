@@ -1,7 +1,6 @@
 package openai
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -272,8 +271,7 @@ func relayMessagesStreamResponse(c *gin.Context, resp *http.Response, promptToke
 	copyUpstreamResponseHeaders(c, resp.Header, false)
 	c.Writer.WriteHeader(resp.StatusCode)
 
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Split(bufio.ScanLines)
+	scanner := newOpenAIStreamScanner(resp.Body)
 
 	usage := &model.Usage{
 		PromptTokens: promptTokens,

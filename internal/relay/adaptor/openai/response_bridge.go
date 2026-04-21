@@ -1,7 +1,6 @@
 package openai
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -170,8 +169,7 @@ func relayResponsesAsChatResponse(c *gin.Context, resp *http.Response, modelName
 
 func StreamResponsesAsChatHandler(c *gin.Context, resp *http.Response, modelName string, promptTokens int) (*model.ErrorWithStatusCode, *model.Usage) {
 	responseText := ""
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Split(bufio.ScanLines)
+	scanner := newOpenAIStreamScanner(resp.Body)
 	var usage *model.Usage
 	currentEvent := ""
 	firstDelta := true
