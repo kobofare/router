@@ -136,7 +136,12 @@
         "pay_amount": "支付金额",
         "credited_amount": "到账额度",
         "enabled": "状态",
+        "public_visible": "对外展示",
         "validity_days": "有效期（天）"
+      },
+      "visibility": {
+        "visible": "展示",
+        "hidden": "隐藏"
       }
     },
     "balance_lots": {

@@ -136,7 +136,12 @@
         "pay_amount": "Pay Amount",
         "credited_amount": "Credited Amount",
         "enabled": "Status",
+        "public_visible": "Public Visible",
         "validity_days": "Validity (Days)"
+      },
+      "visibility": {
+        "visible": "Visible",
+        "hidden": "Hidden"
       }
     },
     "balance_lots": {
