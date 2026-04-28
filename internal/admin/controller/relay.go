@@ -58,6 +58,7 @@ func Relay(c *gin.Context) {
 	c.Set(ctxkey.RelayError, "")
 	c.Set(ctxkey.RelayErrorType, "")
 	c.Set(ctxkey.RelayErrorCode, "")
+	c.Set(ctxkey.RelayTermination, "")
 	relayMode := getEffectiveRelayMode(c)
 	if config.DebugEnabled {
 		requestBody, _ := common.GetRequestBody(c)
@@ -75,6 +76,9 @@ func Relay(c *gin.Context) {
 	channelName := c.GetString(ctxkey.ChannelName)
 	group := c.GetString(ctxkey.Group)
 	originalModel := c.GetString(ctxkey.OriginalModel)
+	if markClientAbortIfNeeded(c, bizErr) {
+		return
+	}
 	failedChannelIDs := map[string]struct{}{}
 	if trimmedChannelID := strings.TrimSpace(channelId); trimmedChannelID != "" {
 		failedChannelIDs[trimmedChannelID] = struct{}{}
@@ -149,6 +153,9 @@ func Relay(c *gin.Context) {
 		if bizErr == nil {
 			return
 		}
+		if markClientAbortIfNeeded(c, bizErr) {
+			return
+		}
 		channelId := c.GetString(ctxkey.ChannelId)
 		lastFailedChannelId = channelId
 		channelName = c.GetString(ctxkey.ChannelName)
@@ -204,6 +211,40 @@ func shouldRetry(c *gin.Context, bizErr *model.ErrorWithStatusCode) bool {
 		return false
 	}
 	return true
+}
+
+func markClientAbortIfNeeded(c *gin.Context, bizErr *model.ErrorWithStatusCode) bool {
+	if c == nil || bizErr == nil || !isClientAbortRelayError(bizErr) {
+		return false
+	}
+	c.Set(ctxkey.RelayTermination, "client_aborted")
+	c.Set(ctxkey.RelayErrorType, "client_abort")
+	c.Set(ctxkey.RelayErrorCode, errorCodeString(bizErr.Error.Code))
+	c.Set(ctxkey.RelayError, bizErr.Error.Message)
+	return true
+}
+
+func isClientAbortRelayError(err *model.ErrorWithStatusCode) bool {
+	if err == nil {
+		return false
+	}
+	code := strings.ToLower(strings.TrimSpace(errorCodeString(err.Code)))
+	message := strings.ToLower(strings.TrimSpace(err.Message))
+	if message == "" {
+		return false
+	}
+	if strings.Contains(message, "context canceled") {
+		switch code {
+		case "do_request_failed", "read_response_body_failed", "copy_response_body_failed", "close_response_body_failed":
+			return true
+		}
+	}
+	if code == "copy_response_body_failed" {
+		return strings.Contains(message, "broken pipe") ||
+			strings.Contains(message, "use of closed network connection") ||
+			strings.Contains(message, "connection reset by peer")
+	}
+	return false
 }
 
 func normalizeFinalRelayError(err *model.ErrorWithStatusCode) {

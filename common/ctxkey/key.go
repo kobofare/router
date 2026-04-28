@@ -29,4 +29,5 @@ const (
 	RelayError          = "relay_error"
 	RelayErrorType      = "relay_error_type"
 	RelayErrorCode      = "relay_error_code"
+	RelayTermination    = "relay_termination"
 )

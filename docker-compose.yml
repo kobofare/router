@@ -14,7 +14,7 @@ services:
     environment:
       - SQL_DSN=postgres://postgres:postgres@host.docker.internal:5432/postgres?sslmode=disable
       - REDIS_CONN_STRING=redis://host.docker.internal:6379
-      - SESSION_SECRET=random_string  # 修改为随机字符串
+      - COOKIE_SECRET=random_string  # 修改为随机字符串
       - TZ=Asia/Shanghai
 #      - NODE_TYPE=slave  # 多机部署时从节点取消注释该行
 #      - SYNC_FREQUENCY=60  # 需要定期从数据库加载数据时取消注释该行

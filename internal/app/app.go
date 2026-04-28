@@ -101,7 +101,7 @@ func Run() {
 	server.Use(middleware.Language())
 	middleware.SetUpLogger(server)
 	// Initialize session store
-	store := cookie.NewStore([]byte(config.SessionSecret))
+	store := cookie.NewStore([]byte(config.CookieSecret))
 	server.Use(sessions.Sessions("session", store))
 
 	router.SetRouter(server, rootapp.BuildFS)
