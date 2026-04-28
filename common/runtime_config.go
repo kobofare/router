@@ -383,6 +383,9 @@ func ApplyRuntimeConfig(cfg *RuntimeConfig, portFlagSet bool, logDirFlagSet bool
 	if sameSite := strings.ToLower(strings.TrimSpace(cfg.Auth.RefreshCookieSameSite)); sameSite != "" {
 		config.RefreshCookieSameSite = sameSite
 	}
+	if config.CookieSecret != "" && config.JWTSecret != "" && config.CookieSecret == config.JWTSecret {
+		logger.SysError("auth.cookie_secret and auth.jwt_secret should not use the same value.")
+	}
 
 	config.CorsAllowedOrigins = normalizeStringSlice(cfg.CORS.AllowedOrigins)
 	config.UcanAud = strings.TrimSpace(cfg.UCAN.Aud)

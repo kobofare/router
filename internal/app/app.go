@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -30,6 +31,7 @@ func Run() {
 	common.Init()
 	logger.SetupLogger()
 	logger.SysLogf("Router %s started", common.Version)
+	validateStartupAuthConfig()
 
 	gin.SetMode(common.GinMode)
 	if config.DebugEnabled {
@@ -110,5 +112,11 @@ func Run() {
 	err = server.Run(":" + port)
 	if err != nil {
 		logger.FatalLog("failed to start HTTP server: " + err.Error())
+	}
+}
+
+func validateStartupAuthConfig() {
+	if strings.TrimSpace(config.JWTSecret) == "" {
+		logger.SysError("auth.jwt_secret is empty; wallet login routes remain enabled, but wallet access/refresh token issuance and verification will fail until it is configured.")
 	}
 }
