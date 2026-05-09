@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,9 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/common/ctxkey"
 	"github.com/yeying-community/router/internal/relay"
 	"github.com/yeying-community/router/internal/relay/adaptor/openai"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
 )
@@ -47,7 +48,7 @@ func RelayRealtimeHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	}
 	c.Set(ctxkey.UpstreamURL, upstreamURL)
 
-	clientHeader := cloneRealtimeRequestHeaders(c.Request.Header)
+	clientHeader := cloneRealtimeRequestHeaders(c.Request.Header, meta)
 	dialer := websocket.Dialer{
 		Subprotocols: websocket.Subprotocols(c.Request),
 	}
@@ -67,7 +68,7 @@ func RelayRealtimeHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		return openai.ErrorWrapper(err, "upgrade_client_websocket_failed", http.StatusBadRequest)
 	}
 
-	pumpRealtimeConnection(c.Request.Context(), clientConn, upstreamConn)
+	pumpRealtimeConnection(c, clientConn, upstreamConn)
 	return nil
 }
 
@@ -88,16 +89,26 @@ func normalizeRealtimeWebSocketURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func cloneRealtimeRequestHeaders(header http.Header) http.Header {
+func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.Header {
 	cloned := make(http.Header, len(header))
 	for key, values := range header {
 		lower := strings.ToLower(strings.TrimSpace(key))
 		switch lower {
-		case "host", "connection", "upgrade", "sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions":
+		case "host", "connection", "upgrade", "sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions", "authorization", "api-key":
 			continue
 		}
 		for _, value := range values {
 			cloned.Add(key, value)
+		}
+	}
+	if relayMeta != nil {
+		switch relayMeta.ChannelProtocol {
+		case relaychannel.Azure:
+			cloned.Set("api-key", relayMeta.APIKey)
+		default:
+			if strings.TrimSpace(relayMeta.APIKey) != "" {
+				cloned.Set("Authorization", "Bearer "+relayMeta.APIKey)
+			}
 		}
 	}
 	return cloned
@@ -114,7 +125,7 @@ func realtimeUpgradeHeaders(upstreamConn *websocket.Conn) http.Header {
 	return header
 }
 
-func pumpRealtimeConnection(ctx context.Context, clientConn *websocket.Conn, upstreamConn *websocket.Conn) {
+func pumpRealtimeConnection(c *gin.Context, clientConn *websocket.Conn, upstreamConn *websocket.Conn) {
 	var once sync.Once
 	closeBoth := func() {
 		once.Do(func() {
@@ -125,34 +136,34 @@ func pumpRealtimeConnection(ctx context.Context, clientConn *websocket.Conn, ups
 	defer closeBoth()
 
 	errCh := make(chan error, 2)
-	go proxyRealtimeFrames(errCh, upstreamConn, clientConn)
-	go proxyRealtimeFrames(errCh, clientConn, upstreamConn)
+	go proxyRealtimeFrames(errCh, upstreamConn, clientConn, "upstream_to_client")
+	go proxyRealtimeFrames(errCh, clientConn, upstreamConn, "client_to_upstream")
 
-	select {
-	case <-ctx.Done():
-	case <-errCh:
+	err := <-errCh
+	if err != nil && c != nil {
+		logger.Warnf(c.Request.Context(), "[realtime_proxy] channel=%s model=%s err=%v", strings.TrimSpace(c.GetString(ctxkey.ChannelId)), strings.TrimSpace(c.GetString(ctxkey.RequestModel)), err)
 	}
 }
 
-func proxyRealtimeFrames(errCh chan<- error, dst *websocket.Conn, src *websocket.Conn) {
+func proxyRealtimeFrames(errCh chan<- error, dst *websocket.Conn, src *websocket.Conn, direction string) {
 	for {
 		messageType, reader, err := src.NextReader()
 		if err != nil {
-			errCh <- err
+			errCh <- fmt.Errorf("%s read failed: %w", direction, err)
 			return
 		}
 		writer, err := dst.NextWriter(messageType)
 		if err != nil {
-			errCh <- err
+			errCh <- fmt.Errorf("%s next writer failed: %w", direction, err)
 			return
 		}
 		if _, err := io.Copy(writer, reader); err != nil {
 			_ = writer.Close()
-			errCh <- err
+			errCh <- fmt.Errorf("%s copy failed: %w", direction, err)
 			return
 		}
 		if err := writer.Close(); err != nil {
-			errCh <- err
+			errCh <- fmt.Errorf("%s writer close failed: %w", direction, err)
 			return
 		}
 	}

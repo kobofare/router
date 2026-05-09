@@ -3,6 +3,8 @@ package controller
 import (
 	"net/http"
 	"testing"
+
+	"github.com/yeying-community/router/internal/relay/meta"
 )
 
 func TestNormalizeRealtimeWebSocketURL(t *testing.T) {
@@ -40,9 +42,9 @@ func TestCloneRealtimeRequestHeadersDropsHopByHop(t *testing.T) {
 		"Sec-WebSocket-Version":  []string{"13"},
 		"Sec-WebSocket-Protocol": []string{"realtime"},
 	}
-	cloned := cloneRealtimeRequestHeaders(header)
-	if cloned.Get("Authorization") != "Bearer sk-test" {
-		t.Fatalf("Authorization = %q, want Bearer sk-test", cloned.Get("Authorization"))
+	cloned := cloneRealtimeRequestHeaders(header, &meta.Meta{APIKey: "upstream-key"})
+	if cloned.Get("Authorization") != "Bearer upstream-key" {
+		t.Fatalf("Authorization = %q, want Bearer upstream-key", cloned.Get("Authorization"))
 	}
 	if cloned.Get("OpenAI-Beta") != "realtime=v1" {
 		t.Fatalf("OpenAI-Beta = %q, want realtime=v1", cloned.Get("OpenAI-Beta"))
