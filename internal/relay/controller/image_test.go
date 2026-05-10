@@ -254,8 +254,15 @@ func TestGetImageCostRatio(t *testing.T) {
 
 func TestValidateImageBillingPricing_AllowsTraditionalTokenBillingForGPTImage(t *testing.T) {
 	pricing := adminmodel.ResolvedModelPricing{
-		Model:     "gpt-image-2",
-		PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
+		Model:       "gpt-image-2",
+		PriceUnit:   adminmodel.ProviderPriceUnitPer1KTokens,
+		OutputPrice: 0.03,
+		PriceComponents: []adminmodel.ProviderModelPriceComponentDetail{
+			{
+				Component:  adminmodel.ProviderModelPriceComponentText,
+				InputPrice: 0.005,
+			},
+		},
 	}
 	if err := validateImageBillingPricing(pricing); err != nil {
 		t.Fatalf("validateImageBillingPricing() error = %v", err)
@@ -293,8 +300,28 @@ func TestResolveTraditionalImagePromptInputPrice(t *testing.T) {
 			},
 		},
 	}
-	if got := resolveTraditionalImagePromptInputPrice(pricing); got != 0.005 {
+	got, err := resolveTraditionalImagePromptInputPrice(pricing)
+	if err != nil {
+		t.Fatalf("resolveTraditionalImagePromptInputPrice() error = %v", err)
+	}
+	if got != 0.005 {
 		t.Fatalf("resolveTraditionalImagePromptInputPrice() = %v, want 0.005", got)
+	}
+}
+
+func TestResolveTraditionalImagePromptInputPriceRequiresTextComponentPrice(t *testing.T) {
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:      "gpt-image-2",
+		InputPrice: 0.008,
+		PriceComponents: []adminmodel.ProviderModelPriceComponentDetail{
+			{
+				Component:  adminmodel.ProviderModelPriceComponentImageGeneration,
+				InputPrice: 0.008,
+			},
+		},
+	}
+	if _, err := resolveTraditionalImagePromptInputPrice(pricing); err == nil {
+		t.Fatal("resolveTraditionalImagePromptInputPrice() error = nil, want error")
 	}
 }
 
@@ -323,10 +350,42 @@ func TestValidateImageBillingPricing(t *testing.T) {
 		{
 			name: "gpt image traditional token billing allowed",
 			pricing: adminmodel.ResolvedModelPricing{
+				Model:       "gpt-image-2",
+				Type:        adminmodel.ProviderModelTypeImage,
+				PriceUnit:   adminmodel.ProviderPriceUnitPer1KTokens,
+				OutputPrice: 0.03,
+				PriceComponents: []adminmodel.ProviderModelPriceComponentDetail{
+					{
+						Component:  adminmodel.ProviderModelPriceComponentText,
+						InputPrice: 0.005,
+					},
+				},
+			},
+		},
+		{
+			name: "gpt image traditional token billing missing text component price",
+			pricing: adminmodel.ResolvedModelPricing{
+				Model:       "gpt-image-2",
+				Type:        adminmodel.ProviderModelTypeImage,
+				PriceUnit:   adminmodel.ProviderPriceUnitPer1KTokens,
+				OutputPrice: 0.03,
+			},
+			wantErr: true,
+		},
+		{
+			name: "gpt image traditional token billing missing output price",
+			pricing: adminmodel.ResolvedModelPricing{
 				Model:     "gpt-image-2",
 				Type:      adminmodel.ProviderModelTypeImage,
 				PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
+				PriceComponents: []adminmodel.ProviderModelPriceComponentDetail{
+					{
+						Component:  adminmodel.ProviderModelPriceComponentText,
+						InputPrice: 0.005,
+					},
+				},
 			},
+			wantErr: true,
 		},
 		{
 			name: "char based image endpoint blocked",

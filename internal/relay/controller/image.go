@@ -39,10 +39,16 @@ func validateImageBillingPricing(pricing adminmodel.ResolvedModelPricing) error 
 	case billing.ImageBillingModePerImage, billing.ImageBillingModePerCall:
 		return nil
 	case billing.ImageBillingModeTokenBased:
-		if supportsTraditionalImageTokenBilling(pricing) {
-			return nil
+		if !supportsTraditionalImageTokenBilling(pricing) {
+			return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 		}
-		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
+		if _, err := resolveTraditionalImagePromptInputPrice(pricing); err != nil {
+			return err
+		}
+		if pricing.OutputPrice <= 0 {
+			return fmt.Errorf("traditional image token billing output price is not configured for model %s", strings.TrimSpace(pricing.Model))
+		}
+		return nil
 	default:
 		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 	}
@@ -78,16 +84,16 @@ func normalizeTraditionalImageBillingQuality(raw string) string {
 	}
 }
 
-func resolveTraditionalImagePromptInputPrice(pricing adminmodel.ResolvedModelPricing) float64 {
+func resolveTraditionalImagePromptInputPrice(pricing adminmodel.ResolvedModelPricing) (float64, error) {
 	for _, component := range pricing.PriceComponents {
 		if strings.TrimSpace(strings.ToLower(component.Component)) != adminmodel.ProviderModelPriceComponentText {
 			continue
 		}
 		if component.InputPrice > 0 {
-			return component.InputPrice
+			return component.InputPrice, nil
 		}
 	}
-	return pricing.InputPrice
+	return 0, fmt.Errorf("traditional image token billing text input price is not configured for model %s", strings.TrimSpace(pricing.Model))
 }
 
 func estimateTraditionalImageOutputTokens(modelName string, size string, quality string, imageCount int) (int, error) {
@@ -462,8 +468,12 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		if estimateErr != nil {
 			return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
 		}
+		promptInputPrice, promptPriceErr := resolveTraditionalImagePromptInputPrice(pricing)
+		if promptPriceErr != nil {
+			return openai.ErrorWrapper(promptPriceErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+		}
 		pricingForBilling := pricing
-		pricingForBilling.InputPrice = resolveTraditionalImagePromptInputPrice(pricing)
+		pricingForBilling.InputPrice = promptInputPrice
 		var snapshotErr error
 		billingSnapshot, snapshotErr = billing.ComputeTraditionalImageTokenBasedBillingSnapshot(
 			tokenEstimate.PromptTokens,
