@@ -33,6 +33,33 @@ const PROVIDER_ENDPOINT_SORT_ORDER = {
   '/v1/videos': 90,
 };
 
+const formatProviderModelUsageError = (message, t) => {
+  if (typeof message !== 'string') return '';
+  const marker = ' is still in use: ';
+  const markerIndex = message.indexOf(marker);
+  if (markerIndex < 0) return '';
+  const detailPart = message.slice(markerIndex + marker.length).trim();
+  if (!detailPart) return '';
+
+  const blocks = detailPart
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) return '';
+
+  const lines = [t('channel.providers.messages.model_in_use')];
+  blocks.forEach((block) => {
+    const [rawKey, rawValue] = block.split('=');
+    const key = (rawKey || '').trim();
+    const value = (rawValue || '').trim();
+    if (!key || !value) return;
+    const labelKey = `channel.providers.messages.model_usage_${key}`;
+    const label = t(labelKey, { defaultValue: key });
+    lines.push(`${label}: ${value}`);
+  });
+  return lines.join('\n');
+};
+
 const normalizeProvider = (provider) => {
   if (typeof provider !== 'string') return '';
   const trimmed = provider.trim();
@@ -324,6 +351,9 @@ const createEmptyModelDetail = (model = '') => {
   return {
     model,
     type: t,
+    status: 'active',
+    description: '',
+    is_deleted: false,
     supported_endpoints: [],
     input_price: 0,
     output_price: 0,
@@ -365,10 +395,20 @@ const normalizeModelDetails = (details) => {
       typeof item.source === 'string' && item.source.trim() !== ''
         ? item.source.trim().toLowerCase()
         : 'manual';
+    const status =
+      typeof item.status === 'string' && item.status.trim() !== ''
+        ? item.status.trim().toLowerCase()
+        : 'active';
+    const description =
+      typeof item.description === 'string' ? item.description.trim() : '';
+    const isDeleted = item.is_deleted === true;
     const updatedAt = Number(item.updated_at || 0);
     unique.set(model, {
       model,
       type,
+      status,
+      description,
+      is_deleted: isDeleted,
       supported_endpoints: normalizeSupportedEndpoints(
         item.supported_endpoints,
         type,
@@ -384,9 +424,9 @@ const normalizeModelDetails = (details) => {
       price_components: normalizePriceComponents(item.price_components),
     });
   });
-  return Array.from(unique.values()).sort((a, b) =>
-    a.model.localeCompare(b.model),
-  );
+  return Array.from(unique.values())
+    .filter((item) => item.is_deleted !== true)
+    .sort((a, b) => a.model.localeCompare(b.model));
 };
 
 const detailsFromCatalogItem = (item) => {
@@ -453,6 +493,11 @@ const MODEL_TYPE_OPTIONS = [
   { key: 'image', value: 'image', text: 'image' },
   { key: 'audio', value: 'audio', text: 'audio' },
   { key: 'video', value: 'video', text: 'video' },
+];
+
+const PROVIDER_MODEL_STATUS_OPTIONS = [
+  { key: 'active', value: 'active', text: 'active' },
+  { key: 'deprecated', value: 'deprecated', text: 'deprecated' },
 ];
 
 const PROVIDER_ENDPOINT_OPTIONS = [
@@ -1204,6 +1249,7 @@ const ProvidersManager = () => {
         method,
         url,
         data: payload,
+        skipErrorHandler: true,
       });
       const { success, message, data } = res.data || {};
       if (!success) {
@@ -1217,7 +1263,12 @@ const ProvidersManager = () => {
       await reloadCurrentPage();
       return savedRow;
     } catch (error) {
-      showError(error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        t('channel.providers.messages.save_failed');
+      const formattedUsageError = formatProviderModelUsageError(message, t);
+      showError(formattedUsageError || message);
       return null;
     } finally {
       setSaving(false);
@@ -1372,6 +1423,8 @@ const ProvidersManager = () => {
         : detailRows.filter(({ detail }) => {
             const haystack = [
               detail.model || '',
+              detail.description || '',
+              detail.status || '',
               detail.type || '',
               (detail.supported_endpoints || []).join(','),
               detail.price_unit || '',
@@ -1427,6 +1480,9 @@ const ProvidersManager = () => {
               <Table.HeaderCell width={2}>
                 {t('channel.providers.model_detail_table.model')}
               </Table.HeaderCell>
+              <Table.HeaderCell width={1}>
+                {t('channel.providers.model_detail_table.status')}
+              </Table.HeaderCell>
               <Table.HeaderCell width={2}>
                 {t('channel.providers.model_detail_table.type')}
               </Table.HeaderCell>
@@ -1461,7 +1517,7 @@ const ProvidersManager = () => {
               <Table.Row>
                 <Table.Cell
                   className='router-empty-cell'
-                  colSpan={10}
+                  colSpan={11}
                   textAlign='center'
                 >
                   {t('channel.providers.model_detail_table.empty')}
@@ -1486,6 +1542,42 @@ const ProvidersManager = () => {
                             detailIndex,
                             'model',
                             value || '',
+                          )
+                        }
+                      />
+                      <Form.TextArea
+                        className='router-inline-input router-block-top-xs'
+                        rows={2}
+                        value={detail.description || ''}
+                        disabled={disabled}
+                        placeholder={t(
+                          'channel.providers.model_detail_table.description',
+                        )}
+                        onChange={(e, { value }) =>
+                          setModelDetailField(
+                            setValueFn,
+                            row,
+                            detailIndex,
+                            'description',
+                            value || '',
+                          )
+                        }
+                      />
+                    </Table.Cell>
+                    <Table.Cell className='router-cell-min-120'>
+                      <Form.Select
+                        className='router-inline-dropdown'
+                        fluid
+                        options={PROVIDER_MODEL_STATUS_OPTIONS}
+                        value={detail.status || 'active'}
+                        disabled={disabled}
+                        onChange={(e, { value }) =>
+                          setModelDetailField(
+                            setValueFn,
+                            row,
+                            detailIndex,
+                            'status',
+                            value || 'active',
                           )
                         }
                       />
@@ -1652,7 +1744,7 @@ const ProvidersManager = () => {
                     </Table.Cell>
                   </Table.Row>
                   <Table.Row>
-                    <Table.Cell colSpan={10}>
+                    <Table.Cell colSpan={11}>
                       <div className='router-block-top-sm'>
                         <div className='router-toolbar router-toolbar-compact'>
                           <div className='router-toolbar-title'>
@@ -1975,6 +2067,8 @@ const ProvidersManager = () => {
         : detailRows.filter(({ detail }) => {
             const haystack = [
               detail.model || '',
+              detail.description || '',
+              detail.status || '',
               detail.type || '',
               (detail.supported_endpoints || []).join(','),
               detail.price_unit || '',
@@ -2032,6 +2126,9 @@ const ProvidersManager = () => {
                 {t('channel.providers.model_detail_table.model')}
               </Table.HeaderCell>
               <Table.HeaderCell width={1}>
+                {t('channel.providers.model_detail_table.status')}
+              </Table.HeaderCell>
+              <Table.HeaderCell width={1}>
                 {t('channel.providers.model_detail_table.type')}
               </Table.HeaderCell>
               <Table.HeaderCell width={4}>
@@ -2062,7 +2159,7 @@ const ProvidersManager = () => {
               <Table.Row>
                 <Table.Cell
                   className='router-empty-cell'
-                  colSpan={9}
+                  colSpan={10}
                   textAlign='center'
                 >
                   {t('channel.providers.model_detail_table.empty')}
@@ -2075,7 +2172,17 @@ const ProvidersManager = () => {
                 return (
                   <Table.Row key={`${detail.model || 'model'}-${detailIndex}`}>
                     <Table.Cell className='router-cell-min-130'>
-                      {detail.model || '-'}
+                      <div className='router-model-title'>
+                        {detail.model || '-'}
+                      </div>
+                      {detail.description ? (
+                        <div className='router-muted router-model-description'>
+                          {detail.description}
+                        </div>
+                      ) : null}
+                    </Table.Cell>
+                    <Table.Cell className='router-cell-min-90'>
+                      {detail.status || 'active'}
                     </Table.Cell>
                     <Table.Cell className='router-cell-min-80'>
                       {detail.type || 'text'}
@@ -2220,6 +2327,21 @@ const ProvidersManager = () => {
               />
               <Form.Select
                 className='router-section-dropdown'
+                label={t('channel.providers.model_detail_table.status')}
+                options={PROVIDER_MODEL_STATUS_OPTIONS}
+                value={detail.status || 'active'}
+                onChange={(e, { value }) =>
+                  setModelDetailField(
+                    setDetailModelsValue,
+                    detailModelsDraft,
+                    detailEditingModelIndex,
+                    'status',
+                    value || 'active',
+                  )
+                }
+              />
+              <Form.Select
+                className='router-section-dropdown'
                 label={t('channel.providers.model_detail_table.type')}
                 options={MODEL_TYPE_OPTIONS}
                 value={detail.type || 'text'}
@@ -2270,6 +2392,20 @@ const ProvidersManager = () => {
                   detailEditingModelIndex,
                   'supported_endpoints',
                   Array.isArray(value) ? value : [],
+                )
+              }
+            />
+            <Form.TextArea
+              className='router-section-input'
+              label={t('channel.providers.model_detail_table.description')}
+              value={detail.description || ''}
+              onChange={(e, { value }) =>
+                setModelDetailField(
+                  setDetailModelsValue,
+                  detailModelsDraft,
+                  detailEditingModelIndex,
+                  'description',
+                  value || '',
                 )
               }
             />
