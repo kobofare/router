@@ -188,3 +188,24 @@ func TestComputeResponseImageToolTokenBasedBillingSnapshot(t *testing.T) {
 		t.Fatalf("OutputAmount = %v, want 0.211", snapshot.OutputAmount)
 	}
 }
+
+func TestComputeExplicitAmountBillingSnapshot(t *testing.T) {
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:     "gpt-image-2",
+		PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
+		Currency:  adminmodel.ProviderPriceCurrencyUSD,
+	}
+	snapshot, err := ComputeExplicitAmountBillingSnapshot(4454, 7033.333333333333, 0.035332, 0.211, pricing, 1, true)
+	if err != nil {
+		t.Fatalf("ComputeExplicitAmountBillingSnapshot() error = %v", err)
+	}
+	if math.Abs(snapshot.InputAmount-0.035332) > 1e-9 {
+		t.Fatalf("InputAmount = %v, want 0.035332", snapshot.InputAmount)
+	}
+	if math.Abs(snapshot.OutputAmount-0.211) > 1e-9 {
+		t.Fatalf("OutputAmount = %v, want 0.211", snapshot.OutputAmount)
+	}
+	if math.Abs(snapshot.Amount-0.246332) > 1e-9 {
+		t.Fatalf("Amount = %v, want 0.246332", snapshot.Amount)
+	}
+}

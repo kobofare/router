@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"encoding/base64"
 	"math"
 	"mime/multipart"
 	"net/http/httptest"
@@ -335,6 +336,52 @@ func TestEstimateGPTImage2Usage(t *testing.T) {
 	}
 }
 
+func TestEstimateGPTImage2InputImageTokens(t *testing.T) {
+	got, err := estimateGPTImage2InputImageTokens(1024, 1024)
+	if err != nil {
+		t.Fatalf("estimateGPTImage2InputImageTokens() error = %v", err)
+	}
+	if got != 4354 {
+		t.Fatalf("estimateGPTImage2InputImageTokens() = %d, want 4354", got)
+	}
+}
+
+func TestEstimateGPTImage2EditImageInputTokens(t *testing.T) {
+	const oneByOnePNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk6cAAAAASUVORK5CYII="
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("image", "test.png")
+	if err != nil {
+		t.Fatalf("CreateFormFile(image) error = %v", err)
+	}
+	pngBytes, err := base64.StdEncoding.DecodeString(oneByOnePNG)
+	if err != nil {
+		t.Fatalf("DecodeString() error = %v", err)
+	}
+	if _, err := part.Write(pngBytes); err != nil {
+		t.Fatalf("part.Write() error = %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest("POST", "/v1/images/edits", body)
+	ctx.Request.Header.Set("Content-Type", writer.FormDataContentType())
+	_, form, err := getImageEditRequest(ctx)
+	if err != nil {
+		t.Fatalf("getImageEditRequest() error = %v", err)
+	}
+	got, err := estimateGPTImage2EditImageInputTokens(form)
+	if err != nil {
+		t.Fatalf("estimateGPTImage2EditImageInputTokens() error = %v", err)
+	}
+	if got != 4354 {
+		t.Fatalf("estimateGPTImage2EditImageInputTokens() = %d, want 4354", got)
+	}
+}
+
 func TestResolveTraditionalImagePromptInputPrice(t *testing.T) {
 	pricing := adminmodel.ResolvedModelPricing{
 		Model:      "gpt-image-2",
@@ -374,6 +421,30 @@ func TestResolveTraditionalImagePromptInputPriceUsesChannelOverride(t *testing.T
 	}
 	if got != 0.02 {
 		t.Fatalf("resolveTraditionalImagePromptInputPrice() = %v, want 0.02", got)
+	}
+}
+
+func TestResolveTraditionalImageImageInputPrice(t *testing.T) {
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:      "gpt-image-2",
+		InputPrice: 0.008,
+		PriceComponents: []adminmodel.ProviderModelPriceComponentDetail{
+			{
+				Component:  adminmodel.ProviderModelPriceComponentText,
+				InputPrice: 0.005,
+			},
+			{
+				Component:  adminmodel.ProviderModelPriceComponentImageGeneration,
+				InputPrice: 0.008,
+			},
+		},
+	}
+	got, err := resolveTraditionalImageImageInputPrice(pricing)
+	if err != nil {
+		t.Fatalf("resolveTraditionalImageImageInputPrice() error = %v", err)
+	}
+	if got != 0.008 {
+		t.Fatalf("resolveTraditionalImageImageInputPrice() = %v, want 0.008", got)
 	}
 }
 

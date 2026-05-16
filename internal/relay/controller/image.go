@@ -6,7 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	stdimage "image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -27,6 +32,7 @@ import (
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
 	"github.com/yeying-community/router/internal/relay/relaymode"
+	_ "golang.org/x/image/webp"
 )
 
 type traditionalImageTokenEstimate struct {
@@ -36,6 +42,7 @@ type traditionalImageTokenEstimate struct {
 
 type gptImage2Estimate struct {
 	PromptTokens      int
+	ImageInputTokens  int
 	OutputAmount      float64
 	OutputQuantity    float64
 	NormalizedSize    string
@@ -46,6 +53,7 @@ const (
 	imageUsageSourceLocalEstimate             = "local_estimate"
 	imageEstimateSourceTraditionalImageTokens = "traditional_image_tokens_local"
 	imageEstimateSourceGPTImage2Examples      = "gpt_image_2_examples_local"
+	imageEstimateSourceGPTImage2Edits         = "gpt_image_2_edits_local"
 	imageEstimateSourceImageCountRatio        = "image_count_ratio"
 	imageSettlementModeEstimateOnly           = "estimate_only"
 	imageSettlementModeLocalEstimateFinal     = "local_estimate_final"
@@ -125,6 +133,24 @@ func resolveTraditionalImagePromptInputPrice(pricing adminmodel.ResolvedModelPri
 		}
 	}
 	return 0, fmt.Errorf("traditional image token billing text input price is not configured for model %s", strings.TrimSpace(pricing.Model))
+}
+
+func resolveTraditionalImageImageInputPrice(pricing adminmodel.ResolvedModelPricing) (float64, error) {
+	if pricing.HasChannelInputPriceOverride && pricing.InputPrice > 0 {
+		return pricing.InputPrice, nil
+	}
+	for _, component := range pricing.PriceComponents {
+		if strings.TrimSpace(strings.ToLower(component.Component)) != adminmodel.ProviderModelPriceComponentImageGeneration {
+			continue
+		}
+		if component.InputPrice > 0 {
+			return component.InputPrice, nil
+		}
+	}
+	if pricing.InputPrice > 0 {
+		return pricing.InputPrice, nil
+	}
+	return 0, fmt.Errorf("traditional image token billing image input price is not configured for model %s", strings.TrimSpace(pricing.Model))
 }
 
 func estimateTraditionalImageOutputTokens(modelName string, size string, quality string, imageCount int) (int, error) {
@@ -224,6 +250,101 @@ func estimateGPTImage2Usage(imageRequest *relaymodel.ImageRequest, pricing admin
 		NormalizedSize:    normalizedSize,
 		NormalizedQuality: normalizedQuality,
 	}, nil
+}
+
+func readMultipartImageSize(fileHeader *multipart.FileHeader) (int, int, error) {
+	if fileHeader == nil {
+		return 0, 0, errors.New("image file header is nil")
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer file.Close()
+	cfg, _, err := stdimage.DecodeConfig(file)
+	if err != nil {
+		return 0, 0, err
+	}
+	return cfg.Width, cfg.Height, nil
+}
+
+func estimateGPTImage2EditImageInputTokens(form *multipart.Form) (int, error) {
+	if form == nil {
+		return 0, errors.New("multipart form is required")
+	}
+	fileHeaders := form.File["image"]
+	if len(fileHeaders) == 0 {
+		return 0, errors.New("image file is required")
+	}
+	total := 0
+	for _, fileHeader := range fileHeaders {
+		width, height, err := readMultipartImageSize(fileHeader)
+		if err != nil {
+			return 0, err
+		}
+		tokens, err := estimateGPTImage2InputImageTokens(width, height)
+		if err != nil {
+			return 0, err
+		}
+		total += tokens
+	}
+	return total, nil
+}
+
+func estimateGPTImage2InputImageTokens(width int, height int) (int, error) {
+	if width <= 0 || height <= 0 {
+		return 0, fmt.Errorf("invalid image size %dx%d", width, height)
+	}
+	scaledWidth := width
+	scaledHeight := height
+	if scaledWidth > 2048 || scaledHeight > 2048 {
+		ratio := float64(2048) / maxFloat(float64(scaledWidth), float64(scaledHeight))
+		scaledWidth = int(float64(scaledWidth) * ratio)
+		scaledHeight = int(float64(scaledHeight) * ratio)
+	}
+	if scaledWidth > 512 && scaledHeight > 512 {
+		ratio := float64(512) / minFloat(float64(scaledWidth), float64(scaledHeight))
+		scaledWidth = int(float64(scaledWidth) * ratio)
+		scaledHeight = int(float64(scaledHeight) * ratio)
+	}
+	tiles := int(math.Ceil(float64(scaledWidth)/512.0) * math.Ceil(float64(scaledHeight)/512.0))
+	if tiles <= 0 {
+		return 0, fmt.Errorf("invalid tile count for image size %dx%d", width, height)
+	}
+	baseTokens := 65
+	perTileTokens := 129
+	aspectRatioTokens := 4160
+	if scaledWidth != scaledHeight {
+		aspectRatioTokens = 6240
+	}
+	return baseTokens + tiles*perTileTokens + aspectRatioTokens, nil
+}
+
+func maxFloat(a float64, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minFloat(a float64, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func estimateGPTImage2EditUsage(imageRequest *relaymodel.ImageRequest, form *multipart.Form, pricing adminmodel.ResolvedModelPricing, imageCount int) (gptImage2Estimate, error) {
+	estimate, err := estimateGPTImage2Usage(imageRequest, pricing, imageCount)
+	if err != nil {
+		return gptImage2Estimate{}, err
+	}
+	imageInputTokens, err := estimateGPTImage2EditImageInputTokens(form)
+	if err != nil {
+		return gptImage2Estimate{}, err
+	}
+	estimate.ImageInputTokens = imageInputTokens
+	return estimate, nil
 }
 
 func estimateTraditionalImageTokenUsage(imageRequest *relaymodel.ImageRequest, pricing adminmodel.ResolvedModelPricing, imageCount int) (traditionalImageTokenEstimate, error) {
@@ -562,37 +683,77 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		pricingForBilling := pricing
 		pricingForBilling.InputPrice = promptInputPrice
 		if isGPTImage2Model(pricing.Model) {
+			var (
+				estimate    gptImage2Estimate
+				estimateErr error
+			)
 			if relayMode == relaymode.ImagesEdits {
-				return openai.ErrorWrapper(errors.New("gpt-image-2 image edit billing local estimate is not implemented"), "unsupported_image_billing", http.StatusServiceUnavailable)
+				estimate, estimateErr = estimateGPTImage2EditUsage(imageRequest, form, pricingForBilling, imageCount)
+			} else {
+				estimate, estimateErr = estimateGPTImage2Usage(imageRequest, pricingForBilling, imageCount)
 			}
-			estimate, estimateErr := estimateGPTImage2Usage(imageRequest, pricingForBilling, imageCount)
 			if estimateErr != nil {
 				return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
 			}
-			var snapshotErr error
-			billingSnapshot, snapshotErr = billing.ComputeTokenBasedBillingSnapshot(
-				float64(estimate.PromptTokens),
-				estimate.OutputQuantity,
-				pricingForBilling,
-				groupRatio,
+			promptInputAmount := float64(estimate.PromptTokens) * promptInputPrice / 1000
+			outputAmount := estimate.OutputAmount
+			var (
+				inputQuantity float64
+				inputAmount   float64
+				snapshotErr   error
 			)
+			inputQuantity = float64(estimate.PromptTokens)
+			inputAmount = promptInputAmount
+			if relayMode == relaymode.ImagesEdits {
+				imageInputPrice, imageInputPriceErr := resolveTraditionalImageImageInputPrice(pricing)
+				if imageInputPriceErr != nil {
+					return openai.ErrorWrapper(imageInputPriceErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+				}
+				inputQuantity += float64(estimate.ImageInputTokens)
+				inputAmount += float64(estimate.ImageInputTokens) * imageInputPrice / 1000
+				billingSnapshot, snapshotErr = billing.ComputeExplicitAmountBillingSnapshot(
+					inputQuantity,
+					estimate.OutputQuantity,
+					inputAmount,
+					outputAmount,
+					pricingForBilling,
+					groupRatio,
+					inputQuantity > 0 || estimate.OutputQuantity > 0,
+				)
+			} else {
+				billingSnapshot, snapshotErr = billing.ComputeExplicitAmountBillingSnapshot(
+					inputQuantity,
+					estimate.OutputQuantity,
+					inputAmount,
+					outputAmount,
+					pricingForBilling,
+					groupRatio,
+					inputQuantity > 0 || estimate.OutputQuantity > 0,
+				)
+			}
 			if snapshotErr != nil {
 				return openai.ErrorWrapper(snapshotErr, "calculate_image_quota_failed", http.StatusInternalServerError)
 			}
 			billingSnapshot.PricingSource = strings.TrimSpace(pricing.Source)
 			billingSnapshot.UsageSource = imageUsageSourceLocalEstimate
-			billingSnapshot.EstimateSource = imageEstimateSourceGPTImage2Examples
+			if relayMode == relaymode.ImagesEdits {
+				billingSnapshot.EstimateSource = imageEstimateSourceGPTImage2Edits
+			} else {
+				billingSnapshot.EstimateSource = imageEstimateSourceGPTImage2Examples
+			}
 			billingSnapshot.SettlementMode = imageSettlementModeLocalEstimateFinal
 			logger.Debugf(
 				ctx,
-				"[image_gpt_image_2_estimate] model=%s prompt_tokens=%d output_quantity=%.3f output_amount=%.6f size=%s quality=%s count=%d",
+				"[image_gpt_image_2_estimate] model=%s prompt_tokens=%d image_input_tokens=%d output_quantity=%.3f output_amount=%.6f size=%s quality=%s count=%d endpoint=%s",
 				strings.TrimSpace(pricingForBilling.Model),
 				estimate.PromptTokens,
+				estimate.ImageInputTokens,
 				estimate.OutputQuantity,
 				estimate.OutputAmount,
 				estimate.NormalizedSize,
 				estimate.NormalizedQuality,
 				imageCount,
+				c.Request.URL.Path,
 			)
 			break
 		}

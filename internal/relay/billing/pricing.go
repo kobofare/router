@@ -162,6 +162,32 @@ func ComputeResponseImageToolTokenBasedBillingSnapshot(outputQuantity float64, p
 	)
 }
 
+func ComputeExplicitAmountBillingSnapshot(inputQuantity float64, outputQuantity float64, inputAmount float64, outputAmount float64, pricing model.ResolvedModelPricing, groupRatio float64, hasUsage bool) (BillingSnapshot, error) {
+	snapshot := BillingSnapshot{
+		PriceUnit:      normalizePriceUnit(pricing.PriceUnit),
+		Currency:       normalizeCurrency(pricing.Currency),
+		GroupRatio:     groupRatio,
+		InputQuantity:  inputQuantity,
+		OutputQuantity: outputQuantity,
+		InputAmount:    inputAmount,
+		OutputAmount:   outputAmount,
+	}
+	snapshot.Amount = snapshot.InputAmount + snapshot.OutputAmount
+	if snapshot.Amount > 0 {
+		yycRate, err := model.GetBillingCurrencyYYCPerUnit(snapshot.Currency)
+		if err != nil {
+			if groupRatio != 0 {
+				return BillingSnapshot{}, err
+			}
+		} else {
+			snapshot.YYCRate = yycRate
+		}
+	}
+	rawYYC := snapshot.Amount * snapshot.YYCRate * groupRatio
+	snapshot.YYCAmount = normalizeQuota(rawYYC, hasUsage, pricing, groupRatio)
+	return snapshot, nil
+}
+
 func ResolveImageBillingMode(pricing model.ResolvedModelPricing) ImageBillingMode {
 	switch normalizePriceUnit(pricing.PriceUnit) {
 	case model.ProviderPriceUnitPerImage:
