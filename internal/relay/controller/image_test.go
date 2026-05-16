@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"math"
 	"mime/multipart"
 	"net/http/httptest"
 	"strings"
@@ -280,12 +281,57 @@ func TestValidateImageBillingPricing_RejectsUnsupportedTokenBillingModel(t *test
 }
 
 func TestEstimateTraditionalImageOutputTokens(t *testing.T) {
-	got, err := estimateTraditionalImageOutputTokens("gpt-image-2", "1024x1024", "", 1)
+	got, err := estimateTraditionalImageOutputTokens("gpt-image-1", "1024x1024", "", 1)
 	if err != nil {
 		t.Fatalf("estimateTraditionalImageOutputTokens() error = %v", err)
 	}
 	if got != 4160 {
 		t.Fatalf("estimateTraditionalImageOutputTokens() = %d, want 4160", got)
+	}
+}
+
+func TestEstimateTraditionalImageOutputTokensRejectsGPTImage2(t *testing.T) {
+	if _, err := estimateTraditionalImageOutputTokens("gpt-image-2", "1024x1024", "", 1); err == nil {
+		t.Fatal("estimateTraditionalImageOutputTokens() error = nil, want error")
+	}
+}
+
+func TestEstimateGPTImage2OutputAmount(t *testing.T) {
+	got, size, quality, err := estimateGPTImage2OutputAmount("1024x1024", "", 1)
+	if err != nil {
+		t.Fatalf("estimateGPTImage2OutputAmount() error = %v", err)
+	}
+	if got != 0.211 {
+		t.Fatalf("estimateGPTImage2OutputAmount() = %v, want 0.211", got)
+	}
+	if size != "1024x1024" {
+		t.Fatalf("normalized size = %q, want %q", size, "1024x1024")
+	}
+	if quality != "high" {
+		t.Fatalf("normalized quality = %q, want %q", quality, "high")
+	}
+}
+
+func TestEstimateGPTImage2Usage(t *testing.T) {
+	req := &relaymodel.ImageRequest{
+		Model:   "gpt-image-2",
+		Prompt:  "draw a city skyline",
+		Size:    "1024x1536",
+		Quality: "medium",
+	}
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:       "gpt-image-2",
+		OutputPrice: 0.03,
+	}
+	got, err := estimateGPTImage2Usage(req, pricing, 2)
+	if err != nil {
+		t.Fatalf("estimateGPTImage2Usage() error = %v", err)
+	}
+	if got.OutputAmount != 0.082 {
+		t.Fatalf("OutputAmount = %v, want 0.082", got.OutputAmount)
+	}
+	if math.Abs(got.OutputQuantity-(0.082*1000/0.03)) > 1e-9 {
+		t.Fatalf("OutputQuantity = %v, want %v", got.OutputQuantity, 0.082*1000/0.03)
 	}
 }
 

@@ -129,32 +129,36 @@ func ComputeImageBillingSnapshot(imageCount int, multiplier float64, pricing mod
 }
 
 func ComputeTraditionalImageTokenBasedBillingSnapshot(promptTokens int, imageOutputTokens int, pricing model.ResolvedModelPricing, groupRatio float64) (BillingSnapshot, error) {
+	return ComputeTokenBasedBillingSnapshot(float64(promptTokens), float64(imageOutputTokens), pricing, groupRatio)
+}
+
+func ComputeTokenBasedBillingSnapshot(inputQuantity float64, outputQuantity float64, pricing model.ResolvedModelPricing, groupRatio float64) (BillingSnapshot, error) {
 	if ResolveImageBillingMode(pricing) != ImageBillingModeTokenBased {
 		return BillingSnapshot{}, fmt.Errorf("traditional image token-based billing requires token-based pricing for model %s", strings.TrimSpace(pricing.Model))
 	}
 	return buildBillingSnapshot(
-		float64(promptTokens),
-		float64(imageOutputTokens),
+		inputQuantity,
+		outputQuantity,
 		pricing.InputPrice,
 		pricing.OutputPrice,
 		pricing,
 		groupRatio,
-		promptTokens > 0 || imageOutputTokens > 0,
+		inputQuantity > 0 || outputQuantity > 0,
 	)
 }
 
-func ComputeResponseImageToolTokenBasedBillingSnapshot(imageOutputTokens int, pricing model.ResolvedModelPricing, groupRatio float64) (BillingSnapshot, error) {
+func ComputeResponseImageToolTokenBasedBillingSnapshot(outputQuantity float64, pricing model.ResolvedModelPricing, groupRatio float64) (BillingSnapshot, error) {
 	if ResolveImageBillingMode(pricing) != ImageBillingModeTokenBased {
 		return BillingSnapshot{}, fmt.Errorf("responses image tool token-based billing requires token-based pricing for model %s", strings.TrimSpace(pricing.Model))
 	}
 	return buildBillingSnapshot(
 		0,
-		float64(imageOutputTokens),
+		outputQuantity,
 		0,
 		pricing.OutputPrice,
 		pricing,
 		groupRatio,
-		imageOutputTokens > 0,
+		outputQuantity > 0,
 	)
 }
 

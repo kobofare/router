@@ -17,6 +17,20 @@ import (
 var tokenEncoderMap = map[string]*tiktoken.Tiktoken{}
 var defaultTokenEncoder *tiktoken.Tiktoken
 
+func ensureDefaultTokenEncoder() *tiktoken.Tiktoken {
+	if defaultTokenEncoder != nil {
+		return defaultTokenEncoder
+	}
+	tokenEncoder, err := tiktoken.EncodingForModel("gpt-3.5-turbo")
+	if err != nil {
+		logger.SysError("failed to lazily initialize default token encoder: " + err.Error())
+		return nil
+	}
+	defaultTokenEncoder = tokenEncoder
+	tokenEncoderMap["gpt-3.5-turbo"] = tokenEncoder
+	return defaultTokenEncoder
+}
+
 func InitTokenEncoders() {
 	logger.SysLog("initializing token encoders")
 	gpt35TokenEncoder, err := tiktoken.EncodingForModel("gpt-3.5-turbo")
@@ -40,6 +54,7 @@ func InitTokenEncoders() {
 }
 
 func getTokenEncoder(model string) *tiktoken.Tiktoken {
+	defaultEncoder := ensureDefaultTokenEncoder()
 	tokenEncoder, ok := tokenEncoderMap[model]
 	if ok && tokenEncoder != nil {
 		return tokenEncoder
@@ -48,7 +63,7 @@ func getTokenEncoder(model string) *tiktoken.Tiktoken {
 		tokenEncoder, err := tiktoken.EncodingForModel(model)
 		if err != nil {
 			logger.SysWarnf("[tokenizer] encoder_fallback model=%q fallback=%q err=%q", model, "gpt-3.5-turbo", err.Error())
-			tokenEncoder = defaultTokenEncoder
+			tokenEncoder = defaultEncoder
 		}
 		tokenEncoderMap[model] = tokenEncoder
 		return tokenEncoder
@@ -70,7 +85,7 @@ func getTokenEncoder(model string) *tiktoken.Tiktoken {
 		tokenEncoder, err := tiktoken.EncodingForModel(model)
 		if err != nil {
 			logger.SysWarnf("[tokenizer] encoder_fallback model=%q fallback=%q err=%q", model, "gpt-3.5-turbo", err.Error())
-			tokenEncoder = defaultTokenEncoder
+			tokenEncoder = defaultEncoder
 		}
 		tokenEncoderMap[model] = tokenEncoder
 		return tokenEncoder
@@ -78,6 +93,9 @@ func getTokenEncoder(model string) *tiktoken.Tiktoken {
 }
 
 func getTokenNum(tokenEncoder *tiktoken.Tiktoken, text string) int {
+	if tokenEncoder == nil {
+		return 0
+	}
 	return len(tokenEncoder.Encode(text, nil, nil))
 }
 

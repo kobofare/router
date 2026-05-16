@@ -34,9 +34,18 @@ type traditionalImageTokenEstimate struct {
 	ImageOutputTokens int
 }
 
+type gptImage2Estimate struct {
+	PromptTokens      int
+	OutputAmount      float64
+	OutputQuantity    float64
+	NormalizedSize    string
+	NormalizedQuality string
+}
+
 const (
 	imageUsageSourceLocalEstimate             = "local_estimate"
 	imageEstimateSourceTraditionalImageTokens = "traditional_image_tokens_local"
+	imageEstimateSourceGPTImage2Examples      = "gpt_image_2_examples_local"
 	imageEstimateSourceImageCountRatio        = "image_count_ratio"
 	imageSettlementModeEstimateOnly           = "estimate_only"
 	imageSettlementModeLocalEstimateFinal     = "local_estimate_final"
@@ -66,8 +75,19 @@ func supportsTraditionalImageTokenBilling(pricing adminmodel.ResolvedModelPricin
 	if billing.ResolveImageBillingMode(pricing) != billing.ImageBillingModeTokenBased {
 		return false
 	}
-	modelName := strings.TrimSpace(strings.ToLower(pricing.Model))
-	return strings.HasPrefix(modelName, "gpt-image-")
+	if isGPTImage2Model(pricing.Model) {
+		return true
+	}
+	return supportsLegacyImageTokenTable(pricing.Model)
+}
+
+func supportsLegacyImageTokenTable(modelName string) bool {
+	modelName = strings.TrimSpace(strings.ToLower(modelName))
+	return strings.HasPrefix(modelName, "gpt-image-") && modelName != "gpt-image-2"
+}
+
+func isGPTImage2Model(modelName string) bool {
+	return strings.EqualFold(strings.TrimSpace(modelName), "gpt-image-2")
 }
 
 func normalizeTraditionalImageBillingSize(raw string) string {
@@ -111,7 +131,7 @@ func estimateTraditionalImageOutputTokens(modelName string, size string, quality
 	if imageCount <= 0 {
 		return 0, nil
 	}
-	if !strings.HasPrefix(strings.TrimSpace(strings.ToLower(modelName)), "gpt-image-") {
+	if !supportsLegacyImageTokenTable(modelName) {
 		return 0, fmt.Errorf("traditional image token estimate is not supported for model %s", strings.TrimSpace(modelName))
 	}
 	normalizedSize := normalizeTraditionalImageBillingSize(size)
@@ -144,6 +164,66 @@ func estimateTraditionalImageOutputTokens(modelName string, size string, quality
 		return 0, fmt.Errorf("traditional image token estimate is not configured for size=%s quality=%s", normalizedSize, normalizedQuality)
 	}
 	return perImageTokens * imageCount, nil
+}
+
+func estimateGPTImage2OutputAmount(size string, quality string, imageCount int) (float64, string, string, error) {
+	if imageCount <= 0 {
+		return 0, "", "", nil
+	}
+	normalizedSize := normalizeTraditionalImageBillingSize(size)
+	if normalizedSize == "" {
+		return 0, "", "", fmt.Errorf("unsupported image size %q for gpt-image-2 local estimate", strings.TrimSpace(size))
+	}
+	normalizedQuality := normalizeTraditionalImageBillingQuality(quality)
+	if normalizedQuality == "" {
+		return 0, "", "", fmt.Errorf("unsupported image quality %q for gpt-image-2 local estimate", strings.TrimSpace(quality))
+	}
+	amountTable := map[string]map[string]float64{
+		"low": {
+			"1024x1024": 0.006,
+			"1024x1536": 0.005,
+			"1536x1024": 0.005,
+		},
+		"medium": {
+			"1024x1024": 0.053,
+			"1024x1536": 0.041,
+			"1536x1024": 0.041,
+		},
+		"high": {
+			"1024x1024": 0.211,
+			"1024x1536": 0.165,
+			"1536x1024": 0.165,
+		},
+	}
+	perImageAmount := amountTable[normalizedQuality][normalizedSize]
+	if perImageAmount <= 0 {
+		return 0, "", "", fmt.Errorf("gpt-image-2 local estimate is not configured for size=%s quality=%s", normalizedSize, normalizedQuality)
+	}
+	return perImageAmount * float64(imageCount), normalizedSize, normalizedQuality, nil
+}
+
+func estimateGPTImage2Usage(imageRequest *relaymodel.ImageRequest, pricing adminmodel.ResolvedModelPricing, imageCount int) (gptImage2Estimate, error) {
+	if imageRequest == nil {
+		return gptImage2Estimate{}, errors.New("image request is nil")
+	}
+	if !isGPTImage2Model(pricing.Model) {
+		return gptImage2Estimate{}, fmt.Errorf("gpt-image-2 local estimate is not supported for model %s", strings.TrimSpace(pricing.Model))
+	}
+	if pricing.OutputPrice <= 0 {
+		return gptImage2Estimate{}, fmt.Errorf("gpt-image-2 output price is not configured for model %s", strings.TrimSpace(pricing.Model))
+	}
+	outputAmount, normalizedSize, normalizedQuality, err := estimateGPTImage2OutputAmount(imageRequest.Size, imageRequest.Quality, imageCount)
+	if err != nil {
+		return gptImage2Estimate{}, err
+	}
+	outputQuantity := outputAmount * 1000 / pricing.OutputPrice
+	return gptImage2Estimate{
+		PromptTokens:      openai.CountTokenText(strings.TrimSpace(imageRequest.Prompt), strings.TrimSpace(pricing.Model)),
+		OutputAmount:      outputAmount,
+		OutputQuantity:    outputQuantity,
+		NormalizedSize:    normalizedSize,
+		NormalizedQuality: normalizedQuality,
+	}, nil
 }
 
 func estimateTraditionalImageTokenUsage(imageRequest *relaymodel.ImageRequest, pricing adminmodel.ResolvedModelPricing, imageCount int) (traditionalImageTokenEstimate, error) {
@@ -475,16 +555,51 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	billingSnapshot := billing.BillingSnapshot{}
 	switch billing.ResolveImageBillingMode(pricing) {
 	case billing.ImageBillingModeTokenBased:
-		tokenEstimate, estimateErr := estimateTraditionalImageTokenUsage(imageRequest, pricing, imageCount)
-		if estimateErr != nil {
-			return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
-		}
 		promptInputPrice, promptPriceErr := resolveTraditionalImagePromptInputPrice(pricing)
 		if promptPriceErr != nil {
 			return openai.ErrorWrapper(promptPriceErr, "calculate_image_quota_failed", http.StatusInternalServerError)
 		}
 		pricingForBilling := pricing
 		pricingForBilling.InputPrice = promptInputPrice
+		if isGPTImage2Model(pricing.Model) {
+			if relayMode == relaymode.ImagesEdits {
+				return openai.ErrorWrapper(errors.New("gpt-image-2 image edit billing local estimate is not implemented"), "unsupported_image_billing", http.StatusServiceUnavailable)
+			}
+			estimate, estimateErr := estimateGPTImage2Usage(imageRequest, pricingForBilling, imageCount)
+			if estimateErr != nil {
+				return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+			}
+			var snapshotErr error
+			billingSnapshot, snapshotErr = billing.ComputeTokenBasedBillingSnapshot(
+				float64(estimate.PromptTokens),
+				estimate.OutputQuantity,
+				pricingForBilling,
+				groupRatio,
+			)
+			if snapshotErr != nil {
+				return openai.ErrorWrapper(snapshotErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+			}
+			billingSnapshot.PricingSource = strings.TrimSpace(pricing.Source)
+			billingSnapshot.UsageSource = imageUsageSourceLocalEstimate
+			billingSnapshot.EstimateSource = imageEstimateSourceGPTImage2Examples
+			billingSnapshot.SettlementMode = imageSettlementModeLocalEstimateFinal
+			logger.Debugf(
+				ctx,
+				"[image_gpt_image_2_estimate] model=%s prompt_tokens=%d output_quantity=%.3f output_amount=%.6f size=%s quality=%s count=%d",
+				strings.TrimSpace(pricingForBilling.Model),
+				estimate.PromptTokens,
+				estimate.OutputQuantity,
+				estimate.OutputAmount,
+				estimate.NormalizedSize,
+				estimate.NormalizedQuality,
+				imageCount,
+			)
+			break
+		}
+		tokenEstimate, estimateErr := estimateTraditionalImageTokenUsage(imageRequest, pricing, imageCount)
+		if estimateErr != nil {
+			return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+		}
 		var snapshotErr error
 		billingSnapshot, snapshotErr = billing.ComputeTraditionalImageTokenBasedBillingSnapshot(
 			tokenEstimate.PromptTokens,
