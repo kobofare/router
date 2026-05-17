@@ -9,6 +9,7 @@ import {
   AppSwitch,
   AppTable,
   AppTag,
+  AppTooltip,
 } from '../../../router-ui';
 
 const resolveLatestStatusKey = (latestResult) =>
@@ -235,32 +236,23 @@ const ChannelDetailEndpointsTab = ({
               render: (_, row) => {
                 const latestStatusKey =
                   (row.last_test_status || '').trim() || 'untested';
-                const testedAtText =
-                  Number(row.last_tested_at || 0) > 0
-                    ? timestamp2string(row.last_tested_at)
-                    : '-';
                 const lastTestError = (row.last_test_error || '').trim();
+                const statusTag = (
+                  <AppTag color={latestStatusKey === 'supported' ? 'green' : 'grey'}>
+                    {t(`channel.edit.model_tester.status.${latestStatusKey}`)}
+                  </AppTag>
+                );
+                if (!lastTestError) {
+                  return statusTag;
+                }
                 return (
-                  <div
-                    className='router-cell-truncate'
-                    title={[
-                      t(`channel.edit.model_tester.status.${latestStatusKey}`),
-                      testedAtText,
-                      lastTestError,
-                    ]
-                      .filter(Boolean)
-                      .join('\n')}
+                  <AppTooltip
+                    title={lastTestError}
                   >
-                    <div>
-                      <AppTag color={latestStatusKey === 'supported' ? 'green' : 'grey'}>
-                        {t(`channel.edit.model_tester.status.${latestStatusKey}`)}
-                      </AppTag>
-                    </div>
-                    <div className='router-text-meta'>{testedAtText}</div>
-                    {lastTestError ? (
-                      <div className='router-text-meta'>{lastTestError}</div>
-                    ) : null}
-                  </div>
+                    <span>
+                      {statusTag}
+                    </span>
+                  </AppTooltip>
                 );
               },
             },

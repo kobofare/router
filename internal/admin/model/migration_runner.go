@@ -1007,6 +1007,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&ChannelModelSyncResult{})
 			},
 		},
+		{
+			Version:     "202605171930_backfill_channel_endpoint_test_results",
+			Description: "backfill latest endpoint test facts from channel test history",
+			Up: func(tx *gorm.DB) error {
+				return BackfillChannelModelEndpointTestResultsFromChannelTestsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

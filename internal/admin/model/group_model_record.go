@@ -71,52 +71,7 @@ func ListGroupModelNamesByDB(db *gorm.DB, groupID string) ([]string, error) {
 	return listGroupModelNamesWithDB(db, groupID, true)
 }
 
-func RebuildGroupModelsFromChannelsWithDB(db *gorm.DB, groupID string) error {
-	if db == nil {
-		return fmt.Errorf("database handle is nil")
-	}
-	groupCatalog, err := resolveGroupCatalogByReferenceWithDB(db, groupID)
-	if err != nil {
-		return err
-	}
-	groupID = groupCatalog.Id
-
-	groupCol := `"group"`
-	rows := make([]GroupModelChannel, 0)
-	if err := db.
-		Where(groupCol+" = ?", groupID).
-		Order("model asc, channel_id asc").
-		Find(&rows).Error; err != nil {
-		return err
-	}
-
-	nextRows := make([]GroupModel, 0)
-	indexByModel := make(map[string]int)
-	for _, row := range rows {
-		modelName := strings.TrimSpace(row.Model)
-		if modelName == "" {
-			continue
-		}
-		provider := NormalizeGroupModelChannelProvider(row.Provider)
-		if idx, ok := indexByModel[modelName]; ok {
-			if nextRows[idx].Provider == "" {
-				nextRows[idx].Provider = provider
-			}
-			continue
-		}
-		indexByModel[modelName] = len(nextRows)
-		nextRows = append(nextRows, GroupModel{
-			Group:    groupID,
-			Model:    modelName,
-			Provider: provider,
-			Enabled:  true,
-		})
-	}
-
-	return replaceGroupModelsWithDB(db, groupID, nextRows)
-}
-
-func replaceGroupModelsWithDB(db *gorm.DB, groupID string, rows []GroupModel) error {
+func replaceGroupModelRowsWithDB(db *gorm.DB, groupID string, rows []GroupModel) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -184,13 +139,14 @@ func normalizeGroupModelRows(groupID string, rows []GroupModel) []GroupModel {
 				Group:    strings.TrimSpace(groupID),
 				Model:    modelName,
 				Provider: NormalizeGroupModelChannelProvider(row.Provider),
-				Enabled:  true,
+				Enabled:  row.Enabled,
 			}
 			continue
 		}
 		if existing.Provider == "" {
 			existing.Provider = NormalizeGroupModelChannelProvider(row.Provider)
 		}
+		existing.Enabled = existing.Enabled || row.Enabled
 		merged[modelName] = existing
 	}
 	modelNames := make([]string, 0, len(merged))
@@ -257,7 +213,7 @@ func migrateGroupModelsWithDB(db *gorm.DB) error {
 	}
 	sort.Strings(order)
 	for _, groupID := range order {
-		if err := replaceGroupModelsWithDB(db, groupID, grouped[groupID]); err != nil {
+		if err := replaceGroupModelRowsWithDB(db, groupID, grouped[groupID]); err != nil {
 			return err
 		}
 	}

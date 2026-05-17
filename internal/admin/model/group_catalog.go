@@ -157,7 +157,7 @@ func DeleteGroupCatalog(id string) error {
 	return syncGroupRuntimeCachesWithDB(DB)
 }
 
-func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelConfigs []GroupModelConfigItem) (GroupCatalog, error) {
+func CreateGroupCatalogWithModels(item GroupCatalog, channelIDs []string, models []GroupModelBindingItem) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		created, err := createGroupCatalogWithDB(tx, item)
@@ -166,10 +166,10 @@ func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 		}
 		row = created
 		explicitChannels := channelIDs != nil
-		explicitModels := modelConfigs != nil
+		explicitModels := models != nil
 		switch {
 		case explicitModels:
-			return replaceGroupModelConfigsWithDB(tx, created.Id, channelIDs, modelConfigs, explicitChannels)
+			return replaceGroupModelsWithDB(tx, created.Id, channelIDs, models, explicitChannels)
 		case explicitChannels:
 			return replaceGroupChannelsWithDB(tx, created.Id, channelIDs)
 		default:
@@ -185,7 +185,7 @@ func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 	return row, nil
 }
 
-func UpdateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelConfigs []GroupModelConfigItem, updateChannels bool, updateModels bool) (GroupCatalog, error) {
+func UpdateGroupCatalogWithModels(item GroupCatalog, channelIDs []string, models []GroupModelBindingItem, updateChannels bool, updateModels bool) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		updated, err := updateGroupCatalogWithDB(tx, item)
@@ -195,7 +195,7 @@ func UpdateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 		row = updated
 		switch {
 		case updateModels:
-			return replaceGroupModelConfigsWithDB(tx, updated.Id, channelIDs, modelConfigs, updateChannels)
+			return replaceGroupModelsWithDB(tx, updated.Id, channelIDs, models, updateChannels)
 		case updateChannels:
 			return replaceGroupChannelsWithDB(tx, updated.Id, channelIDs)
 		default:

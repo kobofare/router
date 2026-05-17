@@ -43,7 +43,44 @@ func listGroupChannelRowsWithDB(db *gorm.DB, groupID string) ([]GroupChannel, er
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	return rows, nil
+	if len(rows) == 0 {
+		return rows, nil
+	}
+	channelIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		channelID := strings.TrimSpace(row.ChannelId)
+		if channelID == "" {
+			continue
+		}
+		channelIDs = append(channelIDs, channelID)
+	}
+	channelIDs = normalizeChannelIDList(channelIDs)
+	if len(channelIDs) == 0 {
+		return []GroupChannel{}, nil
+	}
+	channelsByID, err := loadChannelsByIDWithDB(db, channelIDs)
+	if err != nil {
+		return nil, err
+	}
+	filtered := make([]GroupChannel, 0, len(rows))
+	orphanIDs := make([]string, 0)
+	for _, row := range rows {
+		channelID := strings.TrimSpace(row.ChannelId)
+		if channelID == "" {
+			continue
+		}
+		if _, ok := channelsByID[channelID]; !ok {
+			orphanIDs = append(orphanIDs, channelID)
+			continue
+		}
+		filtered = append(filtered, row)
+	}
+	if len(orphanIDs) > 0 {
+		if err := db.Where(groupCol+" = ? AND channel_id IN ?", groupCatalog.Id, orphanIDs).Delete(&GroupChannel{}).Error; err != nil {
+			return nil, err
+		}
+	}
+	return filtered, nil
 }
 
 func listGroupBoundChannelIDsWithDB(db *gorm.DB, groupID string) ([]string, error) {

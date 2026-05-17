@@ -67,20 +67,22 @@ const ChannelDetailModelsTab = ({
         </AppButton>
       );
     }
+    const hasInputPrice =
+      row.input_price !== null && row.input_price !== undefined && row.input_price !== '';
+    const hasOutputPrice =
+      row.output_price !== null && row.output_price !== undefined && row.output_price !== '';
+    if (!hasInputPrice && !hasOutputPrice) {
+      return <span className='router-nowrap'>-</span>;
+    }
     return (
-      <div className='router-cell-stack'>
-        <span className='router-nowrap'>
-          {t('channel.edit.model_selector.table.input_price')}：{row.input_price ?? '-'}
-        </span>
-        <span className='router-nowrap router-text-meta'>
-          {t('channel.edit.model_selector.table.output_price')}：{row.output_price ?? '-'}
-        </span>
-      </div>
+      <span className='router-nowrap'>
+        {hasInputPrice ? row.input_price : '-'}｜{hasOutputPrice ? row.output_price : '-'}
+      </span>
     );
   };
 
   const tableRowSelection = {
-    columnWidth: columnWidths[0],
+    columnWidth: columnWidths.selection,
     selectedRowKeys: renderedModelConfigs
       .filter((row) => row?.selected)
       .map((row) => `${row.upstream_model}-${row.model}`),
@@ -210,9 +212,8 @@ const ChannelDetailModelsTab = ({
           title={t('channel.edit.model_selector.enable_hint')}
         />
         <AppTable
-          className='router-detail-table router-channel-detail-model-table'
+          className='router-detail-table router-table-fit-page router-channel-detail-model-table'
           pagination={false}
-          scroll={{ x: 1260 }}
           rowSelection={tableRowSelection}
           locale={{
             emptyText: (
@@ -232,7 +233,8 @@ const ChannelDetailModelsTab = ({
               title: t('channel.edit.model_selector.table.name'),
               dataIndex: 'upstream_model',
               key: 'upstream_model',
-              width: columnWidths[1],
+              width: columnWidths.name,
+              ellipsis: true,
               render: (value, row) => (
                 <div className='router-cell-truncate' title={value}>
                   <span className='router-nowrap'>{value}</span>
@@ -247,7 +249,8 @@ const ChannelDetailModelsTab = ({
             {
               title: t('channel.edit.model_selector.table.type'),
               key: 'type',
-              width: columnWidths[2],
+              className: 'router-table-col-type-tight',
+              width: columnWidths.type,
               render: (_, row) =>
                 t(`channel.model_types.${normalizeChannelModelType(row.type)}`),
             },
@@ -255,7 +258,8 @@ const ChannelDetailModelsTab = ({
               title: t('channel.edit.model_selector.table.alias'),
               dataIndex: 'model',
               key: 'model',
-              width: columnWidths[3],
+              width: columnWidths.alias,
+              ellipsis: true,
               render: (value) => (
                 <span className='router-cell-truncate' title={value}>
                   {value}
@@ -266,19 +270,22 @@ const ChannelDetailModelsTab = ({
               title: t('channel.edit.model_selector.table.price_unit'),
               dataIndex: 'price_unit',
               key: 'price_unit',
-              width: columnWidths[4],
+              className: 'router-table-col-price-unit',
+              width: columnWidths.priceUnit,
+              ellipsis: true,
               render: (value) => <span className='router-nowrap'>{value}</span>,
             },
             {
               title: t('channel.edit.model_selector.table.price'),
               key: 'price',
-              width: columnWidths[5],
+              width: columnWidths.price,
               render: (_, row) => renderMergedPrice(row),
             },
             {
               title: t('channel.edit.model_selector.table.status'),
               key: 'status',
-              width: columnWidths[6],
+              className: 'router-table-col-status-compact',
+              width: columnWidths.status,
               render: (_, row) => {
                 const statusKey = row.sync_status || 'unknown';
                 const color =
@@ -297,7 +304,8 @@ const ChannelDetailModelsTab = ({
             {
               title: t('channel.edit.model_selector.table.upstream_return'),
               key: 'last_synced_at',
-              width: columnWidths[7],
+              className: 'router-table-col-datetime',
+              width: columnWidths.upstreamReturn,
               render: (_, row) => {
                 const syncedAtText =
                   Number(row.last_synced_at || 0) > 0
@@ -313,25 +321,19 @@ const ChannelDetailModelsTab = ({
             {
               title: t('channel.table.actions'),
               key: 'actions',
-              width: columnWidths[8],
+              className: 'router-table-col-actions-compact',
+              width: columnWidths.actions,
               render: (_, row) => {
-                const rowEditDisabled =
+                const rowEditActionDisabled =
                   detailModelsEditLocked || detailModelMutating || detailModelsEditing;
-                const rowActionBlocked = !canSelectChannelModel(row) && !row.selected;
-                const rowEditActionDisabled = rowEditDisabled || rowActionBlocked;
-                const rowActionDisabledReason = rowActionBlocked
-                  ? row.enable_block_reason ||
-                    t('channel.edit.model_selector.selection_disabled_unassigned')
-                  : '';
                 const rowDeleteDisabled =
                   detailModelMutating || detailModelsEditing;
                 return (
-                  <div className='router-inline-actions'>
+                  <div className='router-inline-actions router-table-actions-compact'>
                     <AppButton
                       type='button'
                       className='router-inline-button'
                       disabled={rowEditActionDisabled}
-                      title={rowActionDisabledReason || undefined}
                       onClick={() => startDetailModelEdit(row.upstream_model)}
                     >
                       {t('common.edit')}

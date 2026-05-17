@@ -13,18 +13,18 @@ type GroupModelChannelRepository struct {
 	GetGroupModels                           func(ctx context.Context, group string) ([]string, error)
 }
 
-var groupModelRouteRepo GroupModelChannelRepository
+var groupModelChannelRepo GroupModelChannelRepository
 
 func BindGroupModelChannelRepository(repo GroupModelChannelRepository) {
-	groupModelRouteRepo = repo
+	groupModelChannelRepo = repo
 }
 
 func mustGroupModelChannelRepo() GroupModelChannelRepository {
-	if groupModelRouteRepo.GetRandomSatisfiedChannel == nil {
-		panic("group model channel runtime repository not initialized")
+	if groupModelChannelRepo.GetRandomSatisfiedChannel == nil {
+		panic("group model channel repository not initialized")
 	}
-	if groupModelRouteRepo.ListSatisfiedChannels == nil {
-		panic("group model channel runtime repository not initialized")
+	if groupModelChannelRepo.ListSatisfiedChannels == nil {
+		panic("group model channel repository not initialized")
 	}
-	return groupModelRouteRepo
+	return groupModelChannelRepo
 }

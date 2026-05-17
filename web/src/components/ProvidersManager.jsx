@@ -8,6 +8,7 @@ import {
   timestamp2string,
 } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
+import { PROVIDER_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppDetailSection,
@@ -2862,7 +2863,7 @@ const ProvidersManager = () => {
         }
       />
       <AppTable
-        className='router-hover-table router-list-table'
+        className='router-hover-table router-list-table router-table-fit-page'
         size='small'
         pagination={false}
         rowKey={(row) =>
@@ -2894,35 +2895,38 @@ const ProvidersManager = () => {
             title: t('channel.providers.table.provider'),
             dataIndex: 'id',
             key: 'id',
-            width: '22%',
+            width: PROVIDER_LIST_COLUMN_WIDTHS.id,
             render: (value) => value || '-',
           },
           {
             title: t('channel.providers.table.name'),
             key: 'name',
-            width: '28%',
+            width: PROVIDER_LIST_COLUMN_WIDTHS.name,
             render: (_, row) => row.name || row.id || '-',
           },
           {
             title: t('channel.providers.table.created_at'),
             dataIndex: 'created_at',
             key: 'created_at',
-            width: '20%',
+            className: 'router-table-col-datetime',
+            width: PROVIDER_LIST_COLUMN_WIDTHS.createdAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
             title: t('channel.providers.table.updated_at'),
             dataIndex: 'updated_at',
             key: 'updated_at',
-            width: '20%',
+            className: 'router-table-col-datetime',
+            width: PROVIDER_LIST_COLUMN_WIDTHS.updatedAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
             title: t('channel.providers.table.actions'),
             key: 'actions',
-            width: '10%',
+            className: 'router-table-col-actions-icon',
+            width: PROVIDER_LIST_COLUMN_WIDTHS.actions,
             render: (_, row) => (
-              <div className='router-action-group-tight'>
+              <div className='router-action-group-tight router-table-actions-icon-compact'>
                 <AppButton
                   type='button'
                   className='router-inline-button'

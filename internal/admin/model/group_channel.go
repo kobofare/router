@@ -10,14 +10,15 @@ import (
 )
 
 type GroupChannelItem struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Status   int    `json:"status"`
-	Models   string `json:"models"`
-	Bound    bool   `json:"bound"`
-	Priority *int64 `json:"priority,omitempty"`
-	Updated  int64  `json:"updated_at"`
+	Id           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	Protocol     string                    `json:"protocol"`
+	Status       int                       `json:"status"`
+	Models       string                    `json:"models"`
+	ModelOptions []GroupChannelModelOption `json:"model_options,omitempty"`
+	Bound        bool                      `json:"bound"`
+	Priority     *int64                    `json:"priority,omitempty"`
+	Updated      int64                     `json:"updated_at"`
 }
 
 func ListGroupChannels(groupID string) ([]GroupChannelItem, error) {
@@ -78,14 +79,15 @@ func listGroupChannelsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]G
 		}
 		_, bound := boundSet[channelID]
 		items = append(items, GroupChannelItem{
-			Id:       channelID,
-			Name:     channel.DisplayName(),
-			Protocol: channel.GetProtocol(),
-			Status:   channel.Status,
-			Models:   strings.TrimSpace(channel.Models),
-			Bound:    bound,
-			Priority: resolveGroupChannelPriority(bound, priorityByChannelID[channelID], channel.Priority),
-			Updated:  resolveGroupChannelUpdatedAt(bound, updatedByChannelID[channelID], channel.CreatedTime),
+			Id:           channelID,
+			Name:         channel.DisplayName(),
+			Protocol:     channel.GetProtocol(),
+			Status:       channel.Status,
+			Models:       strings.TrimSpace(channel.Models),
+			ModelOptions: buildGroupChannelModelOptions(&channel),
+			Bound:        bound,
+			Priority:     resolveGroupChannelPriority(bound, priorityByChannelID[channelID], channel.Priority),
+			Updated:      resolveGroupChannelUpdatedAt(bound, updatedByChannelID[channelID], channel.CreatedTime),
 		})
 	}
 	return items, nil
@@ -180,9 +182,6 @@ func replaceGroupChannelsWithItemsDB(db *gorm.DB, groupID string, items []GroupC
 		if err := db.Create(&rows).Error; err != nil {
 			return err
 		}
-	}
-	if err := RebuildGroupModelsFromChannelsWithDB(db, groupID); err != nil {
-		return err
 	}
 	if _, err := buildGroupModelChannelProviderMap(rows); err != nil {
 		return err
@@ -334,7 +333,7 @@ func BuildGroupModelChannelsForChannel(groupID string, channel *Channel, groupMo
 	if channel == nil {
 		return nil
 	}
-	catalog := buildGroupModelConfigChannelCatalog(channel)
+	catalog := buildGroupChannelModelCatalog(channel)
 	result := make([]GroupModelChannel, 0, len(groupModels))
 	seenGroupModelChannelKeys := make(map[string]struct{}, len(groupModels))
 	priority := helperInt64Pointer(channel.Priority)
@@ -359,7 +358,7 @@ func BuildGroupModelChannelsForChannel(groupID string, channel *Channel, groupMo
 		seenGroupModelChannelKeys[key] = struct{}{}
 		provider := NormalizeGroupModelChannelProvider(groupModel.Provider)
 		if provider == "" {
-			provider = NormalizeGroupModelChannelProvider(catalog.ResolveProvider(GroupModelConfigItem{Model: modelName}, upstream))
+			provider = NormalizeGroupModelChannelProvider(catalog.ResolveProvider(GroupModelBindingItem{Model: modelName}, upstream))
 		}
 		result = append(result, GroupModelChannel{
 			Group:         strings.TrimSpace(groupID),
@@ -389,7 +388,7 @@ func BuildGroupModelChannelsForChannel(groupID string, channel *Channel, groupMo
 		seenGroupModelChannelKeys[key] = struct{}{}
 		provider := NormalizeGroupModelChannelProvider(commonutils.NormalizeProvider(row.Provider))
 		if provider == "" {
-			provider = NormalizeGroupModelChannelProvider(catalog.ResolveProvider(GroupModelConfigItem{Model: modelName}, upstream))
+			provider = NormalizeGroupModelChannelProvider(catalog.ResolveProvider(GroupModelBindingItem{Model: modelName}, upstream))
 		}
 		result = append(result, GroupModelChannel{
 			Group:         strings.TrimSpace(groupID),

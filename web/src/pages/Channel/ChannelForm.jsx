@@ -41,6 +41,7 @@ import {
   AppSpin,
   AppTabs,
 } from '../../router-ui';
+import { CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 
 const normalizeModelId = (model) => {
   if (typeof model === 'string') return model;
@@ -88,18 +89,6 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
-const CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS = [
-  '8%',
-  '18%',
-  '8%',
-  '16%',
-  '9%',
-  '14%',
-  '9%',
-  '8%',
-  '10%',
-  '12%',
-];
 const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
   '14%',
   '14%',
@@ -112,12 +101,12 @@ const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
 ];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
+  '15%',
+  '23%',
+  '8%',
   '16%',
-  '24%',
-  '10%',
-  '16%',
-  '14%',
-  '10%',
+  '12%',
+  '18%',
 ];
 
 const supportsModelTestStream = (row) =>
@@ -987,9 +976,7 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     price_unit: normalizePriceUnitValue(row.price_unit),
     currency: normalizeCurrencyValue(row.currency),
     price_components: normalizeComplexPriceComponents(row.price_components),
-    sync_status: (row.sync_status || row.upstream_returned_status || 'unknown')
-      .toString()
-      .trim(),
+    sync_status: (row.sync_status || 'unknown').toString().trim(),
     last_synced_at: Number(row.last_synced_at || 0),
     enable_block_reason: (row.enable_block_reason || '').toString().trim(),
   };
@@ -1094,6 +1081,31 @@ const buildNextInputsWithModelConfigs = (previousInputs, modelConfigs, protocol)
     models: selectedModels,
     test_model: nextTestModel,
   };
+};
+
+const getBlockedSelectedChannelModels = (rows, protocol) => {
+  return normalizeChannelModelConfigs(rows, protocol).filter((row) => {
+    if (row.inactive === true || row.selected !== true) {
+      return false;
+    }
+    return ((row.enable_block_reason || '').toString().trim()) !== '';
+  });
+};
+
+const buildBlockedSelectedModelsMessage = (rows, protocol, t) => {
+  const blockedRows = getBlockedSelectedChannelModels(rows, protocol);
+  if (blockedRows.length === 0) {
+    return '';
+  }
+  const labels = blockedRows.map((row) => {
+    const modelName =
+      (row.upstream_model || row.model || '').toString().trim() || '-';
+    const reason = (row.enable_block_reason || '').toString().trim();
+    return reason ? `${modelName}（${reason}）` : modelName;
+  });
+  return t('channel.edit.messages.blocked_selected_models', {
+    models: labels.join('；'),
+  });
 };
 
 const extractChannelModelListItems = (payload) => {
@@ -2196,6 +2208,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       return detailFilteredModelConfigs;
     }
     return detailFilteredModelConfigs.filter((row) => {
+      const syncStatus = (row?.sync_status || 'unknown').toString().trim();
       const providerOwners = getProviderOwnersForModel(row).join(' ');
       const selectedProviderText = getSelectedProviderDisplayItems(row)
         .map((item) => item.text || item.value || '')
@@ -2204,6 +2217,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         row?.upstream_model,
         row?.model,
         row?.type,
+        syncStatus,
+        t(`channel.edit.model_selector.upstream_return_status.${syncStatus}`),
         providerOwners,
         selectedProviderText,
       ].map(normalizeSearchKeyword);
@@ -2214,6 +2229,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     detailFilteredModelConfigs,
     getProviderOwnersForModel,
     getSelectedProviderDisplayItems,
+    t,
   ]);
   const detailModelTotalPages = useMemo(() => {
     return Math.max(
@@ -2389,6 +2405,15 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (targetChannelID === '') {
         return false;
       }
+      const blockedMessage = buildBlockedSelectedModelsMessage(
+        nextModelConfigs,
+        inputs.protocol,
+        t,
+      );
+      if (blockedMessage !== '') {
+        showError(blockedMessage);
+        return false;
+      }
       const nextInputs = buildNextInputsWithModelConfigs(
         inputs,
         nextModelConfigs,
@@ -2450,6 +2475,15 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           showInfo(t('channel.edit.messages.key_required'));
           return false;
         }
+      }
+      const blockedMessage = buildBlockedSelectedModelsMessage(
+        inputs.model_configs,
+        inputs.protocol,
+        t,
+      );
+      if (blockedMessage !== '') {
+        showError(blockedMessage);
+        return false;
       }
       if (typeof loadingSetter === 'function') {
         loadingSetter(true);

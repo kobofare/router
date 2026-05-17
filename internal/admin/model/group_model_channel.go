@@ -30,7 +30,7 @@ const (
 // GroupModelChannel is the static expansion table of group model to channel model
 // mappings. It is derived from group_models, group_channels, and channel model
 // configuration data. Admin flows must not treat this table as source-of-truth
-// configuration, and runtime health/test state should not be written back into it.
+// configuration, and temporary connectivity or test facts should not be written back into it.
 func (GroupModelChannel) TableName() string {
 	return GroupModelChannelsTableName
 }

@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type GroupModelConfigItem struct {
+type GroupModelBindingItem struct {
 	Model           string `json:"model"`
 	ChannelId       string `json:"channel_id"`
 	UpstreamModel   string `json:"upstream_model"`
@@ -22,59 +22,120 @@ type GroupModelConfigItem struct {
 	ChannelStatus   int    `json:"channel_status,omitempty"`
 }
 
-type GroupModelConfigChannelModel struct {
+type GroupChannelModelOption struct {
 	Model         string `json:"model"`
 	UpstreamModel string `json:"upstream_model"`
 	Label         string `json:"label"`
 }
 
-type GroupModelConfigChannel struct {
-	Id       string                         `json:"id"`
-	Name     string                         `json:"name"`
-	Protocol string                         `json:"protocol"`
-	Status   int                            `json:"status"`
-	Priority *int64                         `json:"priority,omitempty"`
-	Bound    bool                           `json:"bound"`
-	Models   []GroupModelConfigChannelModel `json:"models"`
+type GroupChannelModels struct {
+	Id       string                    `json:"id"`
+	Name     string                    `json:"name"`
+	Protocol string                    `json:"protocol"`
+	Status   int                       `json:"status"`
+	Priority *int64                    `json:"priority,omitempty"`
+	Bound    bool                      `json:"bound"`
+	Models   []GroupChannelModelOption `json:"models"`
 }
 
-type GroupModelConfigPayload struct {
-	Items     []GroupModelConfigItem    `json:"items"`
-	Channels  []GroupModelConfigChannel `json:"channels"`
-	Summaries []GroupModelSummaryItem   `json:"summaries"`
+type GroupModelViewChannel struct {
+	ChannelId       string `json:"channel_id"`
+	ChannelName     string `json:"channel_name"`
+	ChannelProtocol string `json:"channel_protocol"`
+	ChannelStatus   int    `json:"channel_status"`
+	UpstreamModel   string `json:"upstream_model"`
+	Priority        *int64 `json:"priority,omitempty"`
 }
 
-func ListGroupModelConfigPayload(groupID string) (GroupModelConfigPayload, error) {
+type GroupModelViewItem struct {
+	Model    string                  `json:"model"`
+	Provider string                  `json:"provider,omitempty"`
+	Enabled  bool                    `json:"enabled"`
+	Channels []GroupModelViewChannel `json:"channels"`
+}
+
+type GroupModelsPayload struct {
+	Items []GroupModelViewItem `json:"items"`
+}
+
+func ListGroupModelsPayload(groupID string) (GroupModelsPayload, error) {
 	groupID = strings.TrimSpace(groupID)
 	if groupID == "" {
-		return GroupModelConfigPayload{}, fmt.Errorf("分组 ID 不能为空")
+		return GroupModelsPayload{}, fmt.Errorf("分组 ID 不能为空")
 	}
-	items, err := listGroupModelConfigItemsWithDB(DB, groupID)
+	groupCatalog, err := getGroupCatalogByIDWithDB(DB, groupID)
 	if err != nil {
-		return GroupModelConfigPayload{}, err
+		return GroupModelsPayload{}, err
 	}
-	channels, err := listGroupModelConfigChannelsWithDB(DB, groupID)
+	groupModels, err := listGroupModelRowsWithDB(DB, groupCatalog.Id, false)
 	if err != nil {
-		return GroupModelConfigPayload{}, err
+		return GroupModelsPayload{}, err
 	}
-	summaries, err := ListGroupModelSummaries(groupID)
+	bindings, err := listGroupModelBindingItemsWithDB(DB, groupCatalog.Id)
 	if err != nil {
-		return GroupModelConfigPayload{}, err
+		return GroupModelsPayload{}, err
 	}
-	return GroupModelConfigPayload{
-		Items:     items,
-		Channels:  channels,
-		Summaries: summaries,
-	}, nil
+	channelsByModel := make(map[string][]GroupModelViewChannel)
+	for _, item := range bindings {
+		modelName := strings.TrimSpace(item.Model)
+		if modelName == "" {
+			continue
+		}
+		channelsByModel[modelName] = append(channelsByModel[modelName], GroupModelViewChannel{
+			ChannelId:       strings.TrimSpace(item.ChannelId),
+			ChannelName:     strings.TrimSpace(item.ChannelName),
+			ChannelProtocol: strings.TrimSpace(item.ChannelProtocol),
+			ChannelStatus:   item.ChannelStatus,
+			UpstreamModel:   NormalizeGroupModelChannelUpstreamModel(modelName, item.UpstreamModel),
+			Priority:        helperInt64Pointer(item.Priority),
+		})
+	}
+	items := make([]GroupModelViewItem, 0, len(groupModels))
+	for _, row := range groupModels {
+		modelName := strings.TrimSpace(row.Model)
+		if modelName == "" {
+			continue
+		}
+		modelChannels := append([]GroupModelViewChannel(nil), channelsByModel[modelName]...)
+		sort.Slice(modelChannels, func(i, j int) bool {
+			left := modelChannels[i]
+			right := modelChannels[j]
+			leftPriority := int64(0)
+			rightPriority := int64(0)
+			if left.Priority != nil {
+				leftPriority = *left.Priority
+			}
+			if right.Priority != nil {
+				rightPriority = *right.Priority
+			}
+			if leftPriority != rightPriority {
+				return leftPriority > rightPriority
+			}
+			if left.ChannelName != right.ChannelName {
+				return left.ChannelName < right.ChannelName
+			}
+			return left.ChannelId < right.ChannelId
+		})
+		items = append(items, GroupModelViewItem{
+			Model:    modelName,
+			Provider: NormalizeGroupModelChannelProvider(row.Provider),
+			Enabled:  row.Enabled,
+			Channels: modelChannels,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Model < items[j].Model
+	})
+	return GroupModelsPayload{Items: items}, nil
 }
 
-func ReplaceGroupModelConfigs(groupID string, channelIDs []string, items []GroupModelConfigItem, explicitChannels bool) error {
+func ReplaceGroupModels(groupID string, channelIDs []string, items []GroupModelBindingItem, explicitChannels bool) error {
 	groupCatalog, err := getGroupCatalogByIDWithDB(DB, groupID)
 	if err != nil {
 		return err
 	}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
-		return replaceGroupModelConfigsWithDB(tx, groupID, channelIDs, items, explicitChannels)
+		return replaceGroupModelsWithDB(tx, groupID, channelIDs, items, explicitChannels)
 	}); err != nil {
 		return err
 	}
@@ -82,7 +143,7 @@ func ReplaceGroupModelConfigs(groupID string, channelIDs []string, items []Group
 	return nil
 }
 
-func ReplaceSingleGroupModelConfig(groupID string, modelName string, items []GroupModelConfigItem) error {
+func ReplaceSingleGroupModel(groupID string, modelName string, items []GroupModelBindingItem) error {
 	groupCatalog, err := getGroupCatalogByIDWithDB(DB, groupID)
 	if err != nil {
 		return err
@@ -92,7 +153,7 @@ func ReplaceSingleGroupModelConfig(groupID string, modelName string, items []Gro
 		return fmt.Errorf("模型不能为空")
 	}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
-		return replaceSingleGroupModelConfigWithDB(tx, groupCatalog.Id, normalizedModelName, items)
+		return replaceSingleGroupModelWithDB(tx, groupCatalog.Id, normalizedModelName, items)
 	}); err != nil {
 		return err
 	}
@@ -100,7 +161,25 @@ func ReplaceSingleGroupModelConfig(groupID string, modelName string, items []Gro
 	return nil
 }
 
-func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName string, items []GroupModelConfigItem) error {
+func DeleteSingleGroupModel(groupID string, modelName string) error {
+	groupCatalog, err := getGroupCatalogByIDWithDB(DB, groupID)
+	if err != nil {
+		return err
+	}
+	normalizedModelName := strings.TrimSpace(modelName)
+	if normalizedModelName == "" {
+		return fmt.Errorf("模型不能为空")
+	}
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		return deleteSingleGroupModelWithDB(tx, groupCatalog.Id, normalizedModelName)
+	}); err != nil {
+		return err
+	}
+	RefreshGroupModelChannelCachesForGroups(groupCatalog.Id)
+	return nil
+}
+
+func replaceSingleGroupModelWithDB(db *gorm.DB, groupID string, modelName string, items []GroupModelBindingItem) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -114,15 +193,18 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 		return fmt.Errorf("模型不能为空")
 	}
 
-	modelItems := make([]GroupModelConfigItem, 0, len(items))
+	modelItems := make([]GroupModelBindingItem, 0, len(items))
 	for _, item := range items {
 		next := item
 		next.Model = modelName
 		modelItems = append(modelItems, next)
 	}
-	normalizedItems, err := normalizeGroupModelConfigItems(modelItems)
+	normalizedItems, err := normalizeGroupModelBindingItems(modelItems)
 	if err != nil {
 		return err
+	}
+	if len(normalizedItems) == 0 {
+		return fmt.Errorf("分组模型至少需要一个渠道映射")
 	}
 
 	boundChannelIDs, err := listGroupBoundChannelIDsWithDB(db, groupID)
@@ -133,7 +215,7 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 	for _, channelID := range boundChannelIDs {
 		allowedSet[channelID] = struct{}{}
 	}
-	channelsByID, err := loadEnabledChannelsByIDWithDB(db, boundChannelIDs)
+	channelsByID, err := loadConfigurableChannelsByIDWithDB(db, boundChannelIDs)
 	if err != nil {
 		return err
 	}
@@ -145,9 +227,6 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 	groupCol := `"group"`
 	if err := db.Where(groupCol+" = ? AND model = ?", groupID, modelName).Delete(&GroupModelChannel{}).Error; err != nil {
 		return err
-	}
-	if len(normalizedItems) == 0 {
-		return db.Where(groupCol+" = ? AND model = ?", groupID, modelName).Delete(&GroupModel{}).Error
 	}
 
 	rows := make([]GroupModelChannel, 0, len(normalizedItems))
@@ -170,7 +249,7 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 		}
 		seenChannels[item.ChannelId] = struct{}{}
 
-		catalog := buildGroupModelConfigChannelCatalog(channel)
+		catalog := buildGroupChannelModelCatalog(channel)
 		upstreamModel := catalog.ResolveUpstream(item)
 		if upstreamModel == "" {
 			target := item.UpstreamModel
@@ -186,11 +265,11 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 		if provider == "" {
 			provider = itemProvider
 		}
-		enabled := resolveGroupModelConfigEnabled(item)
+		enabled := resolveGroupModelBindingEnabled(item)
 		modelEnabled = modelEnabled || enabled
 		priority := priorityByChannelID[item.ChannelId]
 		if priority == nil {
-			priority = resolveGroupModelConfigPriority(item, channel)
+			priority = resolveGroupModelBindingPriority(item, channel)
 		}
 		rows = append(rows, GroupModelChannel{
 			Group:         groupID,
@@ -228,7 +307,27 @@ func replaceSingleGroupModelConfigWithDB(db *gorm.DB, groupID string, modelName 
 	return db.Create(&rows).Error
 }
 
-func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelConfigItem, error) {
+func deleteSingleGroupModelWithDB(db *gorm.DB, groupID string, modelName string) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	groupCatalog, err := getGroupCatalogByIDWithDB(db, groupID)
+	if err != nil {
+		return err
+	}
+	groupID = groupCatalog.Id
+	modelName = strings.TrimSpace(modelName)
+	if modelName == "" {
+		return fmt.Errorf("模型不能为空")
+	}
+	groupCol := `"group"`
+	if err := db.Where(groupCol+" = ? AND model = ?", groupID, modelName).Delete(&GroupModelChannel{}).Error; err != nil {
+		return err
+	}
+	return db.Where(groupCol+" = ? AND model = ?", groupID, modelName).Delete(&GroupModel{}).Error
+}
+
+func listGroupModelBindingItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelBindingItem, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database handle is nil")
 	}
@@ -245,7 +344,20 @@ func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelC
 		return nil, err
 	}
 	if len(rows) == 0 {
-		return []GroupModelConfigItem{}, nil
+		return []GroupModelBindingItem{}, nil
+	}
+
+	groupModels, err := listGroupModelRowsWithDB(db, groupCatalog.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	enabledByModel := make(map[string]bool, len(groupModels))
+	for _, row := range groupModels {
+		modelName := strings.TrimSpace(row.Model)
+		if modelName == "" {
+			continue
+		}
+		enabledByModel[modelName] = row.Enabled
 	}
 
 	channelIDs := make([]string, 0, len(rows))
@@ -280,28 +392,7 @@ func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelC
 		channelByID[channelID] = channel
 	}
 
-	items := make([]GroupModelConfigItem, 0, len(rows))
-	for _, route := range rows {
-		modelName := strings.TrimSpace(route.Model)
-		channelID := strings.TrimSpace(route.ChannelId)
-		if modelName == "" || channelID == "" {
-			continue
-		}
-		channel, ok := channelByID[channelID]
-		if !ok {
-			continue
-		}
-		items = append(items, GroupModelConfigItem{
-			Model:           modelName,
-			ChannelId:       channelID,
-			UpstreamModel:   NormalizeGroupModelChannelUpstreamModel(modelName, route.UpstreamModel),
-			Enabled:         helperBoolPointer(true),
-			Priority:        helperInt64Pointer(route.Priority),
-			ChannelName:     channel.DisplayName(),
-			ChannelProtocol: channel.GetProtocol(),
-			ChannelStatus:   channel.Status,
-		})
-	}
+	items := buildGroupModelBindingItems(rows, channelByID, enabledByModel)
 	sort.Slice(items, func(i, j int) bool {
 		left := items[i]
 		right := items[j]
@@ -316,7 +407,40 @@ func listGroupModelConfigItemsWithDB(db *gorm.DB, groupID string) ([]GroupModelC
 	return items, nil
 }
 
-func listGroupModelConfigChannelsWithDB(db *gorm.DB, groupID string) ([]GroupModelConfigChannel, error) {
+func buildGroupModelBindingItems(rows []GroupModelChannel, channelByID map[string]Channel, enabledByModel map[string]bool) []GroupModelBindingItem {
+	if len(rows) == 0 {
+		return []GroupModelBindingItem{}
+	}
+	items := make([]GroupModelBindingItem, 0, len(rows))
+	for _, route := range rows {
+		modelName := strings.TrimSpace(route.Model)
+		channelID := strings.TrimSpace(route.ChannelId)
+		if modelName == "" || channelID == "" {
+			continue
+		}
+		channel, ok := channelByID[channelID]
+		if !ok {
+			continue
+		}
+		enabled, ok := enabledByModel[modelName]
+		if !ok {
+			enabled = true
+		}
+		items = append(items, GroupModelBindingItem{
+			Model:           modelName,
+			ChannelId:       channelID,
+			UpstreamModel:   NormalizeGroupModelChannelUpstreamModel(modelName, route.UpstreamModel),
+			Enabled:         helperBoolPointer(enabled),
+			Priority:        helperInt64Pointer(route.Priority),
+			ChannelName:     channel.DisplayName(),
+			ChannelProtocol: channel.GetProtocol(),
+			ChannelStatus:   channel.Status,
+		})
+	}
+	return items
+}
+
+func listGroupChannelModelsWithDB(db *gorm.DB, groupID string) ([]GroupChannelModels, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database handle is nil")
 	}
@@ -349,7 +473,7 @@ func listGroupModelConfigChannelsWithDB(db *gorm.DB, groupID string) ([]GroupMod
 		return nil, err
 	}
 
-	items := make([]GroupModelConfigChannel, 0, len(channels))
+	items := make([]GroupChannelModels, 0, len(channels))
 	for _, channel := range channels {
 		channel.NormalizeIdentity()
 		channelID := strings.TrimSpace(channel.Id)
@@ -357,20 +481,20 @@ func listGroupModelConfigChannelsWithDB(db *gorm.DB, groupID string) ([]GroupMod
 			continue
 		}
 		_, bound := boundSet[channelID]
-		items = append(items, GroupModelConfigChannel{
+		items = append(items, GroupChannelModels{
 			Id:       channelID,
 			Name:     channel.DisplayName(),
 			Protocol: channel.GetProtocol(),
 			Status:   channel.Status,
 			Priority: resolveGroupChannelPriority(bound, priorityByChannelID[channelID], channel.Priority),
 			Bound:    bound,
-			Models:   buildGroupModelConfigChannelModels(&channel),
+			Models:   buildGroupChannelModelOptions(&channel),
 		})
 	}
 	return items, nil
 }
 
-func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []string, items []GroupModelConfigItem, explicitChannels bool) error {
+func replaceGroupModelsWithDB(db *gorm.DB, groupID string, channelIDs []string, items []GroupModelBindingItem, explicitChannels bool) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -384,11 +508,11 @@ func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []st
 	}
 	groupID = groupCatalog.Id
 
-	normalizedItems, err := normalizeGroupModelConfigItems(items)
+	normalizedItems, err := normalizeGroupModelBindingItems(items)
 	if err != nil {
 		return err
 	}
-	allowedChannelIDs, channelsByID, err := loadGroupModelConfigChannelsByIDWithDB(db, groupID, channelIDs, explicitChannels, normalizedItems)
+	allowedChannelIDs, channelsByID, err := loadGroupModelBindingChannelsByIDWithDB(db, groupID, channelIDs, explicitChannels, normalizedItems)
 	if err != nil {
 		return err
 	}
@@ -400,9 +524,9 @@ func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []st
 	for _, channelID := range allowedChannelIDs {
 		allowedSet[channelID] = struct{}{}
 	}
-	selectedCatalogs := make(map[string]groupModelConfigChannelCatalog, len(channelsByID))
+	selectedCatalogs := make(map[string]groupChannelModelCatalog, len(channelsByID))
 	for channelID, channel := range channelsByID {
-		selectedCatalogs[channelID] = buildGroupModelConfigChannelCatalog(channel)
+		selectedCatalogs[channelID] = buildGroupChannelModelCatalog(channel)
 	}
 
 	groupModels := make([]GroupModel, 0, len(normalizedItems))
@@ -439,7 +563,7 @@ func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []st
 				Group:    groupID,
 				Model:    item.Model,
 				Provider: provider,
-				Enabled:  resolveGroupModelConfigEnabled(item),
+				Enabled:  resolveGroupModelBindingEnabled(item),
 			})
 		} else if groupModelProviders[item.Model] == "" && provider != "" {
 			groupModelProviders[item.Model] = provider
@@ -451,7 +575,7 @@ func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []st
 			}
 		}
 	}
-	if err := replaceGroupModelsWithDB(db, groupID, groupModels); err != nil {
+	if err := replaceGroupModelRowsWithDB(db, groupID, groupModels); err != nil {
 		return err
 	}
 
@@ -481,13 +605,13 @@ func replaceGroupModelConfigsWithDB(db *gorm.DB, groupID string, channelIDs []st
 	return nil
 }
 
-func normalizeGroupModelConfigItems(items []GroupModelConfigItem) ([]GroupModelConfigItem, error) {
+func normalizeGroupModelBindingItems(items []GroupModelBindingItem) ([]GroupModelBindingItem, error) {
 	if len(items) == 0 {
-		return []GroupModelConfigItem{}, nil
+		return []GroupModelBindingItem{}, nil
 	}
-	result := make([]GroupModelConfigItem, 0, len(items))
+	result := make([]GroupModelBindingItem, 0, len(items))
 	for _, item := range items {
-		normalized := GroupModelConfigItem{
+		normalized := GroupModelBindingItem{
 			Model:         strings.TrimSpace(item.Model),
 			ChannelId:     strings.TrimSpace(item.ChannelId),
 			UpstreamModel: strings.TrimSpace(item.UpstreamModel),
@@ -497,18 +621,15 @@ func normalizeGroupModelConfigItems(items []GroupModelConfigItem) ([]GroupModelC
 		if normalized.Model == "" && normalized.ChannelId == "" && normalized.UpstreamModel == "" {
 			continue
 		}
-		if !resolveGroupModelConfigEnabled(normalized) {
-			continue
-		}
 		if normalized.Model == "" || normalized.ChannelId == "" {
-			return nil, fmt.Errorf("分组模型配置存在未填写完整的行")
+			return nil, fmt.Errorf("分组模型存在未填写完整的行")
 		}
 		result = append(result, normalized)
 	}
 	return result, nil
 }
 
-func loadGroupModelConfigChannelsByIDWithDB(db *gorm.DB, groupID string, channelIDs []string, explicitChannels bool, items []GroupModelConfigItem) ([]string, map[string]*Channel, error) {
+func loadGroupModelBindingChannelsByIDWithDB(db *gorm.DB, groupID string, channelIDs []string, explicitChannels bool, items []GroupModelBindingItem) ([]string, map[string]*Channel, error) {
 	allowedChannelIDs := normalizeChannelIDList(channelIDs)
 	if !explicitChannels && len(allowedChannelIDs) == 0 {
 		boundIDs, err := listGroupBoundChannelIDsWithDB(db, groupID)
@@ -518,20 +639,55 @@ func loadGroupModelConfigChannelsByIDWithDB(db *gorm.DB, groupID string, channel
 		allowedChannelIDs = boundIDs
 	}
 	if len(allowedChannelIDs) == 0 {
-		allowedChannelIDs = collectChannelIDsFromGroupModelConfigItems(items)
+		allowedChannelIDs = collectChannelIDsFromGroupModelBindingItems(items)
 	}
 	if len(allowedChannelIDs) == 0 {
 		return []string{}, map[string]*Channel{}, nil
 	}
 
-	channelsByID, err := loadEnabledChannelsByIDWithDB(db, allowedChannelIDs)
+	channelsByID, err := loadConfigurableChannelsByIDWithDB(db, allowedChannelIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 	return allowedChannelIDs, channelsByID, nil
 }
 
-func collectChannelIDsFromGroupModelConfigItems(items []GroupModelConfigItem) []string {
+func loadConfigurableChannelsByIDWithDB(db *gorm.DB, channelIDs []string) (map[string]*Channel, error) {
+	channelsByID, err := loadChannelsByIDWithDB(db, channelIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(channelsByID) == 0 {
+		return channelsByID, nil
+	}
+
+	normalizedChannelIDs := normalizeChannelIDList(channelIDs)
+	if len(channelsByID) != len(normalizedChannelIDs) {
+		missing := make([]string, 0)
+		for _, channelID := range normalizedChannelIDs {
+			if _, ok := channelsByID[channelID]; !ok {
+				missing = append(missing, channelID)
+			}
+		}
+		sort.Strings(missing)
+		return nil, fmt.Errorf("渠道不存在: %s", strings.Join(missing, ", "))
+	}
+
+	channelRefs := make([]*Channel, 0, len(channelsByID))
+	for _, channelID := range normalizedChannelIDs {
+		channel := channelsByID[channelID]
+		if channel == nil {
+			continue
+		}
+		channelRefs = append(channelRefs, channel)
+	}
+	if err := HydrateChannelsWithModels(db, channelRefs); err != nil {
+		return nil, err
+	}
+	return channelsByID, nil
+}
+
+func collectChannelIDsFromGroupModelBindingItems(items []GroupModelBindingItem) []string {
 	if len(items) == 0 {
 		return []string{}
 	}
@@ -552,14 +708,14 @@ func collectChannelIDsFromGroupModelConfigItems(items []GroupModelConfigItem) []
 	return result
 }
 
-func resolveGroupModelConfigEnabled(item GroupModelConfigItem) bool {
+func resolveGroupModelBindingEnabled(item GroupModelBindingItem) bool {
 	if item.Enabled == nil {
 		return true
 	}
 	return *item.Enabled
 }
 
-func resolveGroupModelConfigPriority(item GroupModelConfigItem, channel *Channel) *int64 {
+func resolveGroupModelBindingPriority(item GroupModelBindingItem, channel *Channel) *int64 {
 	if item.Priority != nil {
 		return helperInt64Pointer(item.Priority)
 	}
@@ -600,12 +756,12 @@ func channelSelectedModelConfigs(channel *Channel) []ChannelModel {
 	return selected
 }
 
-func buildGroupModelConfigChannelModels(channel *Channel) []GroupModelConfigChannelModel {
+func buildGroupChannelModelOptions(channel *Channel) []GroupChannelModelOption {
 	selectedConfigs := channelSelectedModelConfigs(channel)
 	if len(selectedConfigs) == 0 {
-		return []GroupModelConfigChannelModel{}
+		return []GroupChannelModelOption{}
 	}
-	items := make([]GroupModelConfigChannelModel, 0, len(selectedConfigs))
+	items := make([]GroupChannelModelOption, 0, len(selectedConfigs))
 	for _, row := range selectedConfigs {
 		modelName := strings.TrimSpace(row.Model)
 		upstream := NormalizeGroupModelChannelUpstreamModel(modelName, row.UpstreamModel)
@@ -613,7 +769,7 @@ func buildGroupModelConfigChannelModels(channel *Channel) []GroupModelConfigChan
 		if upstream != "" && upstream != modelName {
 			label = fmt.Sprintf("%s -> %s", modelName, upstream)
 		}
-		items = append(items, GroupModelConfigChannelModel{
+		items = append(items, GroupChannelModelOption{
 			Model:         modelName,
 			UpstreamModel: upstream,
 			Label:         label,
@@ -622,15 +778,15 @@ func buildGroupModelConfigChannelModels(channel *Channel) []GroupModelConfigChan
 	return items
 }
 
-type groupModelConfigChannelCatalog struct {
+type groupChannelModelCatalog struct {
 	aliasToUpstream  map[string]string
 	upstreamSet      map[string]struct{}
 	aliasToProvider  map[string]string
 	upstreamProvider map[string]string
 }
 
-func buildGroupModelConfigChannelCatalog(channel *Channel) groupModelConfigChannelCatalog {
-	catalog := groupModelConfigChannelCatalog{
+func buildGroupChannelModelCatalog(channel *Channel) groupChannelModelCatalog {
+	catalog := groupChannelModelCatalog{
 		aliasToUpstream:  make(map[string]string),
 		upstreamSet:      make(map[string]struct{}),
 		aliasToProvider:  make(map[string]string),
@@ -656,7 +812,7 @@ func buildGroupModelConfigChannelCatalog(channel *Channel) groupModelConfigChann
 	return catalog
 }
 
-func (catalog groupModelConfigChannelCatalog) ResolveUpstream(item GroupModelConfigItem) string {
+func (catalog groupChannelModelCatalog) ResolveUpstream(item GroupModelBindingItem) string {
 	upstream := strings.TrimSpace(item.UpstreamModel)
 	if upstream != "" {
 		if _, ok := catalog.upstreamSet[upstream]; ok {
@@ -670,7 +826,7 @@ func (catalog groupModelConfigChannelCatalog) ResolveUpstream(item GroupModelCon
 	return ""
 }
 
-func (catalog groupModelConfigChannelCatalog) ResolveProvider(item GroupModelConfigItem, resolvedUpstream string) string {
+func (catalog groupChannelModelCatalog) ResolveProvider(item GroupModelBindingItem, resolvedUpstream string) string {
 	modelName := strings.TrimSpace(item.Model)
 	if modelName != "" {
 		if provider, ok := catalog.aliasToProvider[modelName]; ok && provider != "" {

@@ -210,7 +210,7 @@ func executeChannelModelTestTask(ctx context.Context, task *model.AsyncTask) (st
 	if channelID == "" || modelID == "" {
 		return "", fmt.Errorf("模型测试任务参数无效")
 	}
-	channelRow, _, err := loadChannelRuntimeState("", "", "", channelID, nil, nil, nil, modelID)
+	channelRow, _, err := loadChannelSyncState("", "", "", channelID, nil, nil, nil, modelID)
 	if err != nil {
 		return "", err
 	}
@@ -258,22 +258,22 @@ func executeChannelRefreshModelsTask(task *model.AsyncTask) (string, error) {
 	if channelID == "" {
 		channelID = strings.TrimSpace(task.ChannelId)
 	}
-	runtimeChannel, keySource, err := loadChannelRuntimeState("", "", "", channelID, nil, nil, nil, "")
+	resolvedChannel, keySource, err := loadChannelSyncState("", "", "", channelID, nil, nil, nil, "")
 	if err != nil {
 		return "", err
 	}
-	baseURL := runtimeChannel.ResolveAPIBaseURL("")
-	fetchedRows, fetchTrace, err := fetchChannelModelsDetailed(runtimeChannel.GetProtocol(), runtimeChannel.Key, baseURL, "")
+	baseURL := resolvedChannel.ResolveAPIBaseURL("")
+	fetchedRows, fetchTrace, err := fetchChannelModelsDetailed(resolvedChannel.GetProtocol(), resolvedChannel.Key, baseURL, "")
 	logChannelAsyncRefresh(task, keySource, fetchTrace, len(fetchedRows), err)
 	if err != nil {
 		return "", err
 	}
-	if err := model.ReplaceChannelModelSyncResultsWithDB(model.DB, channelID, runtimeChannel.GetModelConfigs(), fetchedRows, task.Id); err != nil {
+	if err := model.ReplaceChannelModelSyncResultsWithDB(model.DB, channelID, resolvedChannel.GetModelConfigs(), fetchedRows, task.Id); err != nil {
 		return "", err
 	}
 	return marshalJSONForLog(map[string]any{
 		"channel_id":   channelID,
-		"api_base_url": runtimeChannel.ResolveAPIBaseURL(""),
+		"api_base_url": resolvedChannel.ResolveAPIBaseURL(""),
 		"models_url":   fetchTrace.ModelsURL,
 		"count":        len(fetchedRows),
 	}), nil

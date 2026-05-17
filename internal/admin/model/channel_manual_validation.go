@@ -64,10 +64,10 @@ func ExplainManualChannelEndpointEnableBlockWithDB(db *gorm.DB, channelID string
 		return "", err
 	}
 	if official == nil {
-		return fmt.Sprintf("模型 %s 缺少供应商官方信息，不能启用端点 %s", firstNonEmpty(row.Model, row.UpstreamModel), normalizedEndpoint), nil
+		return fmt.Sprintf("模型 %s 缺少供应商官方信息，不能启用端点 %s", displayChannelModelName(row), normalizedEndpoint), nil
 	}
 	if normalizeManualValidationProviderModelStatus(official.Status) != ProviderModelStatusActive {
-		return fmt.Sprintf("模型 %s 当前官方状态不是 active，不能启用端点 %s", official.Model, normalizedEndpoint), nil
+		return fmt.Sprintf("模型 %s 当前官方状态不是 active，不能启用端点 %s", displayOfficialModelName(row, official.Model), normalizedEndpoint), nil
 	}
 	officialEndpoints := NormalizeProviderModelSupportedEndpoints(
 		normalizeModelType(official.Type, official.Model),
@@ -88,7 +88,7 @@ func ExplainManualChannelEndpointEnableBlockWithDB(db *gorm.DB, channelID string
 		return "", err
 	}
 	if !ok {
-		return fmt.Sprintf("模型 %s 的端点 %s 缺少最近一次成功测试结果，不能启用", firstNonEmpty(row.Model, row.UpstreamModel), normalizedEndpoint), nil
+		return fmt.Sprintf("模型 %s 的端点 %s 缺少最近一次成功测试结果，不能启用", displayChannelModelName(row), normalizedEndpoint), nil
 	}
 	return "", nil
 }
@@ -99,17 +99,17 @@ func ExplainManualChannelModelEnableBlockWithDB(db *gorm.DB, channelID string, r
 		return "", err
 	}
 	if official == nil {
-		return fmt.Sprintf("模型 %s 缺少供应商官方信息，不能启用", firstNonEmpty(row.Model, row.UpstreamModel)), nil
+		return fmt.Sprintf("模型 %s 缺少供应商官方信息，不能启用", displayChannelModelName(row)), nil
 	}
 	if normalizeManualValidationProviderModelStatus(official.Status) != ProviderModelStatusActive {
-		return fmt.Sprintf("模型 %s 当前官方状态不是 active，不能启用", official.Model), nil
+		return fmt.Sprintf("模型 %s 当前官方状态不是 active，不能启用", displayOfficialModelName(row, official.Model)), nil
 	}
 	ok, err := HasReturnedChannelModelSyncResultWithDB(db, channelID, row.Model, row.UpstreamModel)
 	if err != nil {
 		return "", err
 	}
 	if !ok {
-		return fmt.Sprintf("模型 %s 最近一次上游返回未包含，不能启用", firstNonEmpty(row.Model, row.UpstreamModel)), nil
+		return fmt.Sprintf("模型 %s 最近一次上游返回未包含，不能启用", displayChannelModelName(row)), nil
 	}
 	return "", nil
 }
@@ -193,4 +193,12 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func displayChannelModelName(row ChannelModel) string {
+	return firstNonEmpty(row.UpstreamModel, row.Model)
+}
+
+func displayOfficialModelName(row ChannelModel, officialModel string) string {
+	return firstNonEmpty(row.UpstreamModel, officialModel, row.Model)
 }

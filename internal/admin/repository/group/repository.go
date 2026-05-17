@@ -87,7 +87,7 @@ func ListSatisfiedChannels(group string, modelName string) ([]*model.Channel, er
 }
 
 func AddGroupModelChannels(channel *model.Channel) error {
-	// Runtime routes are rebuilt from group_models + group_channels.
+	// Runtime routes are refreshed from group_models + group_channels.
 	// Channel creation no longer writes routing truth directly.
 	if channel == nil {
 		return nil
@@ -152,11 +152,6 @@ func DeleteGroupModelChannels(channel *model.Channel) error {
 	if err := model.DB.Where("channel_id = ?", channel.Id).Delete(&model.GroupModelChannel{}).Error; err != nil {
 		return err
 	}
-	for _, groupID := range groups {
-		if err := model.RebuildGroupModelsFromChannelsWithDB(model.DB, groupID); err != nil {
-			return err
-		}
-	}
 	model.RefreshGroupModelChannelCachesForGroups(groups...)
 	return nil
 }
@@ -189,15 +184,9 @@ func UpdateGroupModelChannels(channel *model.Channel) error {
 				return err
 			}
 			if len(next) == 0 {
-				if err := model.RebuildGroupModelsFromChannelsWithDB(tx, groupID); err != nil {
-					return err
-				}
 				continue
 			}
 			if err := tx.Create(&next).Error; err != nil {
-				return err
-			}
-			if err := model.RebuildGroupModelsFromChannelsWithDB(tx, groupID); err != nil {
 				return err
 			}
 		}

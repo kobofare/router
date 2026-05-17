@@ -89,3 +89,25 @@ func TestChannelSelectedModelConfigsSkipsInactiveRows(t *testing.T) {
 		t.Fatalf("selected model = %q, want active-model", got[0].Model)
 	}
 }
+
+func TestNormalizeGroupModelRowsPreservesDisabledState(t *testing.T) {
+	rows := []GroupModel{
+		{
+			Group:    " group-a ",
+			Model:    " gpt-image-2 ",
+			Provider: "openai",
+			Enabled:  false,
+		},
+	}
+
+	got := normalizeGroupModelRows("group-a", rows)
+	if len(got) != 1 {
+		t.Fatalf("normalizeGroupModelRows returned %d rows, want 1", len(got))
+	}
+	if got[0].Model != "gpt-image-2" {
+		t.Fatalf("normalized model = %q, want gpt-image-2", got[0].Model)
+	}
+	if got[0].Enabled {
+		t.Fatalf("normalized enabled = true, want false")
+	}
+}
