@@ -18,8 +18,8 @@ func Create(item model.GroupCatalog) (model.GroupCatalog, error) {
 	return model.CreateGroupCatalog(item)
 }
 
-func CreateWithChannelBindings(item model.GroupCatalog, channelIDs []string) (model.GroupCatalog, error) {
-	return model.CreateGroupCatalogWithChannelBindings(item, channelIDs)
+func CreateWithChannels(item model.GroupCatalog, channelIDs []string) (model.GroupCatalog, error) {
+	return model.CreateGroupCatalogWithChannels(item, channelIDs)
 }
 
 func CreateWithConfig(item model.GroupCatalog, channelIDs []string, modelConfigs []model.GroupModelConfigItem) (model.GroupCatalog, error) {
@@ -30,8 +30,8 @@ func Update(item model.GroupCatalog) (model.GroupCatalog, error) {
 	return model.UpdateGroupCatalog(item)
 }
 
-func UpdateWithChannelBindings(item model.GroupCatalog, channelIDs []string) (model.GroupCatalog, error) {
-	return model.UpdateGroupCatalogWithChannelBindings(item, channelIDs)
+func UpdateWithChannels(item model.GroupCatalog, channelIDs []string) (model.GroupCatalog, error) {
+	return model.UpdateGroupCatalogWithChannels(item, channelIDs)
 }
 
 func UpdateWithConfig(item model.GroupCatalog, channelIDs []string, modelConfigs []model.GroupModelConfigItem, updateChannels bool, updateModels bool) (model.GroupCatalog, error) {
@@ -42,8 +42,8 @@ func Delete(id string) error {
 	return model.DeleteGroupCatalog(id)
 }
 
-func ListChannelBindings(id string) ([]model.GroupChannelBindingItem, error) {
-	return model.ListGroupChannelBindings(id)
+func ListChannels(id string) ([]model.GroupChannelItem, error) {
+	return model.ListGroupChannels(id)
 }
 
 func ListModelSummaries(id string) ([]model.GroupModelSummaryItem, error) {
@@ -54,12 +54,12 @@ func GetModelConfigPayload(id string) (model.GroupModelConfigPayload, error) {
 	return model.ListGroupModelConfigPayload(id)
 }
 
-func ReplaceChannelBindings(id string, channelIDs []string) error {
-	return model.ReplaceGroupChannelBindings(id, channelIDs)
+func ReplaceChannels(id string, channelIDs []string) error {
+	return model.ReplaceGroupChannels(id, channelIDs)
 }
 
-func ReplaceChannelBindingsWithItems(id string, items []model.GroupChannelBindingItem) error {
-	return model.ReplaceGroupChannelBindingsWithItems(id, items)
+func ReplaceChannelsWithItems(id string, items []model.GroupChannelItem) error {
+	return model.ReplaceGroupChannelsWithItems(id, items)
 }
 
 func ReplaceModelConfigs(id string, channelIDs []string, modelConfigs []model.GroupModelConfigItem, explicitChannels bool) error {

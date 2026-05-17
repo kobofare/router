@@ -21,6 +21,8 @@ import {
   AppIcon,
   AppInput,
   AppInputNumber,
+  AppFormActions,
+  AppModal,
   AppPagination,
   AppTable,
   AppTooltip,
@@ -159,6 +161,7 @@ const ChannelsTable = () => {
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDisabling, setBatchDisabling] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState([]);
+  const [disableBlockedImpact, setDisableBlockedImpact] = useState(null);
   const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
   const [balanceRefreshTasks, setBalanceRefreshTasks] = useState({});
   const [protocolMap, setProtocolMap] = useState(() =>
@@ -364,6 +367,9 @@ const ChannelsTable = () => {
       setLoading(true);
       await loadChannels({ page: activePage, keyword: searchKeyword });
     } else {
+      if (res?.data?.data?.code === 'channel_disable_blocked') {
+        setDisableBlockedImpact(res?.data?.data?.impact || null);
+      }
       showError(message);
     }
   };
@@ -537,6 +543,7 @@ const ChannelsTable = () => {
     navigate(`/channel/detail/${channel.id}`, {
       state: {
         from: currentPagePath,
+        channelLabel: getChannelDisplayName(channel),
       },
     });
   };
@@ -654,18 +661,24 @@ const ChannelsTable = () => {
           id: target.id,
           success: !!success,
           message: message || '',
+          errorCode: res?.data?.data?.code || '',
+          impact: res?.data?.data?.impact || null,
         };
       })
     );
 
     const succeededIds = [];
     let firstFailedMessage = '';
+    let firstBlockedImpact = null;
     results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value.success) {
         succeededIds.push(result.value.id);
       } else if (!firstFailedMessage) {
         if (result.status === 'fulfilled') {
           firstFailedMessage = result.value.message || 'Disable failed';
+          if (result.value.errorCode === 'channel_disable_blocked') {
+            firstBlockedImpact = result.value.impact || null;
+          }
         } else {
           firstFailedMessage = result.reason?.message || `${result.reason}`;
         }
@@ -689,6 +702,9 @@ const ChannelsTable = () => {
       })
     );
     if (firstFailedMessage) {
+      if (firstBlockedImpact) {
+        setDisableBlockedImpact(firstBlockedImpact);
+      }
       showError(firstFailedMessage);
     }
     setLoading(true);
@@ -960,6 +976,51 @@ const ChannelsTable = () => {
           },
         ]}
       />
+      <AppModal
+        size='small'
+        open={!!disableBlockedImpact}
+        onClose={() => setDisableBlockedImpact(null)}
+        title={t('channel.messages.disable_blocked_title')}
+        footer={
+          <AppFormActions>
+            <AppButton type='button' onClick={() => setDisableBlockedImpact(null)}>
+              {t('channel.buttons.confirm')}
+            </AppButton>
+          </AppFormActions>
+        }
+      >
+        <div className='router-block-gap-sm'>
+          <div>{t('channel.messages.disable_blocked_description')}</div>
+          {disableBlockedImpact?.channel_id ? (
+            <div className='router-text-meta'>
+              {t('channel.messages.disable_blocked_channel', {
+                channel: disableBlockedImpact.channel_id,
+              })}
+            </div>
+          ) : null}
+          <div className='router-block-gap-xs'>
+            {(Array.isArray(disableBlockedImpact?.groups)
+              ? disableBlockedImpact.groups
+              : []
+            ).map((item, index) => {
+              const groupID = (item?.group || '').toString().trim() || '-';
+              const models = Array.isArray(item?.models) ? item.models : [];
+              return (
+                <div key={`${groupID}-${index}`} className='router-text-wrap'>
+                  {models.length > 0
+                    ? t('channel.messages.disable_blocked_group_with_models', {
+                        group: groupID,
+                        models: models.join(', '),
+                      })
+                    : t('channel.messages.disable_blocked_group', {
+                        group: groupID,
+                      })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </AppModal>
       <div className='router-pagination-wrap'>
         <AppPagination
           className='router-page-pagination'

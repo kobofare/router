@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesDALLE3(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesDALLE3(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		if seed.Provider != "openai" {
 			continue
@@ -41,8 +41,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesDALLE3(t *testing.T) {
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage1ComplexPricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesGPTImage1ComplexPricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		if seed.Provider != "openai" {
 			continue
@@ -76,8 +76,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage1ComplexPricing(
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage2Pricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesGPTImage2Pricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		if seed.Provider != "openai" {
 			continue
@@ -116,8 +116,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage2Pricing(t *test
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_TokenBasedImageModelsUseResponsesEndpoint(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_TokenBasedImageModelsUseResponsesEndpoint(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]string{
 		"gpt-image-2":              "openai",
 		"ernie-4.5-vl-32k-preview": "baidu",
@@ -158,13 +158,13 @@ func TestBuildDefaultProviderCatalogSeeds_TokenBasedImageModelsUseResponsesEndpo
 	}
 	for modelName := range expected {
 		if !found[modelName] {
-			t.Fatalf("expected default catalog to include %s", modelName)
+			t.Fatalf("expected default providers to include %s", modelName)
 		}
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPT5xPricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesGPT5xPricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]struct {
 		input  float64
 		output float64
@@ -213,8 +213,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPT5xPricing(t *testing.
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPT55Pricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesGPT55Pricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		if seed.Provider != "openai" {
 			continue
@@ -245,8 +245,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPT55Pricing(t *testing.
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesNewOfficialModels(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesNewOfficialModels(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]struct {
 		modelType string
 	}{
@@ -288,8 +288,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesNewOfficialModels(t *tes
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_XAIIncludesNewOfficialModels(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_XAIIncludesNewOfficialModels(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]bool{
 		"grok-4.20": false,
 		"grok-4.3":  false,
@@ -318,8 +318,8 @@ func TestBuildDefaultProviderCatalogSeeds_XAIIncludesNewOfficialModels(t *testin
 	t.Fatalf("expected xai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_UnknownOrLegacyDescriptionsStayEmpty(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_UnknownOrLegacyDescriptionsStayEmpty(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	checks := map[string]map[string]bool{
 		"anthropic": {
 			"claude-3-5-haiku-20241022": false,
@@ -366,8 +366,8 @@ func TestBuildDefaultProviderCatalogSeeds_UnknownOrLegacyDescriptionsStayEmpty(t
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_DeprecatedStatusApplied(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_DeprecatedStatusApplied(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	checks := map[string]map[string]bool{
 		"openai": {
 			"codex-mini-latest": false,
@@ -409,8 +409,8 @@ func TestBuildDefaultProviderCatalogSeeds_DeprecatedStatusApplied(t *testing.T) 
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_AllDescriptionsReviewed(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_AllDescriptionsReviewed(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	allowedEmpty := map[string]map[string]struct{}{
 		"anthropic": {
 			"claude-3-5-haiku-20241022": {},
@@ -445,8 +445,8 @@ func TestBuildDefaultProviderCatalogSeeds_AllDescriptionsReviewed(t *testing.T) 
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesRealtime15And2Pricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OpenAIIncludesRealtime15And2Pricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]struct {
 		input  float64
 		output float64
@@ -495,8 +495,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesRealtime15And2Pricing(t 
 	t.Fatalf("expected openai provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_OfficialPricingBackfillForPreviouslyUnpricedModels(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_OfficialPricingBackfillForPreviouslyUnpricedModels(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]map[string]struct {
 		modelType string
 		input     float64
@@ -588,8 +588,8 @@ func TestBuildDefaultProviderCatalogSeeds_OfficialPricingBackfillForPreviouslyUn
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_ComplexPricingComponentsForLiveAndOmniModels(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_ComplexPricingComponentsForLiveAndOmniModels(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	checks := map[string]map[string]struct {
 		componentCount int
 	}{
@@ -674,8 +674,8 @@ func TestInferModelType_RecognizesGPTImageModels(t *testing.T) {
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_AnthropicIncludesClaude47AndLegacyPricing(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_AnthropicIncludesClaude47AndLegacyPricing(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]struct {
 		input  float64
 		output float64
@@ -727,8 +727,8 @@ func TestBuildDefaultProviderCatalogSeeds_AnthropicIncludesClaude47AndLegacyPric
 	t.Fatalf("expected anthropic provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_ModelDetailsMeta(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	if len(seeds) == 0 {
 		t.Fatalf("expected non-empty provider seeds")
 	}
@@ -795,8 +795,8 @@ func TestBuildDefaultProviderCatalogSeeds_ModelDetailsMeta(t *testing.T) {
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_AssignsSortOrder(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_AssignsSortOrder(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	if len(seeds) == 0 {
 		t.Fatalf("expected non-empty provider seeds")
 	}
@@ -812,8 +812,8 @@ func TestBuildDefaultProviderCatalogSeeds_AssignsSortOrder(t *testing.T) {
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_RemainingUnpricedModelsAreExplicitlyTracked(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_RemainingUnpricedModelsAreExplicitlyTracked(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	expected := map[string]map[string]bool{
 		"baidu": {
 			"ernie-4.5-vl-32k-preview": false,
@@ -875,8 +875,8 @@ func TestInferModelTypeAndPriceUnitForVideo(t *testing.T) {
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_IncludesVolcengineEmbeddingModel(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_IncludesVolcengineEmbeddingModel(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		if seed.Provider != "volcengine" {
 			continue
@@ -904,8 +904,8 @@ func TestBuildDefaultProviderCatalogSeeds_IncludesVolcengineEmbeddingModel(t *te
 	t.Fatalf("expected volcengine provider to exist")
 }
 
-func TestBuildDefaultProviderCatalogSeeds_HasUniqueCanonicalProviders(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_HasUniqueCanonicalProviders(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	seen := make(map[string]struct{}, len(seeds))
 	for _, seed := range seeds {
 		if _, ok := seen[seed.Provider]; ok {
@@ -936,8 +936,8 @@ func TestBuildDefaultProviderCatalogSeeds_HasUniqueCanonicalProviders(t *testing
 	}
 }
 
-func TestBuildDefaultProviderCatalogSeeds_StripsSelfPrefixes(t *testing.T) {
-	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+func TestBuildDefaultProviderSeeds_StripsSelfPrefixes(t *testing.T) {
+	seeds := BuildDefaultProviderSeeds(1700000000)
 	for _, seed := range seeds {
 		for _, detail := range seed.ModelDetails {
 			if !strings.Contains(detail.Model, "/") {

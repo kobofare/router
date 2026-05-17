@@ -226,7 +226,7 @@ func executeChannelModelTestTask(ctx context.Context, task *model.AsyncTask) (st
 	testResult.ChannelId = channelID
 	persistChannelTestArtifactForExecution(ctx, task.Id, &testResult, &execution)
 	logChannelAsyncTestExecution(task, testResult, execution)
-	if err := persistChannelModelTests(channelID, []model.ChannelTest{testResult}); err != nil {
+	if err := persistChannelModelTests(channelID, task.Id, []model.ChannelTest{testResult}); err != nil {
 		return "", err
 	}
 	resultPayload := map[string]any{
@@ -268,10 +268,7 @@ func executeChannelRefreshModelsTask(task *model.AsyncTask) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := model.SyncFetchedChannelModelConfigsFromBaseWithDB(model.DB, channelID, runtimeChannel.GetModelConfigs(), fetchedRows); err != nil {
-		return "", err
-	}
-	if err := model.EnsureChannelTestModelWithDB(model.DB, channelID); err != nil {
+	if err := model.ReplaceChannelModelSyncResultsWithDB(model.DB, channelID, runtimeChannel.GetModelConfigs(), fetchedRows, task.Id); err != nil {
 		return "", err
 	}
 	return marshalJSONForLog(map[string]any{

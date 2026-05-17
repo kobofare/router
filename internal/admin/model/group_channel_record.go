@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	GroupChannelBindingsTableName = "group_channel_bindings"
+	GroupChannelsTableName = "group_channels"
 )
 
-type GroupChannelBinding struct {
+type GroupChannel struct {
 	Group     string `json:"group" gorm:"column:group;primaryKey;type:varchar(32);autoIncrement:false"`
 	ChannelId string `json:"channel_id" gorm:"primaryKey;type:varchar(64);autoIncrement:false;index"`
 	Enabled   bool   `json:"enabled" gorm:"not null;default:true;index"`
@@ -23,11 +23,11 @@ type GroupChannelBinding struct {
 	UpdatedAt int64  `json:"updated_at" gorm:"bigint;index"`
 }
 
-func (GroupChannelBinding) TableName() string {
-	return GroupChannelBindingsTableName
+func (GroupChannel) TableName() string {
+	return GroupChannelsTableName
 }
 
-func listGroupChannelBindingRowsWithDB(db *gorm.DB, groupID string) ([]GroupChannelBinding, error) {
+func listGroupChannelRowsWithDB(db *gorm.DB, groupID string) ([]GroupChannel, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database handle is nil")
 	}
@@ -36,7 +36,7 @@ func listGroupChannelBindingRowsWithDB(db *gorm.DB, groupID string) ([]GroupChan
 		return nil, err
 	}
 	groupCol := `"group"`
-	rows := make([]GroupChannelBinding, 0)
+	rows := make([]GroupChannel, 0)
 	if err := db.
 		Where(groupCol+" = ?", groupCatalog.Id).
 		Order("priority desc, channel_id asc").
@@ -47,7 +47,7 @@ func listGroupChannelBindingRowsWithDB(db *gorm.DB, groupID string) ([]GroupChan
 }
 
 func listGroupBoundChannelIDsWithDB(db *gorm.DB, groupID string) ([]string, error) {
-	rows, err := listGroupChannelBindingRowsWithDB(db, groupID)
+	rows, err := listGroupChannelRowsWithDB(db, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,9 +65,9 @@ func listGroupBoundChannelIDsWithDB(db *gorm.DB, groupID string) ([]string, erro
 	return normalizeChannelIDList(result), nil
 }
 
-func listGroupChannelBindingPriorityByChannelWithDB(db *gorm.DB, groupID string) (map[string]*int64, error) {
+func listGroupChannelPriorityByChannelWithDB(db *gorm.DB, groupID string) (map[string]*int64, error) {
 	result := make(map[string]*int64)
-	rows, err := listGroupChannelBindingRowsWithDB(db, groupID)
+	rows, err := listGroupChannelRowsWithDB(db, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +82,11 @@ func listGroupChannelBindingPriorityByChannelWithDB(db *gorm.DB, groupID string)
 	return result, nil
 }
 
-func ListGroupChannelBindingPriorityByChannelWithDB(db *gorm.DB, groupID string) (map[string]*int64, error) {
-	return listGroupChannelBindingPriorityByChannelWithDB(db, groupID)
+func ListGroupChannelPriorityByChannelWithDB(db *gorm.DB, groupID string) (map[string]*int64, error) {
+	return listGroupChannelPriorityByChannelWithDB(db, groupID)
 }
 
-func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, items []GroupChannelBindingItem) error {
+func replaceGroupChannelRowsWithItemsDB(db *gorm.DB, groupID string, items []GroupChannelItem) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -96,7 +96,7 @@ func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, item
 	}
 	groupID = groupCatalog.Id
 
-	normalizedItems := normalizeGroupChannelBindingItems(items)
+	normalizedItems := normalizeGroupChannelItems(items)
 	now := helper.GetTimestamp()
 	channelIDs := make([]string, 0, len(normalizedItems))
 	for _, item := range normalizedItems {
@@ -110,11 +110,11 @@ func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, item
 	if err != nil {
 		return err
 	}
-	existingRows, err := listGroupChannelBindingRowsWithDB(db, groupID)
+	existingRows, err := listGroupChannelRowsWithDB(db, groupID)
 	if err != nil {
 		return err
 	}
-	existingByChannelID := make(map[string]GroupChannelBinding, len(existingRows))
+	existingByChannelID := make(map[string]GroupChannel, len(existingRows))
 	for _, row := range existingRows {
 		channelID := strings.TrimSpace(row.ChannelId)
 		if channelID == "" {
@@ -123,7 +123,7 @@ func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, item
 		existingByChannelID[channelID] = row
 	}
 
-	rows := make([]GroupChannelBinding, 0, len(channelIDs))
+	rows := make([]GroupChannel, 0, len(channelIDs))
 	for _, item := range normalizedItems {
 		if !item.Bound {
 			continue
@@ -136,23 +136,23 @@ func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, item
 			return fmt.Errorf("渠道未启用: %s", item.Id)
 		}
 		existing, hasExisting := existingByChannelID[item.Id]
-		priority := resolveGroupChannelBindingPriority(true, item.Priority, channel.Priority)
+		priority := resolveGroupChannelPriority(true, item.Priority, channel.Priority)
 		createdAt := now
 		if hasExisting && existing.CreatedAt > 0 {
 			createdAt = existing.CreatedAt
 		}
-		rows = append(rows, GroupChannelBinding{
+		rows = append(rows, GroupChannel{
 			Group:     groupID,
 			ChannelId: item.Id,
 			Enabled:   true,
-			Priority:  toSafeGroupChannelBindingPriority(priority),
+			Priority:  toSafeGroupChannelPriority(priority),
 			CreatedAt: createdAt,
 			UpdatedAt: now,
 		})
 	}
 
 	groupCol := `"group"`
-	if err := db.Where(groupCol+" = ?", groupID).Delete(&GroupChannelBinding{}).Error; err != nil {
+	if err := db.Where(groupCol+" = ?", groupID).Delete(&GroupChannel{}).Error; err != nil {
 		return err
 	}
 	if len(rows) == 0 {
@@ -161,7 +161,7 @@ func replaceGroupChannelBindingRowsWithItemsDB(db *gorm.DB, groupID string, item
 	return db.Create(&rows).Error
 }
 
-func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, channelIDs []string) error {
+func syncGroupChannelRowsByChannelIDsDB(db *gorm.DB, groupID string, channelIDs []string) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -174,13 +174,13 @@ func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, chan
 	normalizedChannelIDs := normalizeChannelIDList(channelIDs)
 	if len(normalizedChannelIDs) == 0 {
 		groupCol := `"group"`
-		return db.Where(groupCol+" = ?", groupID).Delete(&GroupChannelBinding{}).Error
+		return db.Where(groupCol+" = ?", groupID).Delete(&GroupChannel{}).Error
 	}
-	existingRows, err := listGroupChannelBindingRowsWithDB(db, groupID)
+	existingRows, err := listGroupChannelRowsWithDB(db, groupID)
 	if err != nil {
 		return err
 	}
-	existingByChannelID := make(map[string]GroupChannelBinding, len(existingRows))
+	existingByChannelID := make(map[string]GroupChannel, len(existingRows))
 	for _, row := range existingRows {
 		channelID := strings.TrimSpace(row.ChannelId)
 		if channelID == "" {
@@ -193,7 +193,7 @@ func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, chan
 		return err
 	}
 	now := helper.GetTimestamp()
-	rows := make([]GroupChannelBinding, 0, len(normalizedChannelIDs))
+	rows := make([]GroupChannel, 0, len(normalizedChannelIDs))
 	for _, channelID := range normalizedChannelIDs {
 		channel, ok := channelsByID[channelID]
 		if !ok {
@@ -203,7 +203,7 @@ func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, chan
 			return fmt.Errorf("渠道未启用: %s", channelID)
 		}
 		existing, hasExisting := existingByChannelID[channelID]
-		priority := resolveGroupChannelBindingPriority(true, nil, channel.Priority)
+		priority := resolveGroupChannelPriority(true, nil, channel.Priority)
 		if hasExisting {
 			priority = helperInt64Pointer(&existing.Priority)
 		}
@@ -211,17 +211,17 @@ func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, chan
 		if hasExisting && existing.CreatedAt > 0 {
 			createdAt = existing.CreatedAt
 		}
-		rows = append(rows, GroupChannelBinding{
+		rows = append(rows, GroupChannel{
 			Group:     groupID,
 			ChannelId: channelID,
 			Enabled:   true,
-			Priority:  toSafeGroupChannelBindingPriority(priority),
+			Priority:  toSafeGroupChannelPriority(priority),
 			CreatedAt: createdAt,
 			UpdatedAt: now,
 		})
 	}
 	groupCol := `"group"`
-	if err := db.Where(groupCol+" = ?", groupID).Delete(&GroupChannelBinding{}).Error; err != nil {
+	if err := db.Where(groupCol+" = ?", groupID).Delete(&GroupChannel{}).Error; err != nil {
 		return err
 	}
 	if len(rows) == 0 {
@@ -233,14 +233,14 @@ func syncGroupChannelBindingRowsByChannelIDsDB(db *gorm.DB, groupID string, chan
 	}).Create(&rows).Error
 }
 
-func migrateGroupChannelBindingsWithDB(db *gorm.DB) error {
+func migrateGroupChannelsWithDB(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
 	if err := migrateGroupModelRoutesTableWithDB(db); err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&GroupChannelBinding{}); err != nil {
+	if err := db.AutoMigrate(&GroupChannel{}); err != nil {
 		return err
 	}
 	type sourceRow struct {
@@ -250,7 +250,7 @@ func migrateGroupChannelBindingsWithDB(db *gorm.DB) error {
 	}
 	groupCol := `"group"`
 	sourceRows := make([]sourceRow, 0)
-	if err := db.Model(&GroupModelRoute{}).
+	if err := db.Model(&GroupModelChannel{}).
 		Select(groupCol + " as \"group\", channel_id, MAX(priority) AS priority").
 		Where("channel_id <> ''").
 		Group(groupCol + ", channel_id").
@@ -285,14 +285,30 @@ func migrateGroupChannelBindingsWithDB(db *gorm.DB) error {
 
 	for _, groupID := range groupOrder {
 		channelIDs := normalizeChannelIDList(groupChannelIDs[groupID])
-		if err := backfillGroupChannelBindingRowsFromGroupModelRouteDB(db, groupID, channelIDs, priorityByGroupChannel); err != nil {
+		if err := backfillGroupChannelRowsFromGroupModelRouteDB(db, groupID, channelIDs, priorityByGroupChannel); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func backfillGroupChannelBindingRowsFromGroupModelRouteDB(db *gorm.DB, groupID string, channelIDs []string, priorityByGroupChannel map[string]*int64) error {
+func renameLegacyGroupChannelsTableWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	migrator := db.Migrator()
+	if migrator.HasTable(GroupChannelsTableName) {
+		return migrator.AutoMigrate(&GroupChannel{})
+	}
+	if migrator.HasTable("group_channel_bindings") {
+		if err := migrator.RenameTable("group_channel_bindings", GroupChannelsTableName); err != nil {
+			return err
+		}
+	}
+	return migrator.AutoMigrate(&GroupChannel{})
+}
+
+func backfillGroupChannelRowsFromGroupModelRouteDB(db *gorm.DB, groupID string, channelIDs []string, priorityByGroupChannel map[string]*int64) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -308,11 +324,11 @@ func backfillGroupChannelBindingRowsFromGroupModelRouteDB(db *gorm.DB, groupID s
 	if err != nil {
 		return err
 	}
-	existingRows, err := listGroupChannelBindingRowsWithDB(db, groupCatalog.Id)
+	existingRows, err := listGroupChannelRowsWithDB(db, groupCatalog.Id)
 	if err != nil {
 		return err
 	}
-	existingByChannelID := make(map[string]GroupChannelBinding, len(existingRows))
+	existingByChannelID := make(map[string]GroupChannel, len(existingRows))
 	for _, row := range existingRows {
 		channelID := strings.TrimSpace(row.ChannelId)
 		if channelID == "" {
@@ -321,29 +337,29 @@ func backfillGroupChannelBindingRowsFromGroupModelRouteDB(db *gorm.DB, groupID s
 		existingByChannelID[channelID] = row
 	}
 	now := helper.GetTimestamp()
-	rows := make([]GroupChannelBinding, 0, len(normalizedChannelIDs))
+	rows := make([]GroupChannel, 0, len(normalizedChannelIDs))
 	for _, channelID := range normalizedChannelIDs {
 		channel, ok := channelsByID[channelID]
 		if !ok {
 			continue
 		}
 		existing, hasExisting := existingByChannelID[channelID]
-		priority := resolveGroupChannelBindingPriority(true, priorityByGroupChannel[groupID+"::"+channelID], channel.Priority)
+		priority := resolveGroupChannelPriority(true, priorityByGroupChannel[groupID+"::"+channelID], channel.Priority)
 		createdAt := now
 		if hasExisting && existing.CreatedAt > 0 {
 			createdAt = existing.CreatedAt
 		}
-		rows = append(rows, GroupChannelBinding{
+		rows = append(rows, GroupChannel{
 			Group:     groupCatalog.Id,
 			ChannelId: channelID,
 			Enabled:   channel.Status == ChannelStatusEnabled,
-			Priority:  toSafeGroupChannelBindingPriority(priority),
+			Priority:  toSafeGroupChannelPriority(priority),
 			CreatedAt: createdAt,
 			UpdatedAt: now,
 		})
 	}
 	groupCol := `"group"`
-	if err := db.Where(groupCol+" = ?", groupCatalog.Id).Delete(&GroupChannelBinding{}).Error; err != nil {
+	if err := db.Where(groupCol+" = ?", groupCatalog.Id).Delete(&GroupChannel{}).Error; err != nil {
 		return err
 	}
 	if len(rows) == 0 {
@@ -376,7 +392,7 @@ func loadChannelsByIDWithDB(db *gorm.DB, channelIDs []string) (map[string]*Chann
 	return result, nil
 }
 
-func toSafeGroupChannelBindingPriority(value *int64) int64 {
+func toSafeGroupChannelPriority(value *int64) int64 {
 	if value == nil {
 		return 0
 	}

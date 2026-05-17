@@ -12,7 +12,7 @@ func migrateGroupModelProvidersWithDB(tx *gorm.DB) error {
 	return nil
 }
 
-func backfillGroupModelRouteProviderFromChannelModelsWithDB(tx *gorm.DB) error {
+func backfillGroupModelChannelProviderFromChannelModelsWithDB(tx *gorm.DB) error {
 	if tx == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -20,10 +20,10 @@ func backfillGroupModelRouteProviderFromChannelModelsWithDB(tx *gorm.DB) error {
 		return err
 	}
 
-	rows := make([]GroupModelRoute, 0)
+	rows := make([]GroupModelChannel, 0)
 	groupCol := `"group"`
 	if err := tx.
-		Select(groupCol, "model", "channel_id", "upstream_model", "provider", "enabled", "priority").
+		Select(groupCol, "model", "channel_id", "upstream_model", "provider", "priority").
 		Where("channel_id <> ''").
 		Find(&rows).Error; err != nil {
 		return err
@@ -47,13 +47,13 @@ func backfillGroupModelRouteProviderFromChannelModelsWithDB(tx *gorm.DB) error {
 	}
 
 	for _, row := range rows {
-		resolvedProvider := ResolveGroupModelRouteProviderWithDB(tx, providerByModel, row.ChannelId, row.Model, row.UpstreamModel)
-		resolvedProvider = NormalizeGroupModelRouteProvider(resolvedProvider)
-		currentProvider := NormalizeGroupModelRouteProvider(row.Provider)
+		resolvedProvider := ResolveGroupModelChannelProviderWithDB(tx, providerByModel, row.ChannelId, row.Model, row.UpstreamModel)
+		resolvedProvider = NormalizeGroupModelChannelProvider(resolvedProvider)
+		currentProvider := NormalizeGroupModelChannelProvider(row.Provider)
 		if currentProvider == resolvedProvider {
 			continue
 		}
-		if err := tx.Model(&GroupModelRoute{}).
+		if err := tx.Model(&GroupModelChannel{}).
 			Where(groupCol+" = ? AND model = ? AND channel_id = ?", strings.TrimSpace(row.Group), strings.TrimSpace(row.Model), strings.TrimSpace(row.ChannelId)).
 			Update("provider", resolvedProvider).Error; err != nil {
 			return err
@@ -72,7 +72,7 @@ func dropGroupModelProvidersTableWithDB(tx *gorm.DB) error {
 	return nil
 }
 
-func ResolveGroupModelRouteProviderWithDB(tx *gorm.DB, providerByModel map[string]string, channelID string, modelName string, upstreamModel string) string {
+func ResolveGroupModelChannelProviderWithDB(tx *gorm.DB, providerByModel map[string]string, channelID string, modelName string, upstreamModel string) string {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	normalizedModelName := strings.TrimSpace(modelName)
 	if tx != nil && normalizedChannelID != "" && normalizedModelName != "" {
@@ -81,12 +81,12 @@ func ResolveGroupModelRouteProviderWithDB(tx *gorm.DB, providerByModel map[strin
 			Select("provider", "model", "upstream_model").
 			Where("channel_id = ? AND model = ?", normalizedChannelID, normalizedModelName).
 			Take(&row).Error; err == nil {
-			provider := NormalizeGroupModelRouteProvider(row.Provider)
+			provider := NormalizeGroupModelChannelProvider(row.Provider)
 			if provider != "" {
 				return provider
 			}
-			return NormalizeGroupModelRouteProvider(ResolveProviderFromCatalogMap(providerByModel, row.Model, row.UpstreamModel))
+			return NormalizeGroupModelChannelProvider(ResolveProviderFromModelMap(providerByModel, row.Model, row.UpstreamModel))
 		}
 	}
-	return NormalizeGroupModelRouteProvider(ResolveProviderFromCatalogMap(providerByModel, modelName, upstreamModel))
+	return NormalizeGroupModelChannelProvider(ResolveProviderFromModelMap(providerByModel, modelName, upstreamModel))
 }

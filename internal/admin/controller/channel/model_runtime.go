@@ -71,6 +71,11 @@ type channelModelTestsRequest struct {
 	AudioLanguage string                       `json:"audio_language,omitempty"`
 }
 
+type deleteChannelModelRequest struct {
+	Model         string `json:"model"`
+	UpstreamModel string `json:"upstream_model"`
+}
+
 type channelModelTestTargetItem struct {
 	Model    string `json:"model"`
 	Endpoint string `json:"endpoint,omitempty"`
@@ -98,18 +103,25 @@ func buildAudioModelTestInput(language string) string {
 }
 
 type channelModelListData struct {
-	Items         []model.ChannelModel `json:"items"`
-	Total         int64                `json:"total"`
-	Page          int                  `json:"page"`
-	PageSize      int                  `json:"page_size"`
-	SelectedCount int                  `json:"selected_count"`
-	ActiveCount   int                  `json:"active_count"`
-	InactiveCount int                  `json:"inactive_count"`
+	Items         []channelModelListItem `json:"items"`
+	Total         int64                  `json:"total"`
+	Page          int                    `json:"page"`
+	PageSize      int                    `json:"page_size"`
+	SelectedCount int                    `json:"selected_count"`
+	ActiveCount   int                    `json:"active_count"`
+	InactiveCount int                    `json:"inactive_count"`
 }
 
 type channelTestListData struct {
 	Items        []model.ChannelTest `json:"items"`
 	LastTestedAt int64               `json:"last_tested_at"`
+}
+
+type channelModelListItem struct {
+	model.ChannelModel
+	SyncStatus        string `json:"sync_status"`
+	LastSyncedAt      int64  `json:"last_synced_at"`
+	EnableBlockReason string `json:"enable_block_reason,omitempty"`
 }
 
 type channelModelTestExecution struct {
@@ -298,17 +310,17 @@ func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) (
 		return nil, trace, fmt.Errorf("%s", message)
 	}
 
-	catalogCandidates := make([]string, 0, len(parsed.Data))
+	modelCandidates := make([]string, 0, len(parsed.Data))
 	for _, item := range parsed.Data {
 		id := strings.TrimSpace(item.ID)
 		if id == "" {
 			continue
 		}
-		catalogCandidates = append(catalogCandidates, id)
+		modelCandidates = append(modelCandidates, id)
 	}
-	providerByModel, err := model.LoadUniqueProviderMapByModels(catalogCandidates)
+	providerByModel, err := model.LoadUniqueProviderMapByModels(modelCandidates)
 	if err != nil {
-		return nil, trace, fmt.Errorf("加载供应商模型目录失败: %w", err)
+		return nil, trace, fmt.Errorf("加载供应商模型信息失败: %w", err)
 	}
 
 	provider := commonutils.NormalizeProvider(providerFilter)
@@ -319,7 +331,7 @@ func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) (
 		if id == "" {
 			continue
 		}
-		resolvedProvider := model.ResolveProviderFromCatalogMap(providerByModel, id)
+		resolvedProvider := model.ResolveProviderFromModelMap(providerByModel, id)
 		if provider != "" {
 			if resolvedProvider != "" {
 				if commonutils.NormalizeProvider(resolvedProvider) != provider {
@@ -1880,7 +1892,7 @@ func executeChannelVideoModelTest(ctx context.Context, channel *model.Channel, m
 	return execution
 }
 
-func persistChannelModelTests(channelID string, results []model.ChannelTest) error {
+func persistChannelModelTests(channelID string, taskID string, results []model.ChannelTest) error {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
 		return nil
@@ -1900,13 +1912,7 @@ func persistChannelModelTests(channelID string, results []model.ChannelTest) err
 		if err := model.EnsureChannelTestModelWithDB(tx, normalizedChannelID); err != nil {
 			return err
 		}
-		for _, result := range results {
-			enabled := result.Supported && result.Status == model.ChannelTestStatusSupported
-			if err := model.SetChannelModelEndpointCapabilityWithDB(tx, normalizedChannelID, result.Model, result.Endpoint, enabled); err != nil {
-				return err
-			}
-		}
-		return nil
+		return model.UpsertChannelModelEndpointTestResultsWithDB(tx, normalizedChannelID, taskID, results)
 	})
 }
 
@@ -1939,6 +1945,51 @@ func buildChannelModelListData(channelID string, page int, pageSize int, keyword
 	if err != nil {
 		return channelModelListData{}, err
 	}
+	syncRows, err := model.ListChannelModelSyncResultsByChannelIDWithDB(model.DB, channelID)
+	if err != nil {
+		return channelModelListData{}, err
+	}
+	syncByModel := make(map[string]model.ChannelModelSyncResult, len(syncRows)*2)
+	for _, row := range syncRows {
+		if modelName := strings.TrimSpace(row.Model); modelName != "" {
+			syncByModel[modelName] = row
+		}
+		if upstreamModel := strings.TrimSpace(row.UpstreamModel); upstreamModel != "" {
+			if _, ok := syncByModel[upstreamModel]; !ok {
+				syncByModel[upstreamModel] = row
+			}
+		}
+	}
+	items := make([]channelModelListItem, 0, len(rows))
+	for _, row := range rows {
+		item := channelModelListItem{
+			ChannelModel: row,
+			SyncStatus:   "unknown",
+		}
+		if syncRow, ok := syncByModel[strings.TrimSpace(row.Model)]; ok {
+			item.LastSyncedAt = syncRow.LastSyncedAt
+			if syncRow.Returned {
+				item.SyncStatus = "returned"
+			} else {
+				item.SyncStatus = "not_returned"
+			}
+		} else if syncRow, ok := syncByModel[strings.TrimSpace(row.UpstreamModel)]; ok {
+			item.LastSyncedAt = syncRow.LastSyncedAt
+			if syncRow.Returned {
+				item.SyncStatus = "returned"
+			} else {
+				item.SyncStatus = "not_returned"
+			}
+		}
+		if !row.Inactive && !row.Selected {
+			reason, reasonErr := model.ExplainManualChannelModelEnableBlockWithDB(model.DB, channelID, row)
+			if reasonErr != nil {
+				return channelModelListData{}, reasonErr
+			}
+			item.EnableBlockReason = strings.TrimSpace(reason)
+		}
+		items = append(items, item)
+	}
 	allRows := channelRow.GetModelConfigs()
 	selectedCount := 0
 	activeCount := 0
@@ -1954,7 +2005,7 @@ func buildChannelModelListData(channelID string, page int, pageSize int, keyword
 		}
 	}
 	return channelModelListData{
-		Items:         rows,
+		Items:         items,
 		Total:         total,
 		Page:          page,
 		PageSize:      pageSize,
@@ -2010,6 +2061,70 @@ func GetChannelModels(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    data,
+	})
+}
+
+// DeleteChannelModel godoc
+// @Summary Delete a channel model (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Channel ID"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/channel/{id}/models [delete]
+func DeleteChannelModel(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	if channelID == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "渠道 ID 无效",
+		})
+		return
+	}
+	modelName := strings.TrimSpace(c.Query("model"))
+	upstreamModel := strings.TrimSpace(c.Query("upstream_model"))
+	if modelName == "" && upstreamModel == "" {
+		req := deleteChannelModelRequest{}
+		if err := c.ShouldBindJSON(&req); err == nil {
+			modelName = strings.TrimSpace(req.Model)
+			upstreamModel = strings.TrimSpace(req.UpstreamModel)
+		}
+	}
+	if modelName == "" && upstreamModel == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "渠道模型无效",
+		})
+		return
+	}
+	logModelName := modelName
+	if logModelName == "" {
+		logModelName = upstreamModel
+	}
+	if err := model.DeleteChannelModelWithDB(model.DB, channelID, modelName, upstreamModel); err != nil {
+		logChannelAdminWarn(
+			c,
+			"delete_model",
+			stringField("channel_id", channelID),
+			stringField("model", logModelName),
+			stringField("reason", err.Error()),
+		)
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	logChannelAdminInfo(
+		c,
+		"delete_model",
+		stringField("channel_id", channelID),
+		stringField("model", logModelName),
+	)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
 	})
 }
 

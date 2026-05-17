@@ -71,7 +71,7 @@ func ListGroupModelNamesByDB(db *gorm.DB, groupID string) ([]string, error) {
 	return listGroupModelNamesWithDB(db, groupID, true)
 }
 
-func RebuildGroupModelsFromRoutesWithDB(db *gorm.DB, groupID string) error {
+func RebuildGroupModelsFromChannelsWithDB(db *gorm.DB, groupID string) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -82,22 +82,22 @@ func RebuildGroupModelsFromRoutesWithDB(db *gorm.DB, groupID string) error {
 	groupID = groupCatalog.Id
 
 	groupCol := `"group"`
-	routeRows := make([]GroupModelRoute, 0)
+	rows := make([]GroupModelChannel, 0)
 	if err := db.
-		Where(groupCol+" = ? AND enabled = ?", groupID, true).
+		Where(groupCol+" = ?", groupID).
 		Order("model asc, channel_id asc").
-		Find(&routeRows).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		return err
 	}
 
 	nextRows := make([]GroupModel, 0)
 	indexByModel := make(map[string]int)
-	for _, route := range routeRows {
-		modelName := strings.TrimSpace(route.Model)
+	for _, row := range rows {
+		modelName := strings.TrimSpace(row.Model)
 		if modelName == "" {
 			continue
 		}
-		provider := NormalizeGroupModelRouteProvider(route.Provider)
+		provider := NormalizeGroupModelChannelProvider(row.Provider)
 		if idx, ok := indexByModel[modelName]; ok {
 			if nextRows[idx].Provider == "" {
 				nextRows[idx].Provider = provider
@@ -146,8 +146,7 @@ func replaceGroupModelsWithDB(db *gorm.DB, groupID string, rows []GroupModel) er
 	for i := range normalizedRows {
 		row := &normalizedRows[i]
 		row.Group = groupID
-		row.Provider = NormalizeGroupModelRouteProvider(row.Provider)
-		row.Enabled = row.Enabled
+		row.Provider = NormalizeGroupModelChannelProvider(row.Provider)
 		row.UpdatedAt = now
 		if existing, ok := existingByModel[row.Model]; ok && existing.CreatedAt > 0 {
 			row.CreatedAt = existing.CreatedAt
@@ -184,14 +183,13 @@ func normalizeGroupModelRows(groupID string, rows []GroupModel) []GroupModel {
 			merged[modelName] = GroupModel{
 				Group:    strings.TrimSpace(groupID),
 				Model:    modelName,
-				Provider: NormalizeGroupModelRouteProvider(row.Provider),
-				Enabled:  row.Enabled,
+				Provider: NormalizeGroupModelChannelProvider(row.Provider),
+				Enabled:  true,
 			}
 			continue
 		}
-		existing.Enabled = existing.Enabled || row.Enabled
 		if existing.Provider == "" {
-			existing.Provider = NormalizeGroupModelRouteProvider(row.Provider)
+			existing.Provider = NormalizeGroupModelChannelProvider(row.Provider)
 		}
 		merged[modelName] = existing
 	}
@@ -219,15 +217,14 @@ func migrateGroupModelsWithDB(db *gorm.DB) error {
 	}
 
 	type sourceRow struct {
-		Group      string `gorm:"column:group"`
-		Model      string `gorm:"column:model"`
-		Provider   string `gorm:"column:provider"`
-		EnabledInt int    `gorm:"column:enabled_int"`
+		Group    string `gorm:"column:group"`
+		Model    string `gorm:"column:model"`
+		Provider string `gorm:"column:provider"`
 	}
 	groupCol := `"group"`
 	rows := make([]sourceRow, 0)
-	if err := db.Model(&GroupModelRoute{}).
-		Select(groupCol + " as \"group\", model, provider, MAX(CASE WHEN enabled THEN 1 ELSE 0 END) as enabled_int").
+	if err := db.Model(&GroupModelChannel{}).
+		Select(groupCol + " as \"group\", model, provider").
 		Where("channel_id <> ''").
 		Group(groupCol + ", model, provider").
 		Order(groupCol + " asc, model asc").
@@ -254,8 +251,8 @@ func migrateGroupModelsWithDB(db *gorm.DB) error {
 		grouped[groupID] = append(grouped[groupID], GroupModel{
 			Group:    groupID,
 			Model:    modelName,
-			Provider: NormalizeGroupModelRouteProvider(row.Provider),
-			Enabled:  row.EnabledInt > 0,
+			Provider: NormalizeGroupModelChannelProvider(row.Provider),
+			Enabled:  true,
 		})
 	}
 	sort.Strings(order)

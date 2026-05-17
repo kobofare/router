@@ -2,33 +2,30 @@ package model
 
 import "testing"
 
-func TestNormalizeGroupModelRouteRowsPreserveOrder_DeduplicatesByPrimaryKey(t *testing.T) {
-	rows := []GroupModelRoute{
+func TestNormalizeGroupModelChannelRowsPreserveOrder_DeduplicatesByPrimaryKey(t *testing.T) {
+	rows := []GroupModelChannel{
 		{
 			Group:         " group-a ",
 			Model:         "gpt-4.1",
 			ChannelId:     " channel-1 ",
 			UpstreamModel: "upstream-a",
-			Enabled:       true,
 		},
 		{
 			Group:         "group-a",
 			Model:         "gpt-4.1",
 			ChannelId:     "channel-1",
 			UpstreamModel: "upstream-b",
-			Enabled:       false,
 		},
 		{
 			Group:     "group-a",
 			Model:     "gpt-4.1",
 			ChannelId: "channel-2",
-			Enabled:   true,
 		},
 	}
 
-	got := normalizeGroupModelRouteRowsPreserveOrder(rows)
+	got := normalizeGroupModelChannelRowsPreserveOrder(rows)
 	if len(got) != 2 {
-		t.Fatalf("normalizeGroupModelRouteRowsPreserveOrder returned %d rows, want 2", len(got))
+		t.Fatalf("normalizeGroupModelChannelRowsPreserveOrder returned %d rows, want 2", len(got))
 	}
 	if got[0].Group != "group-a" || got[0].Model != "gpt-4.1" || got[0].ChannelId != "channel-1" {
 		t.Fatalf("unexpected first row key: %#v", got[0])

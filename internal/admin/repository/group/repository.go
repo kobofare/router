@@ -1,4 +1,4 @@
-package groupmodelroute
+package group
 
 import (
 	"context"
@@ -11,15 +11,15 @@ import (
 )
 
 func init() {
-	model.BindGroupModelRouteRepository(model.GroupModelRouteRepository{
-		GetRandomSatisfiedChannel:   GetRandomSatisfiedChannel,
-		ListSatisfiedChannels:       ListSatisfiedChannels,
-		AddGroupModelRoutes:         AddGroupModelRoutes,
-		DeleteGroupModelRoutes:      DeleteGroupModelRoutes,
-		UpdateGroupModelRoutes:      UpdateGroupModelRoutes,
-		UpdateGroupModelRouteStatus: UpdateGroupModelRouteStatus,
-		GetTopChannelByModel:        GetTopChannelByModel,
-		GetGroupModels:              GetGroupModels,
+	model.BindGroupModelChannelRepository(model.GroupModelChannelRepository{
+		GetRandomSatisfiedChannel:                GetRandomSatisfiedChannel,
+		ListSatisfiedChannels:                    ListSatisfiedChannels,
+		AddGroupModelChannels:                    AddGroupModelChannels,
+		DeleteGroupModelChannels:                 DeleteGroupModelChannels,
+		UpdateGroupModelChannels:                 UpdateGroupModelChannels,
+		RefreshGroupModelChannelsByChannelStatus: RefreshGroupModelChannelsByChannelStatus,
+		GetTopChannelByModel:                     GetTopChannelByModel,
+		GetGroupModels:                           GetGroupModels,
 	})
 }
 
@@ -37,16 +37,15 @@ func GetRandomSatisfiedChannel(group string, modelName string, ignoreFirstPriori
 
 func ListSatisfiedChannels(group string, modelName string) ([]*model.Channel, error) {
 	groupCol := `"group"`
-	trueVal := "true"
-	routeRows := make([]model.GroupModelRoute, 0)
-	if err := model.DB.Where(groupCol+" = ? and model = ? and enabled = "+trueVal, group, modelName).
+	rows := make([]model.GroupModelChannel, 0)
+	if err := model.DB.Where(groupCol+" = ? and model = ?", group, modelName).
 		Order("priority desc, channel_id asc").
-		Find(&routeRows).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	channelIDs := make([]string, 0, len(routeRows))
-	seen := make(map[string]struct{}, len(routeRows))
-	for _, row := range routeRows {
+	channelIDs := make([]string, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
 		channelID := strings.TrimSpace(row.ChannelId)
 		if channelID == "" {
 			continue
@@ -72,32 +71,35 @@ func ListSatisfiedChannels(group string, modelName string) ([]*model.Channel, er
 		if channel == nil {
 			continue
 		}
+		if channel.Status != model.ChannelStatusEnabled {
+			continue
+		}
 		channelByID[strings.TrimSpace(channel.Id)] = channel
 	}
-	result := make([]*model.Channel, 0, len(routeRows))
-	for _, route := range routeRows {
-		channelID := strings.TrimSpace(route.ChannelId)
+	result := make([]*model.Channel, 0, len(rows))
+	for _, row := range rows {
+		channelID := strings.TrimSpace(row.ChannelId)
 		if channel := channelByID[channelID]; channel != nil {
-			result = append(result, model.CloneChannelWithPriority(channel, route.GetPriority()))
+			result = append(result, model.CloneChannelWithPriority(channel, row.GetPriority()))
 		}
 	}
 	return result, nil
 }
 
-func AddGroupModelRoutes(channel *model.Channel) error {
-	// Runtime routes are rebuilt from group_models + group_channel_bindings.
+func AddGroupModelChannels(channel *model.Channel) error {
+	// Runtime routes are rebuilt from group_models + group_channels.
 	// Channel creation no longer writes routing truth directly.
 	if channel == nil {
 		return nil
 	}
-	model.RefreshGroupModelRouteCachesForGroups()
+	model.RefreshGroupModelChannelCachesForGroups()
 	return nil
 }
 
 func listBoundGroupsByChannelID(channelID string) ([]string, error) {
 	groupCol := `"group"`
 	groups := make([]string, 0)
-	err := model.DB.Model(&model.GroupChannelBinding{}).
+	err := model.DB.Model(&model.GroupChannel{}).
 		Distinct(groupCol).
 		Where("channel_id = ? AND enabled = ?", channelID, true).
 		Pluck(groupCol, &groups).Error
@@ -120,11 +122,11 @@ func listBoundGroupsByChannelID(channelID string) ([]string, error) {
 	return result, nil
 }
 
-func buildGroupModelRoutesForChannel(channel *model.Channel, groups []string) []model.GroupModelRoute {
+func buildGroupModelChannelsForChannel(channel *model.Channel, groups []string) []model.GroupModelChannel {
 	if channel == nil || len(groups) == 0 {
 		return nil
 	}
-	routes := make([]model.GroupModelRoute, 0)
+	rows := make([]model.GroupModelChannel, 0)
 	for _, group := range groups {
 		normalizedGroup := strings.TrimSpace(group)
 		if normalizedGroup == "" {
@@ -134,12 +136,12 @@ func buildGroupModelRoutesForChannel(channel *model.Channel, groups []string) []
 		if err != nil {
 			continue
 		}
-		routes = append(routes, model.SyncGroupModelRoutesForChannel(normalizedGroup, channel, groupModels, channel.Priority)...)
+		rows = append(rows, model.BuildGroupModelChannelsForChannel(normalizedGroup, channel, groupModels, channel.Priority)...)
 	}
-	return routes
+	return rows
 }
 
-func DeleteGroupModelRoutes(channel *model.Channel) error {
+func DeleteGroupModelChannels(channel *model.Channel) error {
 	if channel == nil {
 		return nil
 	}
@@ -147,19 +149,19 @@ func DeleteGroupModelRoutes(channel *model.Channel) error {
 	if err != nil {
 		return err
 	}
-	if err := model.DB.Where("channel_id = ?", channel.Id).Delete(&model.GroupModelRoute{}).Error; err != nil {
+	if err := model.DB.Where("channel_id = ?", channel.Id).Delete(&model.GroupModelChannel{}).Error; err != nil {
 		return err
 	}
 	for _, groupID := range groups {
-		if err := model.RebuildGroupModelsFromRoutesWithDB(model.DB, groupID); err != nil {
+		if err := model.RebuildGroupModelsFromChannelsWithDB(model.DB, groupID); err != nil {
 			return err
 		}
 	}
-	model.RefreshGroupModelRouteCachesForGroups(groups...)
+	model.RefreshGroupModelChannelCachesForGroups(groups...)
 	return nil
 }
 
-func UpdateGroupModelRoutes(channel *model.Channel) error {
+func UpdateGroupModelChannels(channel *model.Channel) error {
 	if channel == nil {
 		return nil
 	}
@@ -177,17 +179,17 @@ func UpdateGroupModelRoutes(channel *model.Channel) error {
 			if err != nil {
 				return err
 			}
-			priorityByChannelID, err := model.ListGroupChannelBindingPriorityByChannelWithDB(tx, groupID)
+			priorityByChannelID, err := model.ListGroupChannelPriorityByChannelWithDB(tx, groupID)
 			if err != nil {
 				return err
 			}
-			next := model.SyncGroupModelRoutesForChannel(groupID, channel, groupModels, priorityByChannelID[strings.TrimSpace(channel.Id)])
+			next := model.BuildGroupModelChannelsForChannel(groupID, channel, groupModels, priorityByChannelID[strings.TrimSpace(channel.Id)])
 			groupCol := `"group"`
-			if err := tx.Where(groupCol+" = ? AND channel_id = ?", groupID, channel.Id).Delete(&model.GroupModelRoute{}).Error; err != nil {
+			if err := tx.Where(groupCol+" = ? AND channel_id = ?", groupID, channel.Id).Delete(&model.GroupModelChannel{}).Error; err != nil {
 				return err
 			}
 			if len(next) == 0 {
-				if err := model.RebuildGroupModelsFromRoutesWithDB(tx, groupID); err != nil {
+				if err := model.RebuildGroupModelsFromChannelsWithDB(tx, groupID); err != nil {
 					return err
 				}
 				continue
@@ -195,7 +197,7 @@ func UpdateGroupModelRoutes(channel *model.Channel) error {
 			if err := tx.Create(&next).Error; err != nil {
 				return err
 			}
-			if err := model.RebuildGroupModelsFromRoutesWithDB(tx, groupID); err != nil {
+			if err := model.RebuildGroupModelsFromChannelsWithDB(tx, groupID); err != nil {
 				return err
 			}
 		}
@@ -204,47 +206,41 @@ func UpdateGroupModelRoutes(channel *model.Channel) error {
 	if err != nil {
 		return err
 	}
-	model.RefreshGroupModelRouteCachesForGroups(groups...)
+	model.RefreshGroupModelChannelCachesForGroups(groups...)
 	return nil
 }
 
-func UpdateGroupModelRouteStatus(channelId string, status bool) error {
+func RefreshGroupModelChannelsByChannelStatus(channelId string, _ bool) error {
 	groups, err := listBoundGroupsByChannelID(channelId)
 	if err != nil {
 		return err
 	}
-	if err := model.DB.Model(&model.GroupModelRoute{}).Where("channel_id = ?", channelId).Select("enabled").Update("enabled", status).Error; err != nil {
-		return err
-	}
-	for _, groupID := range groups {
-		if err := model.RebuildGroupModelsFromRoutesWithDB(model.DB, groupID); err != nil {
-			return err
-		}
-	}
-	model.RefreshGroupModelRouteCachesForGroups(groups...)
+	model.RefreshGroupModelChannelCachesForGroups(groups...)
 	return nil
 }
 
 func GetTopChannelByModel(group string, modelName string) (*model.Channel, error) {
 	groupCol := `"group"`
-	trueVal := "true"
 
-	route := model.GroupModelRoute{}
-	err := model.DB.Where(groupCol+" = ? and model = ? and enabled = "+trueVal, group, modelName).
+	row := model.GroupModelChannel{}
+	err := model.DB.Where(groupCol+" = ? and model = ?", group, modelName).
 		Order("priority desc, channel_id asc").
-		First(&route).Error
+		First(&row).Error
 	if err != nil {
 		return nil, err
 	}
-	channel := model.Channel{Id: route.ChannelId}
-	err = model.DB.Omit("key").First(&channel, "id = ?", route.ChannelId).Error
+	channel := model.Channel{Id: row.ChannelId}
+	err = model.DB.Omit("key").First(&channel, "id = ?", row.ChannelId).Error
 	if err != nil {
 		return nil, err
 	}
 	if err := model.HydrateChannelWithModels(model.DB, &channel); err != nil {
 		return nil, err
 	}
-	priority := route.GetPriority()
+	if channel.Status != model.ChannelStatusEnabled {
+		return nil, gorm.ErrRecordNotFound
+	}
+	priority := row.GetPriority()
 	channel.Priority = &priority
 	return &channel, nil
 }

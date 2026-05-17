@@ -2143,26 +2143,15 @@ const ProvidersManager = () => {
               title: t('channel.providers.model_detail_table.model'),
               dataIndex: ['detail', 'model'],
               key: 'model',
-              width: 132,
-              render: (value) => (
-                <div className='router-model-title'>
+              width: 180,
+              render: (value, record) => (
+                <div
+                  className='router-model-title'
+                  title={record?.detail?.description || value || '-'}
+                >
                   {value || '-'}
                 </div>
               ),
-            },
-            {
-              title: t('channel.providers.model_detail_table.description'),
-              dataIndex: ['detail', 'description'],
-              key: 'description',
-              width: 170,
-              render: (value) =>
-                value ? (
-                  <div className='router-model-description'>
-                    {value}
-                  </div>
-                ) : (
-                  '-'
-                ),
             },
             {
               title: t('channel.providers.model_detail_table.status'),
@@ -2175,14 +2164,14 @@ const ProvidersManager = () => {
               title: t('channel.providers.model_detail_table.type'),
               dataIndex: ['detail', 'type'],
               key: 'type',
-              width: 68,
+              width: 60,
               render: (value) => value || 'text',
             },
             {
               title: t('channel.providers.model_detail_table.supported_endpoints'),
               dataIndex: ['detail', 'supported_endpoints'],
               key: 'supported_endpoints',
-              width: 210,
+              width: 260,
               render: (endpoints, record) =>
                 Array.isArray(endpoints) && endpoints.length > 0 ? (
                   <div>
@@ -2202,7 +2191,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_compact'),
               key: 'price_compact',
-              width: 188,
+              width: 156,
               render: (_, { detail }) => {
                 const showInputDetail = hasComplexInputPricing(detail);
                 const showOutputDetail = hasComplexOutputPricing(detail);
@@ -2240,7 +2229,7 @@ const ProvidersManager = () => {
               title: t('channel.providers.model_detail_table.currency'),
               dataIndex: ['detail', 'currency'],
               key: 'currency',
-              width: 72,
+              width: 64,
               render: (value) => value || 'USD',
             },
             {
@@ -2322,8 +2311,8 @@ const ProvidersManager = () => {
         footer={null}
       >
         <div className='router-modal-scroll-body router-page-stack'>
-          <div>
-            <AppFormRow>
+          <div className='router-provider-model-detail-form'>
+            <AppFormRow className='router-provider-model-detail-form-row router-provider-model-detail-form-row-2'>
               <AppField
                 label={t('channel.providers.model_detail_table.model')}
                 required
@@ -2348,6 +2337,7 @@ const ProvidersManager = () => {
               >
                 <AppSelect
                   className='router-section-dropdown'
+                  fluid
                   options={PROVIDER_MODEL_STATUS_OPTIONS}
                   value={detail.status || 'active'}
                   onChange={(e, { value }) =>
@@ -2361,12 +2351,15 @@ const ProvidersManager = () => {
                   }
                 />
               </AppField>
+            </AppFormRow>
+            <AppFormRow className='router-provider-model-detail-form-row router-provider-model-detail-form-row-2'>
               <AppField
                 label={t('channel.providers.model_detail_table.type')}
                 required
               >
                 <AppSelect
                   className='router-section-dropdown'
+                  fluid
                   options={MODEL_TYPE_OPTIONS}
                   value={detail.type || 'text'}
                   onChange={(e, { value }) =>
@@ -2386,6 +2379,7 @@ const ProvidersManager = () => {
               >
                 <AppSelect
                   className='router-section-dropdown'
+                  fluid
                   options={SOURCE_OPTIONS}
                   value={detail.source || 'manual'}
                   onChange={(e, { value }) =>
@@ -2400,16 +2394,18 @@ const ProvidersManager = () => {
                 />
               </AppField>
             </AppFormRow>
-            <AppFormRow>
+            <AppFormRow className='router-provider-model-detail-form-row'>
               <AppField
+                className='router-provider-model-detail-field-wide'
                 label={t(
                   'channel.providers.model_detail_table.supported_endpoints',
                 )}
               >
                 <AppSelect
-                  className='router-section-dropdown'
+                  className='router-section-dropdown router-provider-endpoint-multi-select'
                   multiple
                   clearable
+                  fluid
                   options={providerEndpointOptionsForType(detail.type)}
                   value={detail.supported_endpoints || []}
                   onChange={(e, { value }) =>
@@ -2424,8 +2420,9 @@ const ProvidersManager = () => {
                 />
               </AppField>
             </AppFormRow>
-            <AppFormRow>
+            <AppFormRow className='router-provider-model-detail-form-row'>
               <AppField
+                className='router-provider-model-detail-field-wide'
                 label={t('channel.providers.model_detail_table.description')}
               >
                 <AppTextarea
@@ -2443,7 +2440,7 @@ const ProvidersManager = () => {
                 />
               </AppField>
             </AppFormRow>
-            <AppFormRow>
+            <AppFormRow className='router-provider-model-detail-form-row router-provider-model-detail-form-row-2'>
               <AppField label={t('channel.providers.model_detail_table.input_price')}>
                 <AppInputNumber
                   className='router-section-input'
@@ -2483,7 +2480,7 @@ const ProvidersManager = () => {
                 />
               </AppField>
             </AppFormRow>
-            <AppFormRow>
+            <AppFormRow className='router-provider-model-detail-form-row router-provider-model-detail-form-row-2'>
               <AppField label={t('channel.providers.model_detail_table.price_unit')}>
                 <AppInput
                   className='router-section-input'

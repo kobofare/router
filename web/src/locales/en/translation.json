@@ -415,7 +415,12 @@
       "balance_update_failed": "Failed to refresh balance for channel {{name}}.",
       "balance_update_submit_failed": "Failed to submit balance refresh task.",
       "all_balance_updated": "All enabled channel balances have been updated!",
-      "operation_success": "Operation completed successfully!"
+      "operation_success": "Operation completed successfully!",
+      "disable_blocked_title": "This channel cannot be disabled yet",
+      "disable_blocked_description": "This channel is still used by the following groups. Remove the related group channel bindings or model mappings first, then disable it.",
+      "disable_blocked_channel": "Channel: {{channel}}",
+      "disable_blocked_group": "Group {{group}} is still using this channel.",
+      "disable_blocked_group_with_models": "Group {{group}} is still using this channel. Related models: {{models}}."
     },
     "model_types": {
       "text": "Text",
@@ -424,7 +429,7 @@
       "video": "Video"
     },
     "providers": {
-      "title": "Provider Catalog",
+      "title": "Providers",
       "search": "Search provider, name, model...",
       "fetch": {
         "provider": "Provider",
@@ -435,11 +440,11 @@
       },
       "buttons": {
         "fetch_from_api": "Fetch Models from Provider API",
-        "reload": "Reload Saved Catalog",
+        "reload": "Reload Saved Providers",
         "load_defaults": "Load Built-in Default Models",
         "add_provider": "Add Provider",
         "refresh": "Refresh",
-        "save": "Save Catalog"
+        "save": "Save Providers"
       },
       "table": {
         "provider": "Provider ID",
@@ -453,7 +458,7 @@
         "created_at": "Created At",
         "updated_at": "Updated At",
         "actions": "Actions",
-        "empty": "No provider catalog",
+        "empty": "No provider list",
         "model_count": "{{count}} models"
       },
       "model_detail_table": {
@@ -528,17 +533,17 @@
         "confirm": "Confirm"
       },
       "messages": {
-        "load_failed": "Failed to load provider catalog",
+        "load_failed": "Failed to load provider list",
         "load_defaults_failed": "Failed to load default model list",
         "defaults_loaded": "Built-in default model list loaded",
         "provider_required": "Provider id is required",
         "provider_exists": "This provider already exists, please edit it directly",
-        "save_failed": "Failed to save provider catalog",
+        "save_failed": "Failed to save provider list",
         "save_success": "Provider catalog saved",
         "model_in_use": "This model is still in use and cannot be deleted",
         "model_usage_channels": "Channels",
         "model_usage_group_models": "Group Models",
-        "model_usage_group_model_routes": "Group Routes",
+        "model_usage_group_model_channels": "Group Model Channels",
         "model_details_invalid": "Invalid model_details JSON format",
         "fetch_provider_required": "Please choose a provider first",
         "fetch_key_required": "Please provide API key first, or save one in provider config",
@@ -599,6 +604,7 @@
           "enabled": "Enabled",
           "latest_test": "Latest Test",
           "test_status": "Test Status",
+          "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
         }
       },
@@ -695,6 +701,8 @@
           "price_unit": "Price Unit",
           "input_price": "Input Price",
           "output_price": "Output Price",
+          "upstream_return": "Latest Upstream Return",
+          "enable_block_reason": "Blocked Reason",
           "actions": "Actions"
         },
         "filters": {
@@ -702,7 +710,7 @@
           "enabled": "Enabled",
           "disabled": "Disabled"
         },
-        "enable_hint": "Only models already in the provider model catalog can be enabled. Models not in the catalog stay unselectable until you add them there and sync again.",
+        "enable_hint": "Only models already in the provider model list can be enabled. Models not in that list stay unselectable until you add them and sync again.",
         "auto_assign": "Auto Import",
         "auto_assign_empty": "No models can be auto-imported right now",
         "auto_assign_success": "Imported {{success}} models, failed {{failed}}",
@@ -713,10 +721,10 @@
         "provider_no_options": "Please create a provider first",
         "provider_load_failed": "Failed to load provider list",
         "provider_append_invalid": "Please select a provider and enter a model name",
-        "provider_append_success": "Model added to provider catalog",
-        "provider_append_failed": "Failed to add model to provider catalog",
-        "selection_disabled_unassigned": "This model is not in the provider model catalog and cannot be enabled.",
-        "selection_skipped_unassigned": "Skipped {{count}} models on this page that are not in the provider model catalog.",
+        "provider_append_success": "Model added to provider list",
+        "provider_append_failed": "Failed to add model to provider list",
+        "selection_disabled_unassigned": "This model is not in the provider model list and cannot be enabled.",
+        "selection_skipped_unassigned": "Skipped {{count}} models on this page that are not in the provider model list.",
         "realtime_enabled": "Realtime model sync is enabled: changing address or key refreshes the model list, but does not select all by default.",
         "realtime_hint": "After address and key are filled, supported models will be fetched automatically.",
         "flow_title": "Create Channel Flow",
@@ -754,8 +762,15 @@
           "status_title": "Model Status",
           "pricing_title": "Pricing",
           "status_hint": "When disabled, this model will not participate in the current channel's available model set.",
+          "upstream_return_title": "Latest Upstream Return",
+          "enable_block_reason_title": "Blocked Reason",
           "provider_placeholder": "Select a provider",
-          "provider_empty": "This model is not in the provider model catalog"
+          "provider_empty": "This model is not in the provider model list"
+        },
+        "upstream_return_status": {
+          "returned": "Returned",
+          "not_returned": "Not Returned",
+          "unknown": "Unknown"
         },
         "pricing_detail_table": {
           "component": "Component",
@@ -941,8 +956,8 @@
     },
     "detail_tabs": {
       "overview": "Overview",
-      "channels": "Channels",
-      "models": "Models"
+      "channels": "Group Channels",
+      "models": "Group Models"
     },
     "detail": {
       "title": "Group Detail",
@@ -953,12 +968,15 @@
       "channel_count": "Channel Count",
       "model_channels": "Channels",
       "model_search_placeholder": "Search model or channel",
-      "supported_models": "Supported Models",
+      "supported_models": "Group Models",
+      "no_mapping": "No Channel Mapping",
       "empty_models": "No supported models",
       "empty_model_channels": "No configurable channels for this model",
       "edit_model_title": "Edit Model {{model}}",
-      "bound_channels": "Related Channels",
-      "empty_channels": "No related channels"
+      "bound_channels": "Group Channels",
+      "empty_channels": "No group channels",
+      "channels_hint": "This section maintains the group_channels manual configuration: which channels are attached to the group and their priorities.",
+      "models_hint": "This section maintains the group model manual configuration and channel mappings. The group layer does not rewrite this configuration because of temporary channel failures, test results, or upstream fluctuations."
     },
     "edit": {
       "model_configs": "Group Model Mappings",
@@ -990,8 +1008,8 @@
       "create_failed": "Failed to create group",
       "update_success": "Group updated successfully",
       "update_failed": "Failed to update group",
-      "bind_update_success": "Group channel bindings saved",
-      "bind_update_failed": "Failed to save group channel bindings",
+      "bind_update_success": "Group channels saved",
+      "bind_update_failed": "Failed to save group channels",
       "delete_success": "Group deleted successfully",
       "delete_failed": "Failed to delete group"
     }

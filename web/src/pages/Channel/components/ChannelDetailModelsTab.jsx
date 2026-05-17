@@ -6,9 +6,11 @@ import {
   AppEmpty,
   AppInput,
   AppPagination,
+  AppPopconfirm,
   AppSelect,
   AppTable,
   AppTag,
+  AppTooltip,
 } from '../../../router-ui';
 
 const ChannelDetailModelsTab = ({
@@ -30,7 +32,7 @@ const ChannelDetailModelsTab = ({
   getComplexPricingDetailsForModel,
   openComplexPricingModal,
   detailModelsEditLocked,
-  providerCatalogLoading,
+  providerDataLoading,
   toggleModelSelection,
   canSelectChannelModel,
   detailCurrentPageAllSelected,
@@ -39,11 +41,44 @@ const ChannelDetailModelsTab = ({
   toggleDetailCurrentPageSelections,
   normalizeChannelModelType,
   startDetailModelEdit,
+  handleDeleteDetailModel,
   detailModelTotalPages,
   detailModelPage,
   setDetailModelPage,
   modelsSyncError,
 }) => {
+  const renderMergedPrice = (row) => {
+    const complexPricingDetails = getComplexPricingDetailsForModel(row);
+    const hasComplexPricing = complexPricingDetails.some((detail) =>
+      (detail.price_components || []).some(
+        (component) =>
+          Number(component.input_price || 0) > 0 ||
+          Number(component.output_price || 0) > 0,
+      ),
+    );
+    if (hasComplexPricing) {
+      return (
+        <AppButton
+          type='button'
+          className='router-inline-button'
+          onClick={() => openComplexPricingModal(row)}
+        >
+          {t('channel.edit.model_selector.pricing_detail_button')}
+        </AppButton>
+      );
+    }
+    return (
+      <div className='router-cell-stack'>
+        <span className='router-nowrap'>
+          {t('channel.edit.model_selector.table.input_price')}：{row.input_price ?? '-'}
+        </span>
+        <span className='router-nowrap router-text-meta'>
+          {t('channel.edit.model_selector.table.output_price')}：{row.output_price ?? '-'}
+        </span>
+      </div>
+    );
+  };
+
   const tableRowSelection = {
     columnWidth: columnWidths[0],
     selectedRowKeys: renderedModelConfigs
@@ -55,21 +90,22 @@ const ChannelDetailModelsTab = ({
       disabled:
         detailModelsEditing ||
         detailModelMutating ||
-        providerCatalogLoading ||
+        providerDataLoading ||
         detailCurrentPageSelectableCount === 0,
     }),
     getCheckboxProps: (row) => {
       const canSelect = canSelectChannelModel(row);
       const isUnavailable = !canSelect && !row.selected;
       const disabledReason = isUnavailable
-        ? t('channel.edit.model_selector.selection_disabled_unassigned')
+        ? row.enable_block_reason ||
+          t('channel.edit.model_selector.selection_disabled_unassigned')
         : '';
       return {
         className: isUnavailable ? 'router-model-toggle-disabled' : undefined,
         disabled:
           detailModelMutating ||
           detailModelsEditing ||
-          providerCatalogLoading ||
+          providerDataLoading ||
           isUnavailable,
         title: disabledReason || undefined,
       };
@@ -78,9 +114,10 @@ const ChannelDetailModelsTab = ({
       const canSelect = canSelectChannelModel(row);
       const isUnavailable = !canSelect && !row.selected;
       const disabledReason = isUnavailable
-        ? t('channel.edit.model_selector.selection_disabled_unassigned')
+        ? row.enable_block_reason ||
+          t('channel.edit.model_selector.selection_disabled_unassigned')
         : '';
-      return (
+      const checkboxNode = (
         <span
           className={[
             'router-inline-block',
@@ -89,12 +126,15 @@ const ChannelDetailModelsTab = ({
           ]
             .filter(Boolean)
             .join(' ')}
-          title={disabledReason || undefined}
           aria-label={disabledReason || undefined}
         >
           {originNode}
         </span>
       );
+      if (disabledReason === '') {
+        return checkboxNode;
+      }
+      return <AppTooltip title={disabledReason}>{checkboxNode}</AppTooltip>;
     },
     onSelect: (record, selected) => {
       toggleModelSelection(record.upstream_model, selected);
@@ -172,7 +212,7 @@ const ChannelDetailModelsTab = ({
         <AppTable
           className='router-detail-table router-channel-detail-model-table'
           pagination={false}
-          scroll={{ x: 1120 }}
+          scroll={{ x: 1260 }}
           rowSelection={tableRowSelection}
           locale={{
             emptyText: (
@@ -230,78 +270,88 @@ const ChannelDetailModelsTab = ({
               render: (value) => <span className='router-nowrap'>{value}</span>,
             },
             {
-              title: t('channel.edit.model_selector.table.input_price'),
-              key: 'input_price',
+              title: t('channel.edit.model_selector.table.price'),
+              key: 'price',
               width: columnWidths[5],
+              render: (_, row) => renderMergedPrice(row),
+            },
+            {
+              title: t('channel.edit.model_selector.table.status'),
+              key: 'status',
+              width: columnWidths[6],
               render: (_, row) => {
-                const complexPricingDetails = getComplexPricingDetailsForModel(row);
-                const hasComplexInputPricing = complexPricingDetails.some((detail) =>
-                  (detail.price_components || []).some(
-                    (component) => Number(component.input_price || 0) > 0,
-                  ),
+                const statusKey = row.sync_status || 'unknown';
+                const color =
+                  statusKey === 'returned'
+                    ? 'green'
+                    : statusKey === 'not_returned'
+                      ? 'orange'
+                      : 'grey';
+                return (
+                  <AppTag color={color} className='router-tag'>
+                    {t(`channel.edit.model_selector.upstream_return_status.${statusKey}`)}
+                  </AppTag>
                 );
-                if (hasComplexInputPricing) {
-                  return (
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
-                      onClick={() => openComplexPricingModal(row)}
-                    >
-                      {t('channel.edit.model_selector.pricing_detail_button')}
-                    </AppButton>
-                  );
-                }
-                return <span className='router-nowrap'>{row.input_price ?? '-'}</span>;
               },
             },
             {
-              title: t('channel.edit.model_selector.table.output_price'),
-              key: 'output_price',
-              width: columnWidths[6],
+              title: t('channel.edit.model_selector.table.upstream_return'),
+              key: 'last_synced_at',
+              width: columnWidths[7],
               render: (_, row) => {
-                const complexPricingDetails = getComplexPricingDetailsForModel(row);
-                const hasComplexOutputPricing = complexPricingDetails.some((detail) =>
-                  (detail.price_components || []).some(
-                    (component) => Number(component.output_price || 0) > 0,
-                  ),
+                const syncedAtText =
+                  Number(row.last_synced_at || 0) > 0
+                    ? new Date(row.last_synced_at * 1000).toLocaleString()
+                    : '-';
+                return (
+                  <span className='router-nowrap' title={syncedAtText}>
+                    {syncedAtText}
+                  </span>
                 );
-                if (hasComplexOutputPricing) {
-                  return (
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
-                      onClick={() => openComplexPricingModal(row)}
-                    >
-                      {t('channel.edit.model_selector.pricing_detail_button')}
-                    </AppButton>
-                  );
-                }
-                return <span className='router-nowrap'>{row.output_price ?? '-'}</span>;
               },
             },
             {
               title: t('channel.table.actions'),
               key: 'actions',
-              width: columnWidths[7],
+              width: columnWidths[8],
               render: (_, row) => {
                 const rowEditDisabled =
                   detailModelsEditLocked || detailModelMutating || detailModelsEditing;
                 const rowActionBlocked = !canSelectChannelModel(row) && !row.selected;
-                const rowActionDisabled = rowEditDisabled || rowActionBlocked;
+                const rowEditActionDisabled = rowEditDisabled || rowActionBlocked;
                 const rowActionDisabledReason = rowActionBlocked
-                  ? t('channel.edit.model_selector.selection_disabled_unassigned')
+                  ? row.enable_block_reason ||
+                    t('channel.edit.model_selector.selection_disabled_unassigned')
                   : '';
+                const rowDeleteDisabled =
+                  detailModelMutating || detailModelsEditing;
                 return (
                   <div className='router-inline-actions'>
                     <AppButton
                       type='button'
                       className='router-inline-button'
-                      disabled={rowActionDisabled}
+                      disabled={rowEditActionDisabled}
                       title={rowActionDisabledReason || undefined}
                       onClick={() => startDetailModelEdit(row.upstream_model)}
                     >
                       {t('common.edit')}
                     </AppButton>
+                    <AppPopconfirm
+                      title={t('channel.edit.model_selector.delete_confirm')}
+                      onConfirm={() => handleDeleteDetailModel(row)}
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
+                      disabled={rowDeleteDisabled}
+                    >
+                      <AppButton
+                        type='button'
+                        color='red'
+                        className='router-inline-button'
+                        disabled={rowDeleteDisabled}
+                      >
+                        {t('common.delete')}
+                      </AppButton>
+                    </AppPopconfirm>
                   </div>
                 );
               },

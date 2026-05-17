@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 import {
+  AppAlert,
   AppButton,
   AppDetailSection,
   AppField,
@@ -41,6 +42,9 @@ const createEmptyModelConfig = () => ({
   enabled: true,
   priority: null,
 });
+
+const toModelSummaryRows = (items) =>
+  Array.isArray(items) ? items : [];
 
 const sortGroupModelConfigRows = (items) =>
   [...(Array.isArray(items) ? items : [])].sort((a, b) => {
@@ -224,6 +228,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const [detailChannelRows, setDetailChannelRows] = useState([]);
   const [detailChannelLoading, setDetailChannelLoading] = useState(false);
   const [detailModelRows, setDetailModelRows] = useState([]);
+  const [detailModelSummaries, setDetailModelSummaries] = useState([]);
   const [detailModelLoading, setDetailModelLoading] = useState(false);
   const [detailModelSearchKeyword, setDetailModelSearchKeyword] = useState('');
   const [detailEditingSection, setDetailEditingSection] = useState('');
@@ -364,6 +369,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailChannelRows([]);
     setDetailChannelLoading(false);
     setDetailModelRows([]);
+    setDetailModelSummaries([]);
     setDetailModelLoading(false);
     setDetailModelSearchKeyword('');
     setDetailEditingSection('');
@@ -427,10 +433,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     return {
       channels: Array.isArray(data?.channels) ? data.channels : [],
       items: sortGroupModelConfigRows(Array.isArray(data?.items) ? data.items : []),
+      summaries: toModelSummaryRows(data?.summaries),
     };
   }, [t]);
 
-  const fetchGroupChannelBindings = useCallback(async (groupID) => {
+  const fetchGroupChannels = useCallback(async (groupID) => {
     const encodedID = encodeURIComponent(groupID || '');
     const res = await API.get(`/api/v1/admin/group/${encodedID}/channels`);
     const { success, message, data } = res.data || {};
@@ -443,6 +450,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const applyDetailModelConfigPayload = useCallback((payload) => {
     const items = sortGroupModelConfigRows(Array.isArray(payload?.items) ? payload.items : []);
     setDetailModelRows(items);
+    setDetailModelSummaries(toModelSummaryRows(payload?.summaries));
   }, []);
 
   const loadDetailModelConfigState = useCallback(async (groupID) => {
@@ -451,7 +459,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     try {
       const [payload, channelRows] = await Promise.all([
         fetchGroupModelConfigPayload(groupID),
-        fetchGroupChannelBindings(groupID),
+        fetchGroupChannels(groupID),
       ]);
       setDetailChannelRows(toChannelRows(channelRows));
       applyDetailModelConfigPayload(payload);
@@ -463,19 +471,19 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       setDetailChannelLoading(false);
       setDetailModelLoading(false);
     }
-  }, [applyDetailModelConfigPayload, fetchGroupChannelBindings, fetchGroupModelConfigPayload]);
+  }, [applyDetailModelConfigPayload, fetchGroupChannels, fetchGroupModelConfigPayload]);
 
-  const refreshDetailChannelBindings = useCallback(async (groupID) => {
+  const refreshDetailChannels = useCallback(async (groupID) => {
     const normalizedGroupID = (groupID || '').toString().trim();
     if (normalizedGroupID === '') {
       setDetailChannelRows([]);
       return [];
     }
-    const rows = await fetchGroupChannelBindings(normalizedGroupID);
+    const rows = await fetchGroupChannels(normalizedGroupID);
     const nextRows = toChannelRows(rows);
     setDetailChannelRows(nextRows);
     return nextRows;
-  }, [fetchGroupChannelBindings]);
+  }, [fetchGroupChannels]);
 
   const loadEditModelConfigs = useCallback(async (groupID) => {
     setFormChannelLoading(true);
@@ -786,7 +794,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailChannelLoading(true);
     let channels = [];
     try {
-      channels = await fetchGroupChannelBindings(activeGroup.id || '');
+      channels = await fetchGroupChannels(activeGroup.id || '');
     } catch (error) {
       showError(error);
       setDetailChannelLoading(false);
@@ -800,7 +808,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       priority: toSafePriorityNumber(firstUnbound?.priority, 0),
     });
     setDetailChannelModalOpen(true);
-  }, [activeGroup, detailChannelsEditLocked, fetchGroupChannelBindings, submitting]);
+  }, [activeGroup, detailChannelsEditLocked, fetchGroupChannels, submitting]);
 
   const loadDetailModelEditorState = useCallback(async () => {
     if (!activeGroup || submitting || detailModelsEditLocked) {
@@ -854,8 +862,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         showError(message || t('group_manage.messages.update_failed'));
         return false;
       }
-      applySavedDetailModelState(items, channels, selectedChannelIDs);
-      await refreshDetailChannelBindings(id);
+      await loadDetailModelConfigState(id);
       showSuccess(t('group_manage.messages.update_success'));
       return true;
     } catch (error) {
@@ -864,7 +871,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     } finally {
       setSubmitting(false);
     }
-  }, [activeGroup, applySavedDetailModelState, normalizeModelConfigsPayload, refreshDetailChannelBindings, t]);
+  }, [activeGroup, loadDetailModelConfigState, normalizeModelConfigsPayload, t]);
 
   const saveSingleDetailModelConfigs = useCallback(async (modelName, items, channels = []) => {
     const id = (activeGroup?.id || '').toString().trim();
@@ -889,15 +896,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         showError(message || t('group_manage.messages.update_failed'));
         return false;
       }
-      const preservedRows = (Array.isArray(detailModelRows) ? detailModelRows : []).filter(
-        (item) => (item?.model || '').toString().trim() !== normalizedModel
-      );
-      applySavedDetailModelState(
-        sortGroupModelConfigRows([...preservedRows, ...items]),
-        channels,
-        toBoundChannelIDs(channels),
-      );
-      await refreshDetailChannelBindings(id);
+      await loadDetailModelConfigState(id);
       showSuccess(t('group_manage.messages.update_success'));
       return true;
     } catch (error) {
@@ -906,7 +905,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     } finally {
       setSubmitting(false);
     }
-  }, [activeGroup, applySavedDetailModelState, detailModelRows, normalizeModelConfigsPayload, refreshDetailChannelBindings, t]);
+  }, [activeGroup, loadDetailModelConfigState, normalizeModelConfigsPayload, t]);
 
   const closeDetailModelModal = useCallback(() => {
     if (submitting) {
@@ -1453,7 +1452,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               dataIndex: 'model',
               key: 'model',
               className: 'router-group-supported-models-col-model',
-              render: (value) => value || '-',
+              render: (value, entry) => (
+                <div className='router-cell-truncate' title={value || '-'}>
+                  <span>{value || '-'}</span>
+                </div>
+              ),
             },
             {
               title: t('group_manage.detail.model_channels'),
@@ -1479,7 +1482,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                     ))}
                   </div>
                 ) : (
-                  '-'
+                  <span className='router-text-meta'>
+                    {t('group_manage.detail.no_mapping')}
+                  </span>
                 ),
             },
             {
@@ -1489,7 +1494,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               render: (_, entry) => (
                 <AppSwitch
                   checked={entry.allEnabled}
-                  disabled={submitting || detailModelsEditLocked}
+                  disabled={
+                    submitting ||
+                    detailModelsEditLocked ||
+                    (Array.isArray(entry?.rows) ? entry.rows.length === 0 : true)
+                  }
                   onChange={(event, { checked }) => {
                     event?.stopPropagation?.();
                     toggleDetailModelEnabled(entry.model, !!checked);
@@ -1619,11 +1628,16 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           rows: [],
         });
       }
-      grouped.get(model).rows.push(item);
+        grouped.get(model).rows.push(item);
     });
 
-    const entries = Array.from(grouped.values())
-      .map((entry) => {
+    const entries = toModelSummaryRows(detailModelSummaries)
+      .map((summary) => {
+        const model = (summary?.model || '').toString().trim();
+        if (model === '') {
+          return null;
+        }
+        const entry = grouped.get(model) || { model, rows: [] };
         const rows = [...entry.rows].sort((left, right) => {
           const priorityDiff =
             toSafePriorityNumber(right?.priority, 0) - toSafePriorityNumber(left?.priority, 0);
@@ -1638,13 +1652,14 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         });
         const enabledCount = rows.filter((row) => row?.enabled !== false).length;
         return {
-          model: entry.model,
+          model,
           rows,
           enabledCount,
           allEnabled: rows.length > 0 && enabledCount === rows.length,
           partiallyEnabled: enabledCount > 0 && enabledCount < rows.length,
         };
       })
+      .filter(Boolean)
       .sort((left, right) => left.model.localeCompare(right.model));
 
     const keyword = detailModelSearchKeyword.trim().toLowerCase();
@@ -1663,7 +1678,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       ];
       return haystacks.some((value) => value.toLowerCase().includes(keyword));
     });
-  }, [detailModelSearchKeyword, detailModelSourceRows]);
+  }, [detailModelSearchKeyword, detailModelSourceRows, detailModelSummaries]);
 
   const openDetailModelEdit = useCallback(async (entry) => {
     const editorState = await loadDetailModelEditorState();
@@ -2184,11 +2199,23 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               </AppButton>
             }
           >
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={t('group_manage.detail.channels_hint')}
+            />
             {renderDetailChannelsTable(detailChannelRows, detailChannelLoading)}
           </AppDetailSection>
         )}
         {activeDetailTab === 'models' && (
           <AppDetailSection>
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={t('group_manage.detail.models_hint')}
+            />
             {renderDetailModelConfigTable({
               hideTitle: true,
             })}

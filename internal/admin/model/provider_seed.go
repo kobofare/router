@@ -15,16 +15,16 @@ func normalizeProviderSortOrderValue(sortOrder int) int {
 	return 0
 }
 
-func syncDefaultProviderCatalogWithDB(db *gorm.DB) error {
+func syncDefaultProvidersWithDB(db *gorm.DB) error {
 	if err := db.AutoMigrate(&Provider{}, &ProviderModel{}, &ProviderModelPriceComponent{}); err != nil {
 		return err
 	}
-	seeds := BuildDefaultProviderCatalogSeeds(helper.GetTimestamp())
-	logger.SysLogf("migration: synced model provider catalog with %d default providers", len(seeds))
-	return saveProviderCatalogSeedsToTable(db, seeds)
+	seeds := BuildDefaultProviderSeeds(helper.GetTimestamp())
+	logger.SysLogf("migration: synced default provider data with %d providers", len(seeds))
+	return saveProviderSeedsToTable(db, seeds)
 }
 
-func saveProviderCatalogSeedsToTable(db *gorm.DB, seeds []ProviderCatalogSeed) error {
+func saveProviderSeedsToTable(db *gorm.DB, seeds []ProviderSeed) error {
 	now := helper.GetTimestamp()
 	providerRows := make([]Provider, 0, len(seeds))
 	modelRows := make([]ProviderModel, 0)

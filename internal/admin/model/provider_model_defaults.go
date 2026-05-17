@@ -64,7 +64,7 @@ type ProviderModelDetail struct {
 	PriceComponents    []ProviderModelPriceComponentDetail `json:"price_components,omitempty"`
 }
 
-type ProviderCatalogSeed struct {
+type ProviderSeed struct {
 	Provider     string
 	Name         string
 	BaseURL      string

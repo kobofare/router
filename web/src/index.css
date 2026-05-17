@@ -1270,6 +1270,44 @@ body,
     min-width: 0;
 }
 
+.router-provider-model-detail-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.router-provider-model-detail-form-row {
+    margin-bottom: 12px;
+}
+
+.router-provider-model-detail-form-row.router-ui-form-row {
+    margin-bottom: 12px;
+}
+
+.router-provider-model-detail-form-row-2.router-ui-form-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.router-provider-model-detail-field-wide {
+    grid-column: 1 / -1;
+}
+
+.router-ui-select.router-provider-endpoint-multi-select,
+.router-ui-select.router-provider-endpoint-multi-select .ant-select-selector {
+    min-height: 38px !important;
+    height: auto !important;
+}
+
+.router-ui-select.router-provider-endpoint-multi-select .ant-select-selector {
+    align-items: flex-start !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+}
+
+.router-ui-select.router-provider-endpoint-multi-select .ant-select-selection-overflow {
+    flex-wrap: wrap !important;
+}
+
 .router-ui-button.fluid {
     width: 100%;
 }
@@ -3253,7 +3291,7 @@ body,
 }
 
 .router-model-title {
-    font-weight: 500;
+    font-weight: 400;
     color: rgba(0, 0, 0, 0.86);
     display: flex;
     align-items: center;

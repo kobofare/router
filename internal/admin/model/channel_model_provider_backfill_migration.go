@@ -14,7 +14,7 @@ type channelModelProviderBackfillRow struct {
 	Provider      string `gorm:"column:provider"`
 }
 
-func backfillChannelModelProviderFromCatalogWithDB(tx *gorm.DB) error {
+func backfillChannelModelProviderFromProviderModelsWithDB(tx *gorm.DB) error {
 	if tx == nil {
 		return fmt.Errorf("database handle is nil")
 	}
@@ -31,7 +31,7 @@ func backfillChannelModelProviderFromCatalogWithDB(tx *gorm.DB) error {
 		return err
 	}
 	if len(rows) == 0 {
-		return backfillGroupModelRouteProviderFromChannelModelsWithDB(tx)
+		return backfillGroupModelChannelProviderFromChannelModelsWithDB(tx)
 	}
 
 	candidates := make([]string, 0, len(rows)*2)
@@ -49,7 +49,7 @@ func backfillChannelModelProviderFromCatalogWithDB(tx *gorm.DB) error {
 	}
 
 	for _, row := range rows {
-		resolvedProvider := ResolveProviderFromCatalogMap(providerByModel, row.Model, row.UpstreamModel)
+		resolvedProvider := ResolveProviderFromModelMap(providerByModel, row.Model, row.UpstreamModel)
 		resolvedProvider = NormalizeGroupModelProviderValue(resolvedProvider)
 		currentProvider := NormalizeGroupModelProviderValue(row.Provider)
 		if currentProvider == resolvedProvider {
@@ -61,5 +61,5 @@ func backfillChannelModelProviderFromCatalogWithDB(tx *gorm.DB) error {
 			return err
 		}
 	}
-	return backfillGroupModelRouteProviderFromChannelModelsWithDB(tx)
+	return backfillGroupModelChannelProviderFromChannelModelsWithDB(tx)
 }

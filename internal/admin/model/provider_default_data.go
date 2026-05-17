@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var defaultProviderCatalogTemplates = normalizeDefaultProviderCatalogTemplates([]ProviderCatalogSeed{
+var defaultProviderTemplates = normalizeDefaultProviderTemplates([]ProviderSeed{
 	{
 		Provider:    "openai",
 		Name:        "OpenAI",
@@ -448,8 +448,8 @@ var defaultProviderCatalogTemplates = normalizeDefaultProviderCatalogTemplates([
 	},
 })
 
-func normalizeDefaultProviderCatalogTemplates(rows []ProviderCatalogSeed) []ProviderCatalogSeed {
-	normalized := make([]ProviderCatalogSeed, 0, len(rows))
+func normalizeDefaultProviderTemplates(rows []ProviderSeed) []ProviderSeed {
+	normalized := make([]ProviderSeed, 0, len(rows))
 	seenProviders := make(map[string]struct{}, len(rows))
 	for _, row := range rows {
 		provider := strings.TrimSpace(strings.ToLower(row.Provider))
@@ -464,7 +464,7 @@ func normalizeDefaultProviderCatalogTemplates(rows []ProviderCatalogSeed) []Prov
 		if name == "" {
 			name = provider
 		}
-		normalized = append(normalized, ProviderCatalogSeed{
+		normalized = append(normalized, ProviderSeed{
 			Provider:     provider,
 			Name:         name,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
@@ -500,11 +500,11 @@ func normalizeDefaultProviderCatalogTemplates(rows []ProviderCatalogSeed) []Prov
 	return normalized
 }
 
-func BuildDefaultProviderCatalogSeeds(now int64) []ProviderCatalogSeed {
-	seeds := make([]ProviderCatalogSeed, 0, len(defaultProviderCatalogTemplates))
-	for _, template := range defaultProviderCatalogTemplates {
+func BuildDefaultProviderSeeds(now int64) []ProviderSeed {
+	seeds := make([]ProviderSeed, 0, len(defaultProviderTemplates))
+	for _, template := range defaultProviderTemplates {
 		details := normalizeDefaultProviderSeedModelDetails(template.Provider, template.ModelDetails, now)
-		seeds = append(seeds, ProviderCatalogSeed{
+		seeds = append(seeds, ProviderSeed{
 			Provider:     template.Provider,
 			Name:         template.Name,
 			BaseURL:      template.BaseURL,

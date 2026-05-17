@@ -128,7 +128,7 @@ func executeChannelModelTest(ctx context.Context, channel *model.Channel, option
 		return nil, false, err.Error(), 0, modelName, nil, 0, err
 	}
 	if options.PersistResults {
-		if err := persistChannelModelTests(channel.Id, results); err != nil {
+		if err := persistChannelModelTests(channel.Id, "", results); err != nil {
 			modelName := testModel
 			if modelName == "" {
 				modelName = strings.TrimSpace(targetChannel.TestModel)
@@ -136,9 +136,6 @@ func executeChannelModelTest(ctx context.Context, channel *model.Channel, option
 			message := "保存模型测试结果失败: " + err.Error()
 			recordModelTestLog(ctx, channel, modelName, false, message, startedAt)
 			return nil, false, message, 0, modelName, nil, 0, err
-		}
-		if savedChannel, getErr := channelsvc.GetByID(channel.Id); getErr == nil {
-			_ = savedChannel.UpdateGroupModelRoutes()
 		}
 	}
 	success, responseMessage, latencyMs, modelName := summarizeModelTestResults(results)

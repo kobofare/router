@@ -2,6 +2,7 @@ package channel
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -508,6 +509,19 @@ func UpdateChannel(c *gin.Context) {
 	channel.NormalizeModelConfigState()
 	err = channelsvc.Update(&channel)
 	if err != nil {
+		var blockedErr *model.ChannelDisableBlockedError
+		if errors.As(err, &blockedErr) {
+			logChannelAdminWarn(c, "update", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()), stringField("reason", blockedErr.Error()))
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": blockedErr.Error(),
+				"data": gin.H{
+					"code":   "channel_disable_blocked",
+					"impact": blockedErr.Impact,
+				},
+			})
+			return
+		}
 		logChannelAdminWarn(c, "update", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

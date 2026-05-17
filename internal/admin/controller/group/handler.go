@@ -25,8 +25,8 @@ type upsertGroupRequest struct {
 }
 
 type updateGroupChannelsRequest struct {
-	ChannelIDs []string                        `json:"channel_ids"`
-	Channels   []model.GroupChannelBindingItem `json:"channels"`
+	ChannelIDs []string                 `json:"channel_ids"`
+	Channels   []model.GroupChannelItem `json:"channels"`
 }
 
 const maxGroupListPageSize = 100
@@ -219,7 +219,7 @@ func CreateGroup(c *gin.Context) {
 	if req.ModelConfigs != nil {
 		row, err = groupsvc.CreateWithConfig(createItem, req.ChannelIDs, req.ModelConfigs)
 	} else {
-		row, err = groupsvc.CreateWithChannelBindings(createItem, req.ChannelIDs)
+		row, err = groupsvc.CreateWithChannels(createItem, req.ChannelIDs)
 	}
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -287,7 +287,7 @@ func UpdateGroup(c *gin.Context) {
 	if req.ModelConfigs != nil {
 		row, err = groupsvc.UpdateWithConfig(item, req.ChannelIDs, req.ModelConfigs, req.ChannelIDs != nil, true)
 	} else if req.ChannelIDs != nil {
-		row, err = groupsvc.UpdateWithChannelBindings(item, req.ChannelIDs)
+		row, err = groupsvc.UpdateWithChannels(item, req.ChannelIDs)
 	} else {
 		row, err = groupsvc.Update(item)
 	}
@@ -357,7 +357,7 @@ func resolveUpdateBillingRatio(value *float64, fallback float64) (float64, error
 }
 
 // GetGroupChannels godoc
-// @Summary List group channel bindings (admin)
+// @Summary List group channels (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
@@ -374,7 +374,7 @@ func GetGroupChannels(c *gin.Context) {
 		})
 		return
 	}
-	rows, err := groupsvc.ListChannelBindings(id)
+	rows, err := groupsvc.ListChannels(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -556,7 +556,7 @@ func UpdateSingleGroupModelConfigs(c *gin.Context) {
 }
 
 // UpdateGroupChannels godoc
-// @Summary Update group channel bindings (admin)
+// @Summary Update group channels (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json
@@ -584,14 +584,14 @@ func UpdateGroupChannels(c *gin.Context) {
 		return
 	}
 	if len(req.Channels) > 0 {
-		if err := groupsvc.ReplaceChannelBindingsWithItems(id, req.Channels); err != nil {
+		if err := groupsvc.ReplaceChannelsWithItems(id, req.Channels); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": err.Error(),
 			})
 			return
 		}
-	} else if err := groupsvc.ReplaceChannelBindings(id, req.ChannelIDs); err != nil {
+	} else if err := groupsvc.ReplaceChannels(id, req.ChannelIDs); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),
