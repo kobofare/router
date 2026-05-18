@@ -56,7 +56,7 @@ func NormalizeRequestedChannelModelEndpoint(path string) string {
 }
 
 func BuildChannelModelEndpointRowsWithProviderEndpoints(existing []ChannelModelEndpoint, rows []ChannelModel, providerEndpoints map[string][]string) []ChannelModelEndpoint {
-	normalizedRows := NormalizeChannelModelConfigsPreserveOrder(rows)
+	normalizedRows := NormalizeChannelModelsPreserveOrder(rows)
 	if len(normalizedRows) == 0 {
 		return []ChannelModelEndpoint{}
 	}
@@ -315,7 +315,7 @@ func loadProviderEndpointCandidatesForChannelModelsWithDB(db *gorm.DB, rows []Ch
 		return nil, fmt.Errorf("database handle is nil")
 	}
 	byProvider := make(map[string][]string)
-	for _, row := range NormalizeChannelModelConfigsPreserveOrder(rows) {
+	for _, row := range NormalizeChannelModelsPreserveOrder(rows) {
 		provider := NormalizeGroupModelProviderValue(row.Provider)
 		if provider == "" {
 			continue
@@ -566,7 +566,7 @@ func ResolveSelectedChannelModelConfig(rows []ChannelModel, modelName string) (C
 	if normalizedModelName == "" {
 		return ChannelModel{}, false
 	}
-	for _, row := range NormalizeChannelModelConfigsPreserveOrder(rows) {
+	for _, row := range NormalizeChannelModelsPreserveOrder(rows) {
 		if row.Inactive || !row.Selected {
 			continue
 		}

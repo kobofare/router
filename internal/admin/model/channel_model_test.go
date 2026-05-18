@@ -10,8 +10,8 @@ func float64Ptr(value float64) *float64 {
 	return &value
 }
 
-func TestBuildDefaultChannelModelConfigsWithProtocol_AnthropicPrefersMessages(t *testing.T) {
-	rows := BuildDefaultChannelModelConfigsWithProtocol([]string{"claude-sonnet-4-6"}, relaychannel.Anthropic)
+func TestBuildDefaultChannelModelsWithProtocol_AnthropicPrefersMessages(t *testing.T) {
+	rows := BuildDefaultChannelModelsWithProtocol([]string{"claude-sonnet-4-6"}, relaychannel.Anthropic)
 	if len(rows) != 1 {
 		t.Fatalf("len(rows) = %d, want 1", len(rows))
 	}
@@ -107,7 +107,7 @@ func TestApplyChannelModelEndpointState_PreservesExplicitPrimaryEvenIfDisabled(t
 	}
 }
 
-func TestBuildFetchedChannelModelConfigsPreservesExistingSelectionsAndMarksMissingRowsInactive(t *testing.T) {
+func TestBuildFetchedChannelModelsPreservesExistingSelectionsAndMarksMissingRowsInactive(t *testing.T) {
 	existingRows := []ChannelModel{
 		{
 			Model:         "alias-gpt-4.1",
@@ -142,9 +142,9 @@ func TestBuildFetchedChannelModelConfigsPreservesExistingSelectionsAndMarksMissi
 		},
 	}
 
-	rows := BuildFetchedChannelModelConfigs(existingRows, fetchedRows, 0, false)
+	rows := BuildFetchedChannelModels(existingRows, fetchedRows, 0, false)
 	if len(rows) != 3 {
-		t.Fatalf("BuildFetchedChannelModelConfigs returned %d rows, want 3", len(rows))
+		t.Fatalf("BuildFetchedChannelModels returned %d rows, want 3", len(rows))
 	}
 
 	if rows[0].Model != "alias-gpt-4.1" {
@@ -203,7 +203,7 @@ func TestBuildDisabledChannelModelConfigsMarksOnlyTargetModelInactive(t *testing
 		},
 	}
 
-	updated, changed := buildDisabledChannelModelConfigs(rows, "gpt-5.3-codex")
+	updated, changed := buildDisabledChannelModels(rows, "gpt-5.3-codex")
 	if !changed {
 		t.Fatalf("changed = false, want true")
 	}
@@ -234,7 +234,7 @@ func TestBuildDisabledChannelModelConfigsNoopWhenTargetMissing(t *testing.T) {
 		},
 	}
 
-	updated, changed := buildDisabledChannelModelConfigs(rows, "gpt-5.3-codex")
+	updated, changed := buildDisabledChannelModels(rows, "gpt-5.3-codex")
 	if changed {
 		t.Fatalf("changed = true, want false")
 	}
