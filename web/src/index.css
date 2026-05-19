@@ -2889,6 +2889,14 @@ body,
     min-width: 0;
 }
 
+.router-ui-field-control > .router-ui-input,
+.router-ui-field-control > .router-ui-input-number,
+.router-ui-field-control > .router-ui-select,
+.router-ui-field-control > .router-ui-textarea {
+    width: 100%;
+    max-width: 100%;
+}
+
 .router-ui-form-actions {
     display: flex;
     align-items: center;
