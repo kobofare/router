@@ -19,16 +19,27 @@ export const PROVIDER_LIST_COLUMN_WIDTHS = {
 };
 
 export const TOPUP_PLAN_LIST_COLUMN_WIDTHS = {
-  name: '16%',
-  group: '18%',
-  payAmount: '13%',
-  creditedAmount: '13%',
+  name: 160,
+  group: 140,
+  payAmount: 120,
+  creditedAmount: 120,
   sortOrder: 100,
   enabled: 100,
   publicVisible: 100,
   validityDays: 100,
   actions: 176,
 };
+
+export const TOPUP_PLAN_LIST_TABLE_MIN_WIDTH =
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.name +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.group +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.payAmount +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.creditedAmount +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.sortOrder +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.enabled +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.publicVisible +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.validityDays +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.actions;
 
 export const PACKAGE_LIST_COLUMN_WIDTHS = {
   name: 120,
@@ -91,10 +102,10 @@ export const TOKEN_LIST_COLUMN_WIDTHS = {
 };
 
 export const USER_LIST_COLUMN_WIDTHS = {
-  username: '16%',
-  wallet: '14%',
-  package: '14%',
-  balance: '12%',
+  username: 160,
+  wallet: 150,
+  package: 140,
+  balance: 120,
   requestCount: 100,
   createdAt: 148,
   updatedAt: 148,
@@ -103,16 +114,38 @@ export const USER_LIST_COLUMN_WIDTHS = {
   actions: 176,
 };
 
+export const USER_LIST_TABLE_MIN_WIDTH =
+  USER_LIST_COLUMN_WIDTHS.username +
+  USER_LIST_COLUMN_WIDTHS.wallet +
+  USER_LIST_COLUMN_WIDTHS.package +
+  USER_LIST_COLUMN_WIDTHS.balance +
+  USER_LIST_COLUMN_WIDTHS.requestCount +
+  USER_LIST_COLUMN_WIDTHS.createdAt +
+  USER_LIST_COLUMN_WIDTHS.updatedAt +
+  USER_LIST_COLUMN_WIDTHS.role +
+  USER_LIST_COLUMN_WIDTHS.status +
+  USER_LIST_COLUMN_WIDTHS.actions;
+
 export const REDEMPTION_LIST_COLUMN_WIDTHS = {
-  name: '14%',
-  group: '14%',
+  name: 160,
+  group: 140,
   status: 92,
-  faceValue: '14%',
+  faceValue: 140,
   createdTime: 148,
   codeExpiresAt: 148,
   redeemedTime: 148,
   actions: 192,
 };
+
+export const REDEMPTION_LIST_TABLE_MIN_WIDTH =
+  REDEMPTION_LIST_COLUMN_WIDTHS.name +
+  REDEMPTION_LIST_COLUMN_WIDTHS.group +
+  REDEMPTION_LIST_COLUMN_WIDTHS.status +
+  REDEMPTION_LIST_COLUMN_WIDTHS.faceValue +
+  REDEMPTION_LIST_COLUMN_WIDTHS.createdTime +
+  REDEMPTION_LIST_COLUMN_WIDTHS.codeExpiresAt +
+  REDEMPTION_LIST_COLUMN_WIDTHS.redeemedTime +
+  REDEMPTION_LIST_COLUMN_WIDTHS.actions;
 
 export const LOG_LIST_COLUMN_WIDTHS = {
   time: 148,

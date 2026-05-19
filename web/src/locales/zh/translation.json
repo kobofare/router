@@ -1062,7 +1062,7 @@
       "group": "分组",
       "group_placeholder": "请选择分组",
       "visibility_scope": "可见范围",
-      "visibility_scope_all": "全部可见",
+      "visibility_scope_all": "全部用户可见",
       "visibility_scope_partial_users": "部分用户可见",
       "visible_users": "可见用户",
       "visible_users_placeholder": "搜索并选择用户",

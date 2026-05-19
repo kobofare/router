@@ -304,6 +304,27 @@ const PackagesManager = () => {
     [t]
   );
 
+  const loadInitialUsers = useCallback(async () => {
+    setUserLoading(true);
+    try {
+      const res = await API.get('/api/v1/admin/user', {
+        params: {
+          page: 1,
+        },
+      });
+      const { success, message, data } = res?.data || {};
+      if (!success) {
+        showError(message || t('package_manage.messages.user_load_failed'));
+        return;
+      }
+      setUserOptions((current) => appendUserOptionsIfMissing(current, data));
+    } catch (error) {
+      showError(error?.message || t('package_manage.messages.user_load_failed'));
+    } finally {
+      setUserLoading(false);
+    }
+  }, [t]);
+
   const loadDisplayUnits = useCallback(async () => {
     try {
       const res = await API.get('/api/v1/admin/billing/currencies');
@@ -398,6 +419,7 @@ const PackagesManager = () => {
     setEditOpen(false);
     setActiveRow(null);
     resetForm();
+    loadInitialUsers().then();
   };
 
   const openViewPage = (row) => {
@@ -460,6 +482,7 @@ const PackagesManager = () => {
       setUserOptions((current) =>
         appendUserOptionsIfMissing(current, detail?.visible_users)
       );
+      loadInitialUsers().then();
       setEditOpen(true);
     } catch (error) {
       showError(error?.message || error);
@@ -888,6 +911,11 @@ const PackagesManager = () => {
                     : [],
               }))
             }
+            onClick={() => {
+              if (userOptions.length === 0) {
+                loadInitialUsers().then();
+              }
+            }}
           />
         </AppField>
         <AppField label={t('package_manage.form.visible_users')}>
@@ -901,6 +929,11 @@ const PackagesManager = () => {
             search
             clearable
             disabled={form.visibility_scope !== 'partial_users'}
+            onClick={() => {
+              if (userOptions.length === 0) {
+                loadInitialUsers().then();
+              }
+            }}
             onSearch={searchUsers}
             onChange={(e, { value }) =>
               setForm((prev) => ({
