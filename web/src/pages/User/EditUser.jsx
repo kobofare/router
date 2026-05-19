@@ -1669,10 +1669,11 @@ const UserDetail = () => {
         }
       >
           <div className='router-page-stack'>
-            <AppFormRow>
+            <AppFormRow className='router-user-detail-modal-form-row'>
               <AppField label={t('user.detail.assign.package')}>
                 <AppSelect
                   className='router-section-input'
+                  fluid
                   search
                   clearable
                   loading={packageOptionsLoading}
@@ -1688,7 +1689,7 @@ const UserDetail = () => {
                 />
               </AppField>
             </AppFormRow>
-            <AppFormRow>
+            <AppFormRow className='router-user-detail-modal-form-row'>
               <AppField label={t('package_manage.assign.start_at')}>
                 <AppInput
                   className='router-section-input'
@@ -1733,10 +1734,11 @@ const UserDetail = () => {
         }
       >
           <div className='router-page-stack'>
-            <AppFormRow>
+            <AppFormRow className='router-user-detail-modal-form-row'>
               <AppField label={t('user.detail.assign.topup_plan')}>
                 <AppSelect
                   className='router-section-input'
+                  fluid
                   search
                   clearable
                   loading={topupPlanOptionsLoading}
