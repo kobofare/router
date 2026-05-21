@@ -14,6 +14,10 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 	if err := tx.AutoMigrate(
 		&User{},
 		&Channel{},
+		&ChannelBillingProfile{},
+		&ChannelBillingSnapshot{},
+		&ChannelBillingSnapshotItem{},
+		&ChannelBillingAction{},
 		&ChannelModel{},
 		&ChannelModelPriceComponent{},
 		&ChannelTest{},

@@ -101,17 +101,6 @@ func optionalFloat64Value(ptr *float64, fallback float64) float64 {
 	return *ptr
 }
 
-// GetPackages godoc
-// @Summary List packages with pagination (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param page query int false "Page (1-based)"
-// @Param page_size query int false "Page size"
-// @Param keyword query string false "Keyword"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/packages [get]
 func GetPackages(c *gin.Context) {
 	page, pageSize, keyword := parsePackageListPageParams(c)
 	rows, total, err := plansvc.ListPage(page, pageSize, keyword)
@@ -134,14 +123,6 @@ func GetPackages(c *gin.Context) {
 	})
 }
 
-// GetPublicPackages godoc
-// @Summary List enabled packages (public)
-// @Tags public
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/public/user/packages [get]
 func GetPublicPackages(c *gin.Context) {
 	rows, err := model.ListEnabledServicePackagesForUser(strings.TrimSpace(c.GetString(ctxkey.Id)))
 	if err != nil {
@@ -158,15 +139,6 @@ func GetPublicPackages(c *gin.Context) {
 	})
 }
 
-// GetPackage godoc
-// @Summary Get package detail by ID (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Package ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/package/{id} [get]
 func GetPackage(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -195,15 +167,6 @@ func GetPackage(c *gin.Context) {
 	})
 }
 
-// CreatePackage godoc
-// @Summary Create package (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/package [post]
 func CreatePackage(c *gin.Context) {
 	req := upsertServicePackageRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -245,15 +208,6 @@ func CreatePackage(c *gin.Context) {
 	})
 }
 
-// UpdatePackage godoc
-// @Summary Update package (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/package [put]
 func UpdatePackage(c *gin.Context) {
 	req := upsertServicePackageRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -318,15 +272,6 @@ func UpdatePackage(c *gin.Context) {
 	})
 }
 
-// DeletePackage godoc
-// @Summary Delete package by ID (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Package ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/package/{id} [delete]
 func DeletePackage(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -353,16 +298,6 @@ func DeletePackage(c *gin.Context) {
 	})
 }
 
-// AssignPackageToUser godoc
-// @Summary Assign package to user (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Package ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/package/{id}/assign [post]
 func AssignPackageToUser(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {

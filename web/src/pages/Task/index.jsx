@@ -148,9 +148,9 @@ const getTaskTypeOptions = (t, scope) => {
       text: t('task.types.channel_refresh_models'),
     },
     {
-      key: 'channel_refresh_balance',
-      value: 'channel_refresh_balance',
-      text: t('task.types.channel_refresh_balance'),
+      key: 'channel_refresh_billing',
+      value: 'channel_refresh_billing',
+      text: t('task.types.channel_refresh_billing'),
     },
   );
   return common;
