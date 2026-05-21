@@ -35,6 +35,7 @@ import {
   AppFormActions,
   AppPagination,
   AppPopover,
+  resolvePopupContainer,
   AppSelect,
   AppTable,
   AppTag,
@@ -752,22 +753,13 @@ const LogsTable = () => {
         picker={
             <AppPopover
               open={addFilterPopupOpen}
+              trigger='click'
               placement='bottomLeft'
               onOpenChange={(open) => {
                 if (!open) {
                   closeFilterDraft();
                 }
               }}
-              trigger={
-                <AppButton
-                  type='button'
-                  className='router-section-button'
-                  disabled={availableConditionalFilterOptions.length === 0}
-                  onClick={() => setAddFilterPopupOpen(true)}
-                >
-                  {t('log.filters.add')}
-                </AppButton>
-              }
               content={
                 <div className='router-log-filter-picker'>
                   <div className='router-log-filter-picker-options'>
@@ -822,6 +814,7 @@ const LogsTable = () => {
                           fluid
                           search
                           clearable
+                          getPopupContainer={resolvePopupContainer}
                           options={
                             conditionalFilterConfig.find((item) => item.key === draftFilterKey)
                               ?.options || []
@@ -875,7 +868,16 @@ const LogsTable = () => {
                   )}
                 </div>
               }
-            />
+            >
+              <AppButton
+                type='button'
+                className='router-section-button'
+                disabled={availableConditionalFilterOptions.length === 0}
+                onClick={() => setAddFilterPopupOpen(true)}
+              >
+                {t('log.filters.add')}
+              </AppButton>
+            </AppPopover>
         }
         query={
           <>

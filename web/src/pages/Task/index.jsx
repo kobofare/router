@@ -12,6 +12,7 @@ import {
   AppFormActions,
   AppPagination,
   AppPopover,
+  resolvePopupContainer,
   AppSelect,
   AppTable,
   AppTag,
@@ -949,6 +950,7 @@ const Task = () => {
                             fluid
                             search
                             clearable
+                            getPopupContainer={resolvePopupContainer}
                             options={
                               conditionalFilterConfig.find(
                                 (item) => item.key === draftFilterKey,
