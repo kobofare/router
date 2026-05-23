@@ -2179,7 +2179,8 @@
         "status": "active",
         "description": "Qwen3.7-Max 是 Qwen 当前高能力通用模型，适合复杂推理、代码和多轮任务。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.012,
         "output_price": 0.036,
@@ -2194,7 +2195,8 @@
         "status": "active",
         "description": "Qwen3.6-Plus 是均衡型通用模型，适合多数生产场景。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.002,
         "output_price": 0.012,
@@ -2209,7 +2211,8 @@
         "status": "active",
         "description": "Qwen3.6-Flash 是低延迟低成本通用模型。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.0012,
         "output_price": 0.0072,
@@ -2224,7 +2227,8 @@
         "status": "active",
         "description": "Qwen3.5-Plus 是上一代均衡型通用模型。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.0008,
         "output_price": 0.0048,
@@ -2239,7 +2243,8 @@
         "status": "active",
         "description": "Qwen3.5-Flash 是上一代低成本通用模型。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.0002,
         "output_price": 0.002,
@@ -2254,7 +2259,8 @@
         "status": "active",
         "description": "Qwen3-Max 是高能力通用模型，适合复杂任务。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/responses"
         ],
         "input_price": 0.0025,
         "output_price": 0.01,
@@ -2268,6 +2274,9 @@
         "type": "image",
         "status": "active",
         "description": "Qwen-Image 2.0 是图像生成模型。",
+        "supported_endpoints": [
+          "/v1/images/generations"
+        ],
         "input_price": 0.15,
         "price_unit": "per_image",
         "currency": "CNY",
@@ -2279,6 +2288,9 @@
         "type": "image",
         "status": "active",
         "description": "Qwen-Image 2.0 Pro 是更高质量的图像生成模型。",
+        "supported_endpoints": [
+          "/v1/images/generations"
+        ],
         "input_price": 0.2,
         "price_unit": "per_image",
         "currency": "CNY",

@@ -312,8 +312,7 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 		strings.Contains(lowerModelName, "asr"):
 		return normalizedEndpoint == ChannelModelEndpointChat ||
 			normalizedEndpoint == ChannelModelEndpointRealtime
-	case strings.Contains(lowerModelName, "tts"),
-		strings.HasPrefix(lowerModelName, "qwen-image"):
+	case strings.Contains(lowerModelName, "tts"):
 		return false
 	}
 	switch normalizeModelType(modelType, "") {

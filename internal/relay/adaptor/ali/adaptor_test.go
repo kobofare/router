@@ -45,6 +45,91 @@ func TestGetRequestURL_ResponsesUsesAliCompatibleResponsesPath(t *testing.T) {
 	}
 }
 
+func TestGetRequestURL_QwenImageUsesMultimodalGenerationPath(t *testing.T) {
+	adaptor := &Adaptor{}
+	got, err := adaptor.GetRequestURL(&meta.Meta{
+		Mode:            relaymode.ImagesGenerations,
+		BaseURL:         "https://dashscope.aliyuncs.com",
+		ActualModelName: "qwen-image-2.0-pro",
+	})
+	if err != nil {
+		t.Fatalf("GetRequestURL() error = %v", err)
+	}
+	want := "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+	if got != want {
+		t.Fatalf("GetRequestURL() = %q, want %q", got, want)
+	}
+}
+
+func TestGetRequestURL_LegacyImageUsesText2ImagePath(t *testing.T) {
+	adaptor := &Adaptor{}
+	got, err := adaptor.GetRequestURL(&meta.Meta{
+		Mode:            relaymode.ImagesGenerations,
+		BaseURL:         "https://dashscope.aliyuncs.com",
+		ActualModelName: "wanx-v1",
+	})
+	if err != nil {
+		t.Fatalf("GetRequestURL() error = %v", err)
+	}
+	want := "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
+	if got != want {
+		t.Fatalf("GetRequestURL() = %q, want %q", got, want)
+	}
+}
+
+func TestConvertImageRequest_QwenImageUsesMultimodalMessages(t *testing.T) {
+	adaptor := &Adaptor{}
+	adaptor.Init(&meta.Meta{ActualModelName: "qwen-image-2.0"})
+
+	converted, err := adaptor.ConvertImageRequest(&relaymodel.ImageRequest{
+		Model:  "qwen-image-2.0",
+		Prompt: "draw a blue square",
+		Size:   "1024x1024",
+	})
+	if err != nil {
+		t.Fatalf("ConvertImageRequest() error = %v", err)
+	}
+	qwenRequest, ok := converted.(*QwenImageRequest)
+	if !ok {
+		t.Fatalf("ConvertImageRequest() = %T, want *QwenImageRequest", converted)
+	}
+	if qwenRequest.Model != "qwen-image-2.0" {
+		t.Fatalf("model = %q, want qwen-image-2.0", qwenRequest.Model)
+	}
+	if qwenRequest.Parameters.Size != "1024*1024" {
+		t.Fatalf("size = %q, want 1024*1024", qwenRequest.Parameters.Size)
+	}
+	if len(qwenRequest.Input.Messages) != 1 || len(qwenRequest.Input.Messages[0].Content) != 1 || qwenRequest.Input.Messages[0].Content[0].Text != "draw a blue square" {
+		t.Fatalf("messages = %#v, want prompt text content", qwenRequest.Input.Messages)
+	}
+}
+
+func TestQwenImageHandlerWritesOpenAIImageResponse(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
+
+	body := []byte(`{"request_id":"req_123","output":{"choices":[{"message":{"content":[{"image":"https://example.com/image.png"}]}}]}}`)
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewBuffer(body)),
+		Header:     make(http.Header),
+	}
+
+	if err, _ := QwenImageHandler(ctx, resp); err != nil {
+		t.Fatalf("QwenImageHandler() error = %+v", err)
+	}
+
+	var payload openaiadaptor.ImageResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal handler response failed: %v", err)
+	}
+	if len(payload.Data) != 1 || payload.Data[0].Url != "https://example.com/image.png" {
+		t.Fatalf("handler payload data = %#v, want image url", payload.Data)
+	}
+}
+
 func TestResponseAli2OpenAIRetainsActualModelName(t *testing.T) {
 	resp := responseAli2OpenAI(&ChatResponse{
 		Error: Error{RequestId: "req_123"},

@@ -64,6 +64,11 @@ func TestDefaultProviderModelSupportedEndpointsByProvider(t *testing.T) {
 	if len(qwenTTS) != 0 {
 		t.Fatalf("qwen tts default endpoints = %#v, want empty", qwenTTS)
 	}
+
+	qwenImage := DefaultProviderModelSupportedEndpoints("qwen", ProviderModelTypeImage, "qwen-image-2.0")
+	if len(qwenImage) != 1 || qwenImage[0] != ChannelModelEndpointImages {
+		t.Fatalf("qwen image default endpoints = %#v, want images", qwenImage)
+	}
 }
 
 func TestNormalizeProviderModelSupportedEndpointsForQwenSpecialModels(t *testing.T) {
@@ -92,6 +97,15 @@ func TestNormalizeProviderModelSupportedEndpointsForQwenSpecialModels(t *testing
 	)
 	if len(qwenTTS) != 0 {
 		t.Fatalf("qwen tts normalized endpoints = %#v, want empty", qwenTTS)
+	}
+
+	qwenImage := NormalizeProviderModelSupportedEndpointsForModel(
+		ProviderModelTypeImage,
+		"qwen-image-2.0",
+		[]string{ChannelModelEndpointResponses, ChannelModelEndpointImages, ChannelModelEndpointImageEdit},
+	)
+	if len(qwenImage) != 3 || qwenImage[0] != ChannelModelEndpointResponses || qwenImage[1] != ChannelModelEndpointImages || qwenImage[2] != ChannelModelEndpointImageEdit {
+		t.Fatalf("qwen image normalized endpoints = %#v, want responses+images+edits", qwenImage)
 	}
 }
 

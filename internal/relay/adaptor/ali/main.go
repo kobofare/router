@@ -78,6 +78,22 @@ func ConvertImageRequest(request model.ImageRequest) *ImageRequest {
 	return &imageRequest
 }
 
+func ConvertQwenImageRequest(request model.ImageRequest) *QwenImageRequest {
+	var imageRequest QwenImageRequest
+	imageRequest.Model = request.Model
+	imageRequest.Input.Messages = []QwenImageMessage{
+		{
+			Role: "user",
+			Content: []QwenImageContent{
+				{Text: request.Prompt},
+			},
+		},
+	}
+	imageRequest.Parameters.Size = strings.Replace(request.Size, "x", "*", -1)
+	imageRequest.ResponseFormat = request.ResponseFormat
+	return &imageRequest
+}
+
 func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *model.Usage) {
 	var aliResponse EmbeddingResponse
 	err := json.NewDecoder(resp.Body).Decode(&aliResponse)

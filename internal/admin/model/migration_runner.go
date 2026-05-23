@@ -1222,6 +1222,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return nil
 			},
 		},
+		{
+			Version:     "202605231330_qwen_provider_response_and_image_endpoints",
+			Description: "upsert qwen provider response and image endpoint support",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/internal/relay/adaptor"
@@ -33,7 +34,11 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 	case relaymode.AudioSpeech, relaymode.AudioTranslation, relaymode.AudioTranscription, relaymode.Realtime, relaymode.Videos:
 		fullRequestURL = openaiadaptor.GetFullRequestURL(meta.BaseURL, meta.RequestURLPath, relaychannel.OpenAI)
 	case relaymode.ImagesGenerations:
-		fullRequestURL = fmt.Sprintf("%s/api/v1/services/aigc/text2image/image-synthesis", meta.BaseURL)
+		if isQwenImageModel(meta.ActualModelName) {
+			fullRequestURL = fmt.Sprintf("%s/api/v1/services/aigc/multimodal-generation/generation", meta.BaseURL)
+		} else {
+			fullRequestURL = fmt.Sprintf("%s/api/v1/services/aigc/text2image/image-synthesis", meta.BaseURL)
+		}
 	case relaymode.Completions:
 		fullRequestURL = fmt.Sprintf("%s/compatible-mode/v1/completions", meta.BaseURL)
 	default:
@@ -51,7 +56,7 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *me
 	}
 	req.Header.Set("Authorization", "Bearer "+meta.APIKey)
 
-	if meta.Mode == relaymode.ImagesGenerations {
+	if meta.Mode == relaymode.ImagesGenerations && !isQwenImageModel(meta.ActualModelName) {
 		req.Header.Set("X-DashScope-Async", "enable")
 	}
 	if a.meta.Config.Plugin != "" {
@@ -79,8 +84,10 @@ func (a *Adaptor) ConvertImageRequest(request *model.ImageRequest) (any, error) 
 		return nil, errors.New("request is nil")
 	}
 
-	aliRequest := ConvertImageRequest(*request)
-	return aliRequest, nil
+	if isQwenImageModel(request.Model) || (a.meta != nil && isQwenImageModel(a.meta.ActualModelName)) {
+		return ConvertQwenImageRequest(*request), nil
+	}
+	return ConvertImageRequest(*request), nil
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, meta *meta.Meta, requestBody io.Reader) (*http.Response, error) {
@@ -90,7 +97,11 @@ func (a *Adaptor) DoRequest(c *gin.Context, meta *meta.Meta, requestBody io.Read
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, meta *meta.Meta) (usage *model.Usage, err *model.ErrorWithStatusCode) {
 	switch meta.Mode {
 	case relaymode.ImagesGenerations:
-		err, usage = ImageHandler(c, resp)
+		if isQwenImageModel(meta.ActualModelName) {
+			err, usage = QwenImageHandler(c, resp)
+		} else {
+			err, usage = ImageHandler(c, resp)
+		}
 	case relaymode.Embeddings:
 		err, usage = relayCompatibleEmbeddingResponse(c, resp)
 	case relaymode.Responses, relaymode.ChatCompletions, relaymode.Completions:
@@ -112,4 +123,8 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	return "ali"
+}
+
+func isQwenImageModel(modelName string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(modelName)), "qwen-image")
 }
