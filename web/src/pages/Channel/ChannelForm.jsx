@@ -1872,6 +1872,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   });
   const [modelSearchKeyword, setModelSearchKeyword] = useState('');
   const [detailModelFilter, setDetailModelFilter] = useState('all');
+  const [detailProviderFilter, setDetailProviderFilter] = useState('all');
   const [detailModelPage, setDetailModelPage] = useState(1);
   const fetchingModelsRef = useRef(false);
   const pendingRefreshTaskIdRef = useRef('');
@@ -2429,21 +2430,79 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     () => visibleChannelModels.filter((row) => row.inactive !== true),
     [visibleChannelModels],
   );
+  const detailProviderFilterOptions = useMemo(() => {
+    const providerOptionById = new Map(
+      (Array.isArray(providerOptions) ? providerOptions : []).map((option) => [
+        normalizeProviderIdentifier(option?.value || ''),
+        option,
+      ]),
+    );
+    const providerIds = new Set();
+    visibleChannelModels.forEach((row) => {
+      getProviderOwnersForModel(row).forEach((providerId) => {
+        const normalizedProvider = normalizeProviderIdentifier(providerId);
+        if (normalizedProvider !== '') {
+          providerIds.add(normalizedProvider);
+        }
+      });
+    });
+    const options = Array.from(providerIds)
+      .sort((left, right) => left.localeCompare(right))
+      .map((providerId) => {
+        const option = providerOptionById.get(providerId);
+        return {
+          key: providerId,
+          value: providerId,
+          text: option?.text || providerId,
+        };
+      });
+    return [
+      {
+        key: 'all',
+        value: 'all',
+        text: t('channel.edit.model_selector.filters.provider_all'),
+      },
+      ...options,
+    ];
+  }, [
+    getProviderOwnersForModel,
+    providerOptions,
+    t,
+    visibleChannelModels,
+  ]);
   const detailFilteredChannelModels = useMemo(() => {
     if (!isDetailMode) {
       return visibleChannelModels;
     }
+    const normalizedProviderFilter =
+      normalizeProviderIdentifier(detailProviderFilter);
     return visibleChannelModels.filter((row) => {
       if (detailModelFilter === 'enabled') {
-        return row.selected === true;
+        if (row.selected !== true) {
+          return false;
+        }
       }
       if (detailModelFilter === 'disabled') {
-        return row.selected !== true;
+        if (row.selected === true) {
+          return false;
+        }
+      }
+      if (
+        normalizedProviderFilter !== '' &&
+        normalizedProviderFilter !== 'all'
+      ) {
+        return getProviderOwnersForModel(row).some(
+          (providerId) =>
+            normalizeProviderIdentifier(providerId) ===
+            normalizedProviderFilter,
+        );
       }
       return true;
     });
   }, [
     detailModelFilter,
+    detailProviderFilter,
+    getProviderOwnersForModel,
     isDetailMode,
     visibleChannelModels,
   ]);
@@ -4612,7 +4671,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
 
   useEffect(() => {
     setDetailModelPage(1);
-  }, [detailModelFilter, modelSearchKeyword]);
+  }, [detailModelFilter, detailProviderFilter, modelSearchKeyword]);
 
   useEffect(() => {
     if (modelTestRows.length === 0) {
@@ -5180,6 +5239,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     modelSectionMetaText={modelSectionMetaText}
                     detailModelFilter={detailModelFilter}
                     setDetailModelFilter={setDetailModelFilter}
+                    detailProviderFilter={detailProviderFilter}
+                    setDetailProviderFilter={setDetailProviderFilter}
+                    detailProviderFilterOptions={detailProviderFilterOptions}
                     detailModelsEditing={detailModelsEditing}
                     modelSearchKeyword={modelSearchKeyword}
                     setModelSearchKeyword={setModelSearchKeyword}

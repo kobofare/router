@@ -797,7 +797,8 @@
         "filters": {
           "all": "All Models",
           "enabled": "Enabled",
-          "disabled": "Disabled"
+          "disabled": "Disabled",
+          "provider_all": "All Providers"
         },
         "enable_hint": "Only models already in the provider model list can be enabled. Models not in that list stay unselectable until you add them and sync again.",
         "auto_assign": "Auto Import",

@@ -797,7 +797,8 @@
         "filters": {
           "all": "全部模型",
           "enabled": "已启用的",
-          "disabled": "未启用的"
+          "disabled": "未启用的",
+          "provider_all": "全部供应商"
         },
         "enable_hint": "只有已录入供应商模型目录的模型，才可勾选启用。未录入的模型不可勾选，请先补充后再同步启用。",
         "auto_assign": "一键录入",
