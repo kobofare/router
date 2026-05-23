@@ -245,16 +245,25 @@ func UpdateChannelBillingProfile(c *gin.Context) {
 		model.ChannelBillingModeBuiltinAIGC2D,
 		model.ChannelBillingModeBuiltinSiliconFlow,
 		model.ChannelBillingModeBuiltinDeepSeek,
-		model.ChannelBillingModeBuiltinOpenRouter:
+		model.ChannelBillingModeBuiltinOpenRouter,
+		model.ChannelBillingModeBuiltinCDK:
 	default:
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "账务刷新方式无效"})
 		return
 	}
 	profileRow.Enabled = req.Enabled
 	profileRow.BillingMode = nextMode
-	profileRow.BillingConfig = marshalLogJSON(map[string]any{
+	existingConfig := profileRow.ParseBillingConfig()
+	nextConfig := map[string]any{
 		"api_base_url": strings.TrimSpace(req.BillingAPIBaseURL),
-	})
+	}
+	if existingConfig.CDK != "" {
+		nextConfig["cdk"] = existingConfig.CDK
+	}
+	if existingConfig.Currency != "" {
+		nextConfig["currency"] = existingConfig.Currency
+	}
+	profileRow.BillingConfig = marshalLogJSON(nextConfig)
 	savedRow, err := model.SaveChannelBillingProfileWithDB(model.DB, profileRow)
 	if err != nil {
 		logChannelAdminWarn(c, "update_billing_profile", stringField("channel_id", channelID), stringField("reason", err.Error()))
