@@ -335,6 +335,20 @@ func executeChannelRefreshBillingTask(task *model.AsyncTask) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	profile, _ := model.GetChannelBillingProfileByChannelIDWithDB(model.DB, channelID)
+	if strings.TrimSpace(profile.BillingMode) == model.ChannelBillingModeBuiltinCDK {
+		primaryAmount, err := refreshAndPersistChannelCDKBilling(channelRow, profile, "自动刷新账务")
+		if err != nil {
+			return "", err
+		}
+		return marshalJSONForLog(map[string]any{
+			"channel_id":           channelID,
+			"billing_mode":         model.ChannelBillingModeBuiltinCDK,
+			"billing_api_base_url": resolveChannelBillingAPIBaseURL(channelRow, profile),
+			"billing_request_url":  resolveChannelCDKBillingRequestURL(channelRow, profile),
+			"primary_amount":       primaryAmount,
+		}), nil
+	}
 	primaryAmount, err := refreshChannelBillingAmount(channelRow)
 	if err != nil {
 		return "", err
@@ -342,7 +356,6 @@ func executeChannelRefreshBillingTask(task *model.AsyncTask) (string, error) {
 	if err := persistChannelAutoBillingSnapshot(channelRow, primaryAmount, "自动刷新账务"); err != nil {
 		return "", err
 	}
-	profile, _ := model.GetChannelBillingProfileByChannelIDWithDB(model.DB, channelID)
 	return marshalJSONForLog(map[string]any{
 		"channel_id":           channelID,
 		"billing_api_base_url": resolveChannelBillingAPIBaseURL(channelRow, profile),

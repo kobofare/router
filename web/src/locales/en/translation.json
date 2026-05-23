@@ -635,7 +635,8 @@
           "builtin_aigc2d": "Built-in AIGC2D billing API",
           "builtin_siliconflow": "Built-in SiliconFlow billing API",
           "builtin_deepseek": "Built-in DeepSeek billing API",
-          "builtin_openrouter": "Built-in OpenRouter billing API"
+          "builtin_openrouter": "Built-in OpenRouter billing API",
+          "builtin_cdk": "Built-in CDK billing API"
         },
         "quota_types": {
           "daily": "Daily Quota",

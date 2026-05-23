@@ -635,7 +635,8 @@
           "builtin_aigc2d": "内置 AIGC2D 账务接口",
           "builtin_siliconflow": "内置 SiliconFlow 账务接口",
           "builtin_deepseek": "内置 DeepSeek 账务接口",
-          "builtin_openrouter": "内置 OpenRouter 账务接口"
+          "builtin_openrouter": "内置 OpenRouter 账务接口",
+          "builtin_cdk": "内置 CDK 账务接口"
         },
         "quota_types": {
           "daily": "日额度",

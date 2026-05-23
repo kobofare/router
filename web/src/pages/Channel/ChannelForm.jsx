@@ -4744,21 +4744,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               {...inputReadonlyProps}
             />
           </AppField>
-          <AppField label={t('channel.edit.billing_api_base_url')}>
-            {detailBasicReadonly ? (
-              <AppInput
-                className='router-section-input'
-                value={channelBillingProfile?.billing_api_base_url || '-'}
-                readOnly
-              />
-            ) : (
-              <AppInput
-                className='router-section-input'
-                value={channelBillingProfile?.billing_api_base_url || '-'}
-                readOnly
-              />
-            )}
-          </AppField>
           <AppField label={t('channel.edit.account_base_url')}>
             <AppInput
               className='router-section-input'

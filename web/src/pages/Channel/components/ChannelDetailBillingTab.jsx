@@ -47,6 +47,7 @@ const billingModeOptions = (t) => [
   { value: 'builtin_siliconflow', label: t('channel.edit.billing.modes.builtin_siliconflow') },
   { value: 'builtin_deepseek', label: t('channel.edit.billing.modes.builtin_deepseek') },
   { value: 'builtin_openrouter', label: t('channel.edit.billing.modes.builtin_openrouter') },
+  { value: 'builtin_cdk', label: t('channel.edit.billing.modes.builtin_cdk') },
 ];
 
 const formatAmountText = (item) => {
