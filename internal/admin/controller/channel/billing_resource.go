@@ -33,6 +33,8 @@ type channelBillingProfileData struct {
 	Enabled            bool     `json:"enabled"`
 	BillingMode        string   `json:"billing_mode"`
 	BillingAPIBaseURL  string   `json:"billing_api_base_url"`
+	CDK                string   `json:"cdk"`
+	Currency           string   `json:"currency"`
 	ActionCapabilities []string `json:"action_capabilities"`
 	BillingPortalURL   string   `json:"billing_portal_url,omitempty"`
 }
@@ -60,9 +62,10 @@ type channelBillingManualQuotaItemRequest struct {
 }
 
 type channelBillingProfileUpdateRequest struct {
-	Enabled           bool   `json:"enabled"`
 	BillingMode       string `json:"billing_mode"`
 	BillingAPIBaseURL string `json:"billing_api_base_url"`
+	CDK               string `json:"cdk"`
+	Currency          string `json:"currency"`
 }
 
 func extractBillingPortalURL(profile model.ChannelBillingProfile) string {
@@ -102,6 +105,8 @@ func buildChannelBillingProfileData(channelRow *model.Channel, profile model.Cha
 		Enabled:            profile.Enabled,
 		BillingMode:        strings.TrimSpace(profile.BillingMode),
 		BillingAPIBaseURL:  strings.TrimSpace(fetchConfig.APIBaseURL),
+		CDK:                strings.TrimSpace(fetchConfig.CDK),
+		Currency:           strings.TrimSpace(fetchConfig.Currency),
 		ActionCapabilities: profile.ParseActionCapabilities(),
 		BillingPortalURL:   extractBillingPortalURL(profile),
 	}
@@ -245,16 +250,20 @@ func UpdateChannelBillingProfile(c *gin.Context) {
 		model.ChannelBillingModeBuiltinAIGC2D,
 		model.ChannelBillingModeBuiltinSiliconFlow,
 		model.ChannelBillingModeBuiltinDeepSeek,
-		model.ChannelBillingModeBuiltinOpenRouter:
+		model.ChannelBillingModeBuiltinOpenRouter,
+		model.ChannelBillingModeBuiltinCDK:
 	default:
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "账务刷新方式无效"})
 		return
 	}
-	profileRow.Enabled = req.Enabled
+	profileRow.Enabled = true
 	profileRow.BillingMode = nextMode
-	profileRow.BillingConfig = marshalLogJSON(map[string]any{
+	nextConfig := map[string]any{
 		"api_base_url": strings.TrimSpace(req.BillingAPIBaseURL),
-	})
+		"cdk":          strings.TrimSpace(req.CDK),
+		"currency":     strings.TrimSpace(strings.ToUpper(req.Currency)),
+	}
+	profileRow.BillingConfig = marshalLogJSON(nextConfig)
 	savedRow, err := model.SaveChannelBillingProfileWithDB(model.DB, profileRow)
 	if err != nil {
 		logChannelAdminWarn(c, "update_billing_profile", stringField("channel_id", channelID), stringField("reason", err.Error()))

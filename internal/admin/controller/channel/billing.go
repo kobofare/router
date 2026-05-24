@@ -122,6 +122,27 @@ type OpenRouterResponse struct {
 	} `json:"data"`
 }
 
+type CDKUsageStatsResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Consumed        float64 `json:"consumed"`
+		Remaining       float64 `json:"remaining"`
+		Requests        int     `json:"requests"`
+		ActiveSessions  int     `json:"activeSessions"`
+		QuotaScope      string  `json:"quotaScope"`
+		ResetAt         string  `json:"resetAt"`
+		WeeklyConsumed  float64 `json:"weeklyConsumed"`
+		WeeklyRemaining float64 `json:"weeklyRemaining"`
+		WeeklyLimit     float64 `json:"weeklyLimit"`
+		WeeklyResetAt   string  `json:"weeklyResetAt"`
+		WeeklyResetMode string  `json:"weeklyResetMode"`
+		TotalConsumed   float64 `json:"totalConsumed"`
+		TotalRemaining  float64 `json:"totalRemaining"`
+		TotalLimit      float64 `json:"totalLimit"`
+	} `json:"data"`
+}
+
 // buildBearerAuthHeader get auth header
 func buildBearerAuthHeader(token string) http.Header {
 	h := http.Header{}
@@ -338,6 +359,129 @@ func fetchChannelOpenRouterBillingAmount(channel *model.Channel) (float64, error
 	return balance, nil
 }
 
+func resolveChannelCDKKey(channel *model.Channel, profile model.ChannelBillingProfile) string {
+	if cdk := profile.ParseBillingConfig().CDK; cdk != "" {
+		return cdk
+	}
+	if channel != nil {
+		cfg, _ := channel.LoadConfig()
+		if cdk := model.ExtractCDKFromAccountURL(cfg.GetAccountBaseURL()); cdk != "" {
+			return cdk
+		}
+	}
+	return strings.TrimSpace(channel.Key)
+}
+
+func resolveChannelCDKBillingCurrency(profile model.ChannelBillingProfile) string {
+	if currency := profile.ParseBillingConfig().Currency; currency != "" {
+		return currency
+	}
+	return "USD"
+}
+
+func fetchChannelCDKBillingStats(channel *model.Channel, profile model.ChannelBillingProfile) (*CDKUsageStatsResponse, error) {
+	baseURL := resolveChannelBillingAPIBaseURL(channel, profile)
+	if baseURL == "" {
+		return nil, errors.New("渠道账务未配置 CDK API 地址")
+	}
+	cdkKey := resolveChannelCDKKey(channel, profile)
+	if cdkKey == "" {
+		return nil, errors.New("渠道未配置 CDK 密钥")
+	}
+	statsURL := fmt.Sprintf("%s/api/public/usage/stats?cdk=%s", baseURL, cdkKey)
+	body, err := fetchChannelBillingResponseBody("GET", statsURL, channel, http.Header{})
+	if err != nil {
+		return nil, err
+	}
+	response := CDKUsageStatsResponse{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, err
+	}
+	if response.Code != 0 {
+		return nil, fmt.Errorf("CDK 余额查询失败: %s", response.Message)
+	}
+	return &response, nil
+}
+
+func buildCDKBillingSnapshotItems(stats *CDKUsageStatsResponse, currency string) []model.ChannelBillingSnapshotItem {
+	data := stats.Data
+	items := make([]model.ChannelBillingSnapshotItem, 0, 3)
+
+	dailyResetAt := int64(0)
+	if t, err := time.Parse(time.RFC3339Nano, data.ResetAt); err == nil {
+		dailyResetAt = t.Unix()
+	}
+	weeklyResetAt := int64(0)
+	if t, err := time.Parse(time.RFC3339Nano, data.WeeklyResetAt); err == nil {
+		weeklyResetAt = t.Unix()
+	}
+
+	items = append(items, model.ChannelBillingSnapshotItem{
+		QuotaType:  "daily",
+		QuotaLabel: "日额度",
+		Amount:     data.Remaining,
+		Currency:   currency,
+		ExpiresAt:  dailyResetAt,
+		SortOrder:  1,
+	})
+	items = append(items, model.ChannelBillingSnapshotItem{
+		QuotaType:  "weekly",
+		QuotaLabel: "周额度",
+		Amount:     data.WeeklyRemaining,
+		Currency:   currency,
+		ExpiresAt:  weeklyResetAt,
+		SortOrder:  2,
+	})
+	items = append(items, model.ChannelBillingSnapshotItem{
+		QuotaType:  "total",
+		QuotaLabel: "总额度",
+		Amount:     data.TotalRemaining,
+		Currency:   currency,
+		SortOrder:  3,
+	})
+	return items
+}
+
+func resolveChannelCDKBillingRequestURL(channel *model.Channel, profile model.ChannelBillingProfile) string {
+	baseURL := resolveChannelBillingAPIBaseURL(channel, profile)
+	cdkKey := resolveChannelCDKKey(channel, profile)
+	if baseURL == "" || cdkKey == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/api/public/usage/stats?cdk=%s", baseURL, cdkKey)
+}
+
+func refreshAndPersistChannelCDKBilling(channel *model.Channel, profile model.ChannelBillingProfile, message string) (float64, error) {
+	stats, err := fetchChannelCDKBillingStats(channel, profile)
+	if err != nil {
+		return 0, err
+	}
+
+	currency := resolveChannelCDKBillingCurrency(profile)
+	items := buildCDKBillingSnapshotItems(stats, currency)
+	now := helper.GetTimestamp()
+	requestURL := resolveChannelCDKBillingRequestURL(channel, profile)
+
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
+		snapshotRow, err := model.CreateChannelBillingSnapshotWithDB(tx, model.ChannelBillingSnapshot{
+			ChannelId:  strings.TrimSpace(channel.Id),
+			SourceType: model.ChannelBillingSnapshotSourceAPI,
+			Balance:    stats.Data.TotalRemaining,
+			RawStatus:  "ok",
+			Message:    strings.TrimSpace(message),
+			RequestURL: requestURL,
+			CreatedAt:  now,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.CreateChannelBillingSnapshotItemsWithDB(tx, snapshotRow.Id, channel.Id, items)
+		return err
+	})
+
+	return stats.Data.TotalRemaining, err
+}
+
 func resolveChannelBillingRequestURLs(channel *model.Channel) []string {
 	if channel == nil {
 		return nil
@@ -452,6 +596,12 @@ func refreshChannelBillingAmount(channel *model.Channel) (float64, error) {
 		return fetchChannelDeepSeekBillingAmount(channel)
 	case model.ChannelBillingModeBuiltinOpenRouter:
 		return fetchChannelOpenRouterBillingAmount(channel)
+	case model.ChannelBillingModeBuiltinCDK:
+		stats, err := fetchChannelCDKBillingStats(channel, profile)
+		if err != nil {
+			return 0, err
+		}
+		return stats.Data.TotalRemaining, nil
 	case model.ChannelBillingModeBuiltinOpenAI:
 		// Continue below with OpenAI-style subscription + usage billing API.
 	default:
@@ -534,6 +684,15 @@ func refreshAllChannelsBilling() error {
 	}
 	for _, channel := range channels {
 		if channel.Status != model.ChannelStatusEnabled {
+			continue
+		}
+		profile, _ := model.GetChannelBillingProfileByChannelIDWithDB(model.DB, channel.Id)
+		if strings.TrimSpace(profile.BillingMode) == model.ChannelBillingModeBuiltinCDK {
+			primaryAmount, err := refreshAndPersistChannelCDKBilling(channel, profile, "批量自动刷新账务")
+			if err == nil && primaryAmount <= 0 {
+				monitor.DisableChannel(channel.Id, channel.DisplayName(), "余额不足")
+			}
+			time.Sleep(config.RequestInterval)
 			continue
 		}
 		primaryAmount, err := refreshChannelBillingAmount(channel)

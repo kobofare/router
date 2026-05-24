@@ -471,6 +471,7 @@
         "status": "Status",
         "description": "Description",
         "type": "Type",
+        "tags": "Tags",
         "supported_endpoints": "Supported Endpoints",
         "price": "Price",
         "price_compact": "Input | Output",
@@ -582,14 +583,15 @@
       },
       "billing": {
         "title": "Billing",
-        "hint": "This section shows channel billing capabilities, current quota items, manual records, and activate-page actions. Quotas are tracked as structured items such as daily, weekly, and total quotas with their own expiration times.",
+        "hint": "This section shows channel quota status, not package balances. Quotas are tracked as structured items such as daily, weekly, and total quotas with their own expiration times; purchase records mainly track channel spending and the corresponding quota changes.",
         "load_failed": "Failed to load channel billing data",
         "profile_title": "Billing Profile",
         "profile_enabled": "Billing Enabled",
         "billing_api_base_url": "Billing API Base URL",
         "profile_update_success": "Billing profile updated",
         "profile_update_failed": "Failed to update billing profile",
-        "current_quotas_title": "Current Quotas",
+        "refresh_now": "Refresh",
+        "current_quotas_title": "Quota Status",
         "billing_mode": "Billing Mode",
         "updated_at": "Updated At",
         "portal": "Billing Portal",
@@ -599,11 +601,12 @@
         "open_activate_page": "Open Activate Page",
         "open_activate_success": "Activate page link generated",
         "open_activate_failed": "Failed to generate activate page link",
-        "manual_update_title": "Manual Quota Update",
+        "manual_update_title": "Add Purchase Record",
         "manual_snapshot_invalid": "Please provide at least one valid quota item",
-        "manual_snapshot_success": "Manual billing snapshot saved",
-        "manual_snapshot_failed": "Failed to save manual billing snapshot",
-        "confirm_manual_snapshot": "Confirm Update",
+        "manual_snapshot_success": "Purchase record saved",
+        "manual_snapshot_failed": "Failed to save purchase record",
+        "confirm_manual_snapshot": "Save",
+        "add_purchase_record": "Add",
         "manual_quota_type": "Quota Type",
         "manual_quota_label": "Quota Name",
         "manual_quota_amount": "Quota Amount",
@@ -613,10 +616,10 @@
         "row_action": "Action",
         "currency": "Currency",
         "message": "Message",
-        "snapshots_title": "Balance History",
+        "snapshots_title": "Purchase Records",
         "actions_title": "Action History",
         "no_capabilities": "No billing capabilities",
-        "no_quota_items": "No quota items",
+        "no_quota_items": "No billing quota items",
         "no_expire": "No expiration",
         "capabilities": {
           "refresh_billing": "Supports billing refresh",
@@ -635,7 +638,8 @@
           "builtin_aigc2d": "Built-in AIGC2D billing API",
           "builtin_siliconflow": "Built-in SiliconFlow billing API",
           "builtin_deepseek": "Built-in DeepSeek billing API",
-          "builtin_openrouter": "Built-in OpenRouter billing API"
+          "builtin_openrouter": "Built-in OpenRouter billing API",
+          "builtin_cdk": "Built-in CDK billing API"
         },
         "quota_types": {
           "daily": "Daily Quota",
@@ -797,7 +801,8 @@
         "filters": {
           "all": "All Models",
           "enabled": "Enabled",
-          "disabled": "Disabled"
+          "disabled": "Disabled",
+          "provider_all": "All Providers"
         },
         "enable_hint": "Only models already in the provider model list can be enabled. Models not in that list stay unselectable until you add them and sync again.",
         "auto_assign": "Auto Import",
@@ -831,6 +836,7 @@
           "provider_placeholder": "Select a provider",
           "model": "Model",
           "type": "Type",
+          "tags": "Tags",
           "cancel": "Cancel",
           "confirm": "Add"
         },
@@ -884,6 +890,10 @@
         "settings_title": "Test Settings",
         "settings_stream": "Stream Test",
         "settings_audio_language": "Speech Test Language",
+        "image_edit_source_url": "Image edit test source URL",
+        "image_edit_upload": "Upload image edit test source",
+        "image_edit_uploaded": "Image uploaded",
+        "image_edit_file_failed": "Failed to read image",
         "single": "Test",
         "task_created": "{{count}} test tasks submitted, {{reused}} active tasks reused.",
         "group_count": "{{count}} models",
@@ -955,8 +965,6 @@
       "spark_version_placeholder": "Please enter Spark model version from API URL, e.g.: v2.1",
       "knowledge_id": "Knowledge Base ID",
       "knowledge_id_placeholder": "Please enter knowledge base ID, e.g.: 123456",
-      "plugin_param": "Plugin Parameter",
-      "plugin_param_placeholder": "Please enter plugin parameter (X-DashScope-Plugin header value)",
       "coze_notice": "For Coze, model name is the Bot ID. You can add prefix `bot-`, e.g.: `bot-123456`.",
       "douban_notice": "For Douban, you need to go to",
       "douban_notice_link": "Model Inference Page",
@@ -1049,7 +1057,8 @@
       "delete_title": "Confirm Delete Group",
       "delete_confirm": "Are you sure you want to delete group {{id}}?",
       "model_delete_confirm": "Are you sure you want to delete model {{model}}?",
-      "bind_channels_title": "Configure Channels for Group {{id}}"
+      "bind_channels_title": "Configure Channels for Group {{id}}",
+      "add_model_selected": "{{count}} models selected"
     },
     "detail_tabs": {
       "overview": "Overview",
@@ -2283,6 +2292,12 @@
         "chat_link_placeholder": "e.g.: ChatGPT Next Web deployment address",
         "quota_per_unit": "USD -> YYC Conversion Rate",
         "quota_per_unit_placeholder": "How many YYC 1 USD converts to",
+        "channel_billing_auto_refresh": {
+          "enabled": "Enable channel billing auto refresh",
+          "interval_seconds": "Refresh interval (seconds)",
+          "last_run": "Last run time",
+          "interval_invalid": "Refresh interval must be greater than or equal to 60 seconds"
+        },
         "buttons": {
           "save": "Save General Settings"
         }

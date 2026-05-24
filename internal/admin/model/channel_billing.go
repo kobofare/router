@@ -32,6 +32,7 @@ const (
 	ChannelBillingModeBuiltinSiliconFlow = "builtin_siliconflow"
 	ChannelBillingModeBuiltinDeepSeek    = "builtin_deepseek"
 	ChannelBillingModeBuiltinOpenRouter  = "builtin_openrouter"
+	ChannelBillingModeBuiltinCDK         = "builtin_cdk"
 
 	ChannelBillingCapabilityRefreshBilling       = "refresh_billing"
 	ChannelBillingCapabilityOpenActivatePage     = "open_activate_page"
@@ -532,6 +533,8 @@ type channelBillingActionConfig struct {
 
 type channelBillingConfig struct {
 	APIBaseURL string `json:"api_base_url,omitempty"`
+	CDK        string `json:"cdk,omitempty"`
+	Currency   string `json:"currency,omitempty"`
 }
 
 func inferBuiltinChannelBillingMode(channel *Channel) string {
@@ -566,6 +569,8 @@ func (row ChannelBillingProfile) ParseBillingConfig() channelBillingConfig {
 	configMap := parseJSONObjectString(row.BillingConfig)
 	return channelBillingConfig{
 		APIBaseURL: strings.TrimSpace(fmt.Sprintf("%v", configMap["api_base_url"])),
+		CDK:        strings.TrimSpace(fmt.Sprintf("%v", configMap["cdk"])),
+		Currency:   strings.TrimSpace(strings.ToUpper(fmt.Sprintf("%v", configMap["currency"]))),
 	}
 }
 
@@ -589,6 +594,33 @@ func deriveChannelActivateURLTemplate(raw string) string {
 	return activateCDKPattern.ReplaceAllString(trimmed, "cdk={{cdk}}")
 }
 
+func ExtractCDKFromAccountURL(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(parsed.Query().Get("cdk"))
+}
+
+func DeriveCDKAPIBaseURL(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return ""
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+}
+
 func BuildChannelBillingProfileFromChannelConfig(channel *Channel) (ChannelBillingProfile, bool) {
 	if channel == nil {
 		return ChannelBillingProfile{}, false
@@ -601,6 +633,35 @@ func BuildChannelBillingProfileFromChannelConfig(channel *Channel) (ChannelBilli
 	}
 	activateURLTemplate := deriveChannelActivateURLTemplate(accountBaseURL)
 	if activateURLTemplate != "" {
+		cdkKey := ExtractCDKFromAccountURL(accountBaseURL)
+		cdkAPIBase := DeriveCDKAPIBaseURL(accountBaseURL)
+		if cdkKey != "" && cdkAPIBase != "" {
+			billingConfig := channelBillingConfig{
+				APIBaseURL: cdkAPIBase,
+				CDK:        cdkKey,
+			}
+			capabilities := []string{
+				ChannelBillingCapabilityRefreshBilling,
+				ChannelBillingCapabilityOpenActivatePage,
+				ChannelBillingCapabilityManualUpdateSnapshot,
+			}
+			actionConfig := channelBillingActionConfig{
+				Activate: &channelBillingActivateActionConfig{
+					URLTemplate: activateURLTemplate,
+				},
+				BillingPortal: &channelBillingPortalActionConfig{
+					URL: strings.TrimSpace(accountBaseURL),
+				},
+			}
+			return ChannelBillingProfile{
+				ChannelId:          strings.TrimSpace(channel.Id),
+				Enabled:            true,
+				BillingMode:        ChannelBillingModeBuiltinCDK,
+				BillingConfig:      marshalJSONString(billingConfig),
+				ActionCapabilities: marshalJSONString(capabilities),
+				ActionConfig:       marshalJSONString(actionConfig),
+			}, true
+		}
 		capabilities := []string{
 			ChannelBillingCapabilityOpenActivatePage,
 			ChannelBillingCapabilityManualUpdateSnapshot,
@@ -625,7 +686,7 @@ func BuildChannelBillingProfileFromChannelConfig(channel *Channel) (ChannelBilli
 	if mode == ChannelBillingModeUnsupported {
 		return ChannelBillingProfile{
 			ChannelId:          strings.TrimSpace(channel.Id),
-			Enabled:            false,
+			Enabled:            true,
 			BillingMode:        ChannelBillingModeUnsupported,
 			ActionCapabilities: marshalJSONString([]string{ChannelBillingCapabilityManualUpdateSnapshot}),
 		}, true

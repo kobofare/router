@@ -471,6 +471,7 @@
         "status": "状态",
         "description": "描述",
         "type": "类型",
+        "tags": "标签",
         "supported_endpoints": "支持端点",
         "price": "价格",
         "price_compact": "输入｜输出价格",
@@ -582,14 +583,15 @@
       },
       "billing": {
         "title": "账务",
-        "hint": "这里记录渠道账务能力、当前额度项、人工登记结果和激活操作记录。额度按条目维护，例如日额度、周额度、总额度，以及各自截止时间。",
+        "hint": "这里展示的是渠道额度状态，不是套餐余额。额度按条目维护，例如日额度、周额度、总额度，以及各自截止时间；采购记录主要用于登记渠道采购支出及对应的额度变化。",
         "load_failed": "加载渠道账务信息失败",
         "profile_title": "账务配置",
         "profile_enabled": "启用账务",
         "billing_api_base_url": "账务 API 地址",
         "profile_update_success": "账务配置保存成功",
         "profile_update_failed": "账务配置保存失败",
-        "current_quotas_title": "当前额度",
+        "refresh_now": "刷新",
+        "current_quotas_title": "额度状态",
         "billing_mode": "账务方式",
         "updated_at": "更新时间",
         "portal": "账务入口",
@@ -599,11 +601,12 @@
         "open_activate_page": "打开激活页",
         "open_activate_success": "已生成激活页链接",
         "open_activate_failed": "生成激活页链接失败",
-        "manual_update_title": "人工登记额度",
+        "manual_update_title": "新增采购记录",
         "manual_snapshot_invalid": "请至少填写一条有效额度",
-        "manual_snapshot_success": "人工录入账务快照成功",
-        "manual_snapshot_failed": "人工录入账务快照失败",
-        "confirm_manual_snapshot": "确认更新",
+        "manual_snapshot_success": "采购记录保存成功",
+        "manual_snapshot_failed": "采购记录保存失败",
+        "confirm_manual_snapshot": "保存",
+        "add_purchase_record": "新增",
         "manual_quota_type": "额度类型",
         "manual_quota_label": "额度名称",
         "manual_quota_amount": "额度数值",
@@ -613,10 +616,10 @@
         "row_action": "操作",
         "currency": "币种",
         "message": "备注",
-        "snapshots_title": "余额记录",
+        "snapshots_title": "采购记录",
         "actions_title": "操作记录",
         "no_capabilities": "暂无账务能力",
-        "no_quota_items": "暂无额度记录",
+        "no_quota_items": "暂无账务额度记录",
         "no_expire": "无截止时间",
         "capabilities": {
           "refresh_billing": "支持自动刷新账务",
@@ -635,7 +638,8 @@
           "builtin_aigc2d": "内置 AIGC2D 账务接口",
           "builtin_siliconflow": "内置 SiliconFlow 账务接口",
           "builtin_deepseek": "内置 DeepSeek 账务接口",
-          "builtin_openrouter": "内置 OpenRouter 账务接口"
+          "builtin_openrouter": "内置 OpenRouter 账务接口",
+          "builtin_cdk": "内置 CDK 账务接口"
         },
         "quota_types": {
           "daily": "日额度",
@@ -797,7 +801,8 @@
         "filters": {
           "all": "全部模型",
           "enabled": "已启用的",
-          "disabled": "未启用的"
+          "disabled": "未启用的",
+          "provider_all": "全部供应商"
         },
         "enable_hint": "只有已录入供应商模型目录的模型，才可勾选启用。未录入的模型不可勾选，请先补充后再同步启用。",
         "auto_assign": "一键录入",
@@ -831,6 +836,7 @@
           "provider_placeholder": "请选择供应商",
           "model": "模型",
           "type": "类型",
+          "tags": "标签",
           "cancel": "取消",
           "confirm": "确认添加"
         },
@@ -884,6 +890,10 @@
         "settings_title": "测试配置",
         "settings_stream": "流式测试",
         "settings_audio_language": "语音测试语言",
+        "image_edit_source_url": "图片编辑测试原图地址",
+        "image_edit_upload": "上传图片编辑测试原图",
+        "image_edit_uploaded": "已上传图片",
+        "image_edit_file_failed": "读取图片失败",
         "single": "测试",
         "task_created": "已提交 {{count}} 个测试任务，其中复用 {{reused}} 个运行中任务。",
         "group_count": "{{count}} 个模型",
@@ -955,8 +965,6 @@
       "spark_version_placeholder": "请输入星火大模型版本，注意是接口地址中的版本号，例如：v2.1",
       "knowledge_id": "知识库 ID",
       "knowledge_id_placeholder": "请输入知识库 ID，例如：123456",
-      "plugin_param": "插件参数",
-      "plugin_param_placeholder": "请输入插件参数，即 X-DashScope-Plugin 请求头的取值",
       "coze_notice": "对于 Coze 而言，模型名称即 Bot ID，你可以添加一个前缀 `bot-`，例如：`bot-123456`。",
       "douban_notice": "对于豆包而言，需要手动去",
       "douban_notice_link": "模型推理页面",
@@ -1049,7 +1057,8 @@
       "delete_title": "确认删除分组",
       "delete_confirm": "确定删除分组 {{id}} 吗？",
       "model_delete_confirm": "确定删除模型 {{model}} 吗？",
-      "bind_channels_title": "配置分组 {{id}} 的渠道"
+      "bind_channels_title": "配置分组 {{id}} 的渠道",
+      "add_model_selected": "已选择 {{count}} 个模型"
     },
     "detail_tabs": {
       "overview": "概览",
@@ -2281,6 +2290,12 @@
         "chat_link_placeholder": "例如 ChatGPT Next Web 的部署地址",
         "quota_per_unit": "USD -> YYC 折算比率",
         "quota_per_unit_placeholder": "1 USD 折算为多少 YYC",
+        "channel_billing_auto_refresh": {
+          "enabled": "启用渠道账务自动刷新",
+          "interval_seconds": "刷新间隔（秒）",
+          "last_run": "最近运行时间",
+          "interval_invalid": "刷新间隔必须大于或等于 60 秒"
+        },
         "buttons": {
           "save": "保存通用设置"
         }
