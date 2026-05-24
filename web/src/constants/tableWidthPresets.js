@@ -216,20 +216,20 @@ export const LOG_LIST_TABLE_MIN_WIDTH =
   LOG_LIST_COLUMN_WIDTHS.quota;
 
 export const BUSINESS_FLOW_COLUMN_WIDTHS = {
-  user: 140,
-  userCompact: 120,
-  status: 92,
-  type: 88,
-  source: 180,
-  amount: 140,
-  quota: 140,
-  datetime: 148,
-  group: 140,
-  packageName: 180,
-  model: 180,
-  order: 220,
+  user: 120,
+  userCompact: 100,
+  status: 64,
+  type: 64,
+  source: 92,
+  amount: 80,
+  quota: 80,
+  datetime: 128,
+  group: 100,
+  packageName: 100,
+  model: 120,
+  order: 160,
   message: 180,
-  tokenCount: 96,
+  tokenCount: 64,
   actions: 120,
 };
 
