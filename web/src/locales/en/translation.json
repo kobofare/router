@@ -1602,9 +1602,7 @@
     }
   },
   "workspace_start": {
-    "badge": "First visit",
     "title": "Get Started",
-    "description": "There is no available package or balance yet. View pricing first, get quota, then create a token and start calling.",
     "actions": {
       "view_pricing": "View pricing",
       "view_guide": "Usage guide",

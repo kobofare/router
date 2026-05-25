@@ -1602,9 +1602,7 @@
     }
   },
   "workspace_start": {
-    "badge": "首次进入",
     "title": "开始使用",
-    "description": "当前还没有可用套餐或余额。先查看报价并获取额度，再创建令牌开始调用。",
     "actions": {
       "view_pricing": "查看报价",
       "view_guide": "使用说明",

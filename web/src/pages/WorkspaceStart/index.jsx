@@ -18,35 +18,6 @@ const WorkspaceStart = () => {
         title={t('workspace_start.title')}
       />
 
-      <AppSection className='router-workspace-start-hero'>
-        <div className='router-workspace-start-badge'>
-          {t('workspace_start.badge')}
-        </div>
-        <div className='router-workspace-start-title'>
-          {t('workspace_start.title')}
-        </div>
-        <div className='router-workspace-start-description'>
-          {t('workspace_start.description')}
-        </div>
-        <div className='router-workspace-start-actions'>
-          <AppButton
-            type='button'
-            className='router-page-button'
-            color='blue'
-            onClick={() => navigate('/workspace/service/pricing')}
-          >
-            {t('workspace_start.actions.view_pricing')}
-          </AppButton>
-          <AppButton
-            type='button'
-            className='router-page-button'
-            onClick={() => navigate('/workspace/service/help')}
-          >
-            {t('workspace_start.actions.view_guide')}
-          </AppButton>
-        </div>
-      </AppSection>
-
       <div className='router-workspace-start-grid'>
         <AppSection className='router-workspace-start-card'>
           <div className='router-workspace-start-card-index'>1</div>
