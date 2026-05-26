@@ -1262,6 +1262,27 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 					}).Error
 			},
 		},
+		{
+			Version:     "202605261030_channel_billing_entitlement_framework",
+			Description: "upgrade channel billing items to standard entitlement fields and add alert events",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelBillingSnapshotItem{}, &ChannelBillingAlertEvent{})
+			},
+		},
+		{
+			Version:     "202605261230_refresh_deepseek_provider_catalog",
+			Description: "upsert deepseek provider migration rows for v4 models and current aliases",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "deepseek")
+			},
+		},
+		{
+			Version:     "202605261700_deepseek_messages_endpoint_support",
+			Description: "refresh deepseek provider migration rows to expose chat and messages endpoints",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "deepseek")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

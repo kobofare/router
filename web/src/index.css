@@ -1426,26 +1426,6 @@ body,
     margin-right: 6px;
 }
 
-.router-detail-section {
-    margin-top: 0;
-    border: 1px solid rgba(34, 36, 38, 0.08);
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 16px;
-}
-
-.router-detail-section + .router-detail-section {
-    margin-top: 16px;
-}
-
-.router-detail-section-title {
-    font-size: 17px;
-    font-weight: 400;
-    line-height: 1.35;
-    color: #1f2937;
-    margin-bottom: 12px;
-}
-
 .router-detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1568,7 +1548,7 @@ body,
     --router-tab-toolbar-control-height: 32px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     min-width: 0;
 }
 
@@ -1635,6 +1615,11 @@ body,
 .router-entity-detail-section.ant-card:hover,
 .router-ui-section.ant-card:hover {
     border-color: rgba(22, 119, 255, 0.18);
+}
+
+.router-provider-detail-section-body > .router-provider-detail-section + .router-provider-detail-section,
+.router-entity-detail-section-body > .router-entity-detail-section + .router-entity-detail-section {
+    margin-top: 12px;
 }
 
 .router-provider-detail-section-header,

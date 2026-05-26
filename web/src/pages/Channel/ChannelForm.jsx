@@ -145,6 +145,22 @@ const validateChannelIdentifier = (value, t) => {
   return '';
 };
 
+const validateProtocolSpecificChannelConfig = (inputs, config) => {
+  const protocol = (inputs?.protocol || '').toString().trim().toLowerCase();
+  if (protocol !== 'deepseek') {
+    return '';
+  }
+  const baseURL = normalizeBaseURL(inputs?.base_url || '');
+  if (baseURL.toLowerCase().endsWith('/v1')) {
+    return 'DeepSeek 渠道 base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta';
+  }
+  const apiBaseURL = normalizeBaseURL(config?.api_base_url || '');
+  if (apiBaseURL.toLowerCase().endsWith('/v1')) {
+    return 'DeepSeek 渠道 API Base URL 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta';
+  }
+  return '';
+};
+
 const parseJSONObject = (value) => {
   if (typeof value !== 'string') {
     return {};
@@ -528,11 +544,18 @@ const normalizeChannelBillingSummary = (item) => {
     latest_snapshot_at: Number(item.latest_snapshot_at || 0),
     quota_items: Array.isArray(item.quota_items)
       ? item.quota_items.map((quotaItem) => ({
+          resource_type: (quotaItem?.resource_type || '').toString().trim(),
           quota_type: (quotaItem?.quota_type || '').toString().trim(),
           quota_label: (quotaItem?.quota_label || '').toString().trim(),
           amount: Number(quotaItem?.amount || 0),
+          limit_amount: Number(quotaItem?.limit_amount || 0),
+          used_amount: Number(quotaItem?.used_amount || 0),
+          remaining_amount: Number(quotaItem?.remaining_amount || 0),
           currency: (quotaItem?.currency || '').toString().trim(),
+          reset_at: Number(quotaItem?.reset_at || 0),
           expires_at: Number(quotaItem?.expires_at || 0),
+          status: (quotaItem?.status || '').toString().trim(),
+          source_ref: (quotaItem?.source_ref || '').toString().trim(),
         }))
       : [],
   };
@@ -569,11 +592,18 @@ const normalizeChannelBillingSnapshots = (items) => {
       created_at: Number(item.created_at || 0),
       items: Array.isArray(item.items)
         ? item.items.map((quotaItem) => ({
+            resource_type: (quotaItem?.resource_type || '').toString().trim(),
             quota_type: (quotaItem?.quota_type || '').toString().trim(),
             quota_label: (quotaItem?.quota_label || '').toString().trim(),
             amount: Number(quotaItem?.amount || 0),
+            limit_amount: Number(quotaItem?.limit_amount || 0),
+            used_amount: Number(quotaItem?.used_amount || 0),
+            remaining_amount: Number(quotaItem?.remaining_amount || 0),
             currency: (quotaItem?.currency || '').toString().trim(),
+            reset_at: Number(quotaItem?.reset_at || 0),
             expires_at: Number(quotaItem?.expires_at || 0),
+            status: (quotaItem?.status || '').toString().trim(),
+            source_ref: (quotaItem?.source_ref || '').toString().trim(),
           }))
         : [],
     }));
@@ -590,6 +620,39 @@ const normalizeChannelBillingActions = (items) => {
       action_type: (item.action_type || '').toString().trim(),
       status: (item.status || '').toString().trim(),
       message: (item.message || '').toString().trim(),
+      created_at: Number(item.created_at || 0),
+    }));
+};
+
+const normalizeChannelBillingAlerts = (items) => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      id: (item.id || '').toString().trim(),
+      event_type: (item.event_type || '').toString().trim(),
+      alert_key: (item.alert_key || '').toString().trim(),
+      notify_date: (item.notify_date || '').toString().trim(),
+      severity: (item.severity || '').toString().trim(),
+      status: (item.status || '').toString().trim(),
+      title: (item.title || '').toString().trim(),
+      content: (item.content || '').toString().trim(),
+      payload:
+        item.payload && typeof item.payload === 'object'
+          ? item.payload
+          : (() => {
+              const raw = (item.payload || '').toString().trim();
+              if (raw === '') {
+                return null;
+              }
+              try {
+                return JSON.parse(raw);
+              } catch {
+                return null;
+              }
+            })(),
       created_at: Number(item.created_at || 0),
     }));
 };
@@ -1466,6 +1529,21 @@ const fetchChannelBillingActions = async (channelId) => {
   return normalizeChannelBillingActions(data?.items);
 };
 
+const fetchChannelBillingAlerts = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return [];
+  }
+  const res = await API.get(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/alerts`,
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel billing alerts failed');
+  }
+  return normalizeChannelBillingAlerts(data?.items);
+};
+
 const fetchTaskById = async (taskId) => {
   const normalizedTaskId = (taskId || '').toString().trim();
   if (normalizedTaskId === '') {
@@ -1833,6 +1911,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [channelBillingProfile, setChannelBillingProfile] = useState(null);
   const [channelBillingSnapshots, setChannelBillingSnapshots] = useState([]);
   const [channelBillingActions, setChannelBillingActions] = useState([]);
+  const [channelBillingAlerts, setChannelBillingAlerts] = useState([]);
   const [channelBillingLoading, setChannelBillingLoading] = useState(false);
   const [channelBillingError, setChannelBillingError] = useState('');
   const [channelBillingSubmitting, setChannelBillingSubmitting] =
@@ -2862,6 +2941,14 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           return false;
         }
       }
+      const protocolConfigError = validateProtocolSpecificChannelConfig(
+        inputs,
+        config,
+      );
+      if (protocolConfigError !== '') {
+        showError(protocolConfigError);
+        return false;
+      }
       if (includeModelState) {
         const blockedMessage = buildBlockedSelectedModelsMessage(
           inputs.channel_models,
@@ -3054,6 +3141,19 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [t],
   );
 
+  const loadChannelBillingAlertsFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchChannelBillingAlerts(targetChannelId);
+      } catch (error) {
+        throw new Error(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      }
+    },
+    [t],
+  );
+
   const refreshChannelBillingState = useCallback(
     async (targetChannelId) => {
       const normalizedChannelId = (targetChannelId || '').toString().trim();
@@ -3062,17 +3162,19 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
       setChannelBillingLoading(true);
       try {
-        const [summary, profile, snapshots, actions] = await Promise.all([
+        const [summary, profile, snapshots, actions, alerts] = await Promise.all([
           loadChannelBillingSummaryFromServer(normalizedChannelId),
           loadChannelBillingProfileFromServer(normalizedChannelId),
           loadChannelBillingSnapshotsFromServer(normalizedChannelId),
           loadChannelBillingActionsFromServer(normalizedChannelId),
+          loadChannelBillingAlertsFromServer(normalizedChannelId),
         ]);
         setChannelBillingSummary(summary);
         setChannelBillingProfile(profile);
         setDetailBillingDraft(profile);
         setChannelBillingSnapshots(snapshots);
         setChannelBillingActions(actions);
+        setChannelBillingAlerts(alerts);
         setChannelBillingError('');
       } catch (error) {
         setChannelBillingError(
@@ -3084,6 +3186,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     },
     [
       loadChannelBillingActionsFromServer,
+      loadChannelBillingAlertsFromServer,
       loadChannelBillingProfileFromServer,
       loadChannelBillingSnapshotsFromServer,
       loadChannelBillingSummaryFromServer,
@@ -3277,6 +3380,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
       const normalizedItems = (Array.isArray(items) ? items : [])
         .map((item) => ({
+          resource_type: (item?.resource_type || '').toString().trim(),
           quota_type: (item?.quota_type || '').toString().trim(),
           quota_label: (item?.quota_label || '').toString().trim(),
           amount: Number(item?.amount),
@@ -3285,6 +3389,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         }))
         .filter(
           (item) =>
+            item.resource_type !== '' &&
             item.quota_label !== '' &&
             Number.isFinite(item.amount) &&
             item.amount >= 0,
@@ -3411,6 +3516,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             billingProfileData,
             billingSnapshotsData,
             billingActionsData,
+            billingAlertsData,
           ] =
             await Promise.all([
               loadChannelModelsFromServer(
@@ -3435,6 +3541,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               forCopy
                 ? Promise.resolve([])
                 : loadChannelBillingActionsFromServer(data.id || targetId),
+              activeDetailTab !== 'billing'
+                ? Promise.resolve([])
+                : loadChannelBillingAlertsFromServer(data.id || targetId),
             ]);
           const storedModelTestResults = normalizeModelTestResults(
             channelTestsData.items,
@@ -3523,6 +3632,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             setDetailBillingDraft(billingProfileData);
             setChannelBillingSnapshots(billingSnapshotsData);
             setChannelBillingActions(billingActionsData);
+            setChannelBillingAlerts(billingAlertsData);
             setChannelBillingError('');
           }
           setConfig({
@@ -3546,6 +3656,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [
       hasChannelID,
       loadChannelBillingActionsFromServer,
+      loadChannelBillingAlertsFromServer,
       loadChannelBillingProfileFromServer,
       loadChannelBillingSnapshotsFromServer,
       loadChannelBillingSummaryFromServer,
@@ -4611,6 +4722,17 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   ]);
 
   useEffect(() => {
+    if (!showDetailBillingTab) {
+      return;
+    }
+    const normalizedChannelId = (channelId || '').toString().trim();
+    if (normalizedChannelId === '') {
+      return;
+    }
+    refreshChannelBillingState(normalizedChannelId).then();
+  }, [channelId, refreshChannelBillingState, showDetailBillingTab]);
+
+  useEffect(() => {
     if (!isDetailMode || !channelId) {
       setChannelEndpoints([]);
       setChannelEndpointsError('');
@@ -4873,6 +4995,14 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
     if (isCreateMode && effectiveKey.trim() === '') {
       showInfo(t('channel.edit.messages.key_required'));
+      return;
+    }
+    const protocolConfigError = validateProtocolSpecificChannelConfig(
+      inputs,
+      config,
+    );
+    if (protocolConfigError !== '') {
+      showError(protocolConfigError);
       return;
     }
     let localInputs = buildChannelPayload();
@@ -5520,6 +5650,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 billingLoading={channelBillingLoading}
                 billingError={channelBillingError}
                 billingSnapshots={channelBillingSnapshots}
+                billingAlerts={channelBillingAlerts}
                 billingActions={channelBillingActions}
                 billingReadonly={detailBillingReadonly}
                 billingSubmitting={channelBillingSubmitting}
