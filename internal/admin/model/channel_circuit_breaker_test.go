@@ -138,3 +138,22 @@ func TestListHalfOpenChannelCircuitBreakerStates(t *testing.T) {
 		t.Fatalf("half-open rows = %+v, want channel-2 only", rows)
 	}
 }
+
+func TestListChannelCircuitBreakerStatesByChannelIDs(t *testing.T) {
+	db := newChannelCircuitBreakerTestDB(t)
+
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-1", "low_success_rate", 0.25, 12345); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-2", "low_success_rate", 0.75, 12346); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+
+	rows, err := ListChannelCircuitBreakerStatesByChannelIDsWithDB(db, []string{"channel-2", "channel-2", "missing", ""})
+	if err != nil {
+		t.Fatalf("list by ids: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ChannelId != "channel-2" {
+		t.Fatalf("rows = %+v, want channel-2 only", rows)
+	}
+}

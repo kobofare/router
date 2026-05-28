@@ -58,6 +58,31 @@ func ListHalfOpenChannelCircuitBreakerStates() ([]ChannelCircuitBreakerState, er
 	return listHalfOpenChannelCircuitBreakerStatesWithDB(DB)
 }
 
+func ListChannelCircuitBreakerStatesByChannelIDsWithDB(db *gorm.DB, channelIDs []string) ([]ChannelCircuitBreakerState, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedIDs := make([]string, 0, len(channelIDs))
+	seen := make(map[string]struct{}, len(channelIDs))
+	for _, channelID := range channelIDs {
+		normalizedID := strings.TrimSpace(channelID)
+		if normalizedID == "" {
+			continue
+		}
+		if _, ok := seen[normalizedID]; ok {
+			continue
+		}
+		seen[normalizedID] = struct{}{}
+		normalizedIDs = append(normalizedIDs, normalizedID)
+	}
+	if len(normalizedIDs) == 0 {
+		return []ChannelCircuitBreakerState{}, nil
+	}
+	rows := make([]ChannelCircuitBreakerState, 0, len(normalizedIDs))
+	err := db.Where("channel_id IN ?", normalizedIDs).Find(&rows).Error
+	return rows, err
+}
+
 func recordChannelCircuitBreakerOpenWithDB(db *gorm.DB, channelID string, reason string, successRate float64, recoverAfter int64) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
