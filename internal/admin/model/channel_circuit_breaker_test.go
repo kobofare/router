@@ -66,6 +66,35 @@ func TestRecordChannelCircuitBreakerCanceledOnlyUpdatesOpenState(t *testing.T) {
 	}
 }
 
+func TestRecordChannelCircuitBreakerRecoveredUpdatesHalfOpenState(t *testing.T) {
+	db := newChannelCircuitBreakerTestDB(t)
+
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-1", "low_success_rate", 0.25, 12345); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+	if err := updateChannelCircuitBreakerStateWithDB(db, "channel-1", ChannelCircuitBreakerStateHalfOpen, ""); err != nil {
+		t.Fatalf("record half-open: %v", err)
+	}
+	row, err := getChannelCircuitBreakerStateWithDB(db, "channel-1")
+	if err != nil {
+		t.Fatalf("get half-open state: %v", err)
+	}
+	if row.State != ChannelCircuitBreakerStateHalfOpen || row.RecoveredAt != 0 {
+		t.Fatalf("half-open state = %+v, want half-open without recovered_at", row)
+	}
+	if err := updateChannelCircuitBreakerStateWithDB(db, "channel-1", ChannelCircuitBreakerStateRecovered, ""); err != nil {
+		t.Fatalf("record recovered: %v", err)
+	}
+
+	row, err = getChannelCircuitBreakerStateWithDB(db, "channel-1")
+	if err != nil {
+		t.Fatalf("get recovered state: %v", err)
+	}
+	if row.State != ChannelCircuitBreakerStateRecovered || row.RecoveredAt == 0 {
+		t.Fatalf("recovered state = %+v, want recovered with recovered_at", row)
+	}
+}
+
 func TestListOpenChannelCircuitBreakerStates(t *testing.T) {
 	db := newChannelCircuitBreakerTestDB(t)
 
@@ -85,5 +114,27 @@ func TestListOpenChannelCircuitBreakerStates(t *testing.T) {
 	}
 	if len(rows) != 1 || rows[0].ChannelId != "channel-1" {
 		t.Fatalf("open rows = %+v, want channel-1 only", rows)
+	}
+}
+
+func TestListHalfOpenChannelCircuitBreakerStates(t *testing.T) {
+	db := newChannelCircuitBreakerTestDB(t)
+
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-1", "low_success_rate", 0.25, 12345); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-2", "low_success_rate", 0.75, 12346); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+	if err := updateChannelCircuitBreakerStateWithDB(db, "channel-2", ChannelCircuitBreakerStateHalfOpen, ""); err != nil {
+		t.Fatalf("record half-open: %v", err)
+	}
+
+	rows, err := listHalfOpenChannelCircuitBreakerStatesWithDB(db)
+	if err != nil {
+		t.Fatalf("list half-open: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ChannelId != "channel-2" {
+		t.Fatalf("half-open rows = %+v, want channel-2 only", rows)
 	}
 }

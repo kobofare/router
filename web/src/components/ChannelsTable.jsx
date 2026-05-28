@@ -288,6 +288,14 @@ const ChannelsTable = () => {
             </span>
           </AppTooltip>
         );
+      case 5:
+        return (
+          <AppTooltip title={t('channel.table.status_half_open_tip')}>
+            <span className='router-text-info'>
+              {t('channel.table.status_half_open')}
+            </span>
+          </AppTooltip>
+        );
       case channelStatusCreating:
         return plainStatusText(
           t('channel.table.status_creating'),

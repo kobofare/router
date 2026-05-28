@@ -16,6 +16,7 @@ var metricSuccessChan = make(chan string, config.MetricSuccessChanSize)
 var metricFailChan = make(chan string, config.MetricFailChanSize)
 var metricStoreMu sync.Mutex
 var metricRecoverTimers sync.Map
+var metricHalfOpenChannels sync.Map
 var metricConsumersOnce sync.Once
 
 func consumeSuccess(channelId string) {
@@ -56,6 +57,7 @@ func metricSuccessConsumer() {
 		select {
 		case channelId := <-metricSuccessChan:
 			consumeSuccess(channelId)
+			recoverMetricHalfOpenChannel(channelId)
 		}
 	}
 }
@@ -64,6 +66,9 @@ func metricFailConsumer() {
 	for {
 		select {
 		case channelId := <-metricFailChan:
+			if reopenMetricHalfOpenChannel(channelId) {
+				continue
+			}
 			disable, successRate := consumeFail(channelId)
 			if disable {
 				go MetricDisableChannelAndScheduleRecover(channelId, successRate)
@@ -145,6 +150,14 @@ func resumeMetricChannelRecoveries() {
 	for _, row := range rows {
 		scheduleMetricChannelRecoverAt(row.ChannelId, row.RecoverAfter)
 	}
+	halfOpenRows, err := model.ListHalfOpenChannelCircuitBreakerStates()
+	if err != nil {
+		logger.SysError("failed to list half-open metric circuit breaker states: " + err.Error())
+		return
+	}
+	for _, row := range halfOpenRows {
+		metricHalfOpenChannels.Store(strings.TrimSpace(row.ChannelId), struct{}{})
+	}
 }
 
 func recoverMetricDisabledChannel(channelId string) {
@@ -164,8 +177,55 @@ func recoverMetricDisabledChannel(channelId string) {
 	if channel.Status != model.ChannelStatusAutoDisabled {
 		return
 	}
-	RecoverMetricDisabledChannel(channel.Id, channel.DisplayName())
-	if err := model.RecordChannelCircuitBreakerRecovered(channel.Id); err != nil {
-		logger.SysError("failed to record metric circuit breaker recovery: " + err.Error())
+	RecoverMetricDisabledChannelHalfOpen(channel.Id, channel.DisplayName())
+	metricHalfOpenChannels.Store(strings.TrimSpace(channel.Id), struct{}{})
+	if err := model.RecordChannelCircuitBreakerHalfOpen(channel.Id); err != nil {
+		logger.SysError("failed to record metric circuit breaker half-open state: " + err.Error())
 	}
+}
+
+func recoverMetricHalfOpenChannel(channelId string) {
+	normalizedChannelID := strings.TrimSpace(channelId)
+	if normalizedChannelID == "" {
+		return
+	}
+	if _, ok := metricHalfOpenChannels.Load(normalizedChannelID); !ok {
+		return
+	}
+	channel, err := model.GetChannelById(normalizedChannelID)
+	if err != nil {
+		logger.SysError("failed to load half-open channel for metric recovery: " + err.Error())
+		return
+	}
+	if channel.Status != model.ChannelStatusHalfOpen {
+		metricHalfOpenChannels.Delete(normalizedChannelID)
+		return
+	}
+	RecoverMetricDisabledChannel(channel.Id, channel.DisplayName())
+	metricHalfOpenChannels.Delete(normalizedChannelID)
+	if err := model.RecordChannelCircuitBreakerRecovered(channel.Id); err != nil {
+		logger.SysError("failed to record metric half-open recovery: " + err.Error())
+	}
+}
+
+func reopenMetricHalfOpenChannel(channelId string) bool {
+	normalizedChannelID := strings.TrimSpace(channelId)
+	if normalizedChannelID == "" {
+		return false
+	}
+	if _, ok := metricHalfOpenChannels.Load(normalizedChannelID); !ok {
+		return false
+	}
+	channel, err := model.GetChannelById(normalizedChannelID)
+	if err != nil {
+		logger.SysError("failed to load half-open channel for metric reopen: " + err.Error())
+		return false
+	}
+	if channel.Status != model.ChannelStatusHalfOpen {
+		metricHalfOpenChannels.Delete(normalizedChannelID)
+		return false
+	}
+	MetricDisableChannelAndScheduleRecover(normalizedChannelID, 0)
+	metricHalfOpenChannels.Delete(normalizedChannelID)
+	return true
 }

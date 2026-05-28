@@ -189,3 +189,19 @@ func RecoverMetricDisabledChannel(channelId string, channelName string) {
 	)
 	_ = notifyRootUser(subject, content)
 }
+
+func RecoverMetricDisabledChannelHalfOpen(channelId string, channelName string) {
+	model.UpdateChannelStatusById(channelId, model.ChannelStatusHalfOpen)
+	logger.SysLog(fmt.Sprintf("channel #%s entered half-open after metric circuit break", channelId))
+	subject := "渠道熔断半开探测提醒"
+	content := message.EmailTemplate(
+		subject,
+		fmt.Sprintf(`
+			<p>您好！</p>
+			<p>渠道「<strong>%s</strong>」（#%s）已进入低成功率熔断半开探测状态。</p>
+			<p>恢复策略：</p>
+			<p style="background-color: #f8f8f8; padding: 10px; border-radius: 4px;">熔断等待时间已结束，渠道会以低优先级进入运行态候选。下一次探测成功后才完全恢复，失败则重新熔断等待。</p>
+		`, notificationValue(channelName), notificationValue(channelId)),
+	)
+	_ = notifyRootUser(subject, content)
+}

@@ -10,6 +10,7 @@ import (
 
 const (
 	ChannelCircuitBreakerStateOpen      = "open"
+	ChannelCircuitBreakerStateHalfOpen  = "half_open"
 	ChannelCircuitBreakerStateRecovered = "recovered"
 	ChannelCircuitBreakerStateCanceled  = "canceled"
 )
@@ -37,6 +38,10 @@ func RecordChannelCircuitBreakerRecovered(channelID string) error {
 	return updateChannelCircuitBreakerStateWithDB(DB, channelID, ChannelCircuitBreakerStateRecovered, "")
 }
 
+func RecordChannelCircuitBreakerHalfOpen(channelID string) error {
+	return updateChannelCircuitBreakerStateWithDB(DB, channelID, ChannelCircuitBreakerStateHalfOpen, "")
+}
+
 func RecordChannelCircuitBreakerCanceled(channelID string, reason string) error {
 	return updateChannelCircuitBreakerStateWithDB(DB, channelID, ChannelCircuitBreakerStateCanceled, reason)
 }
@@ -47,6 +52,10 @@ func GetChannelCircuitBreakerState(channelID string) (ChannelCircuitBreakerState
 
 func ListOpenChannelCircuitBreakerStates() ([]ChannelCircuitBreakerState, error) {
 	return listOpenChannelCircuitBreakerStatesWithDB(DB)
+}
+
+func ListHalfOpenChannelCircuitBreakerStates() ([]ChannelCircuitBreakerState, error) {
+	return listHalfOpenChannelCircuitBreakerStatesWithDB(DB)
 }
 
 func recordChannelCircuitBreakerOpenWithDB(db *gorm.DB, channelID string, reason string, successRate float64, recoverAfter int64) error {
@@ -82,15 +91,17 @@ func updateChannelCircuitBreakerStateWithDB(db *gorm.DB, channelID string, state
 	}
 	now := helper.GetTimestamp()
 	updates := map[string]any{
-		"state":        normalizedState,
-		"recovered_at": now,
-		"updated_at":   now,
+		"state":      normalizedState,
+		"updated_at": now,
+	}
+	if normalizedState == ChannelCircuitBreakerStateRecovered {
+		updates["recovered_at"] = now
 	}
 	if normalizedReason := strings.TrimSpace(reason); normalizedReason != "" {
 		updates["reason"] = normalizedReason
 	}
 	return db.Model(&ChannelCircuitBreakerState{}).
-		Where("channel_id = ? AND state = ?", normalizedChannelID, ChannelCircuitBreakerStateOpen).
+		Where("channel_id = ? AND state IN ?", normalizedChannelID, []string{ChannelCircuitBreakerStateOpen, ChannelCircuitBreakerStateHalfOpen}).
 		Updates(updates).Error
 }
 
@@ -113,5 +124,14 @@ func listOpenChannelCircuitBreakerStatesWithDB(db *gorm.DB) ([]ChannelCircuitBre
 	}
 	rows := make([]ChannelCircuitBreakerState, 0)
 	err := db.Where("state = ?", ChannelCircuitBreakerStateOpen).Find(&rows).Error
+	return rows, err
+}
+
+func listHalfOpenChannelCircuitBreakerStatesWithDB(db *gorm.DB) ([]ChannelCircuitBreakerState, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	rows := make([]ChannelCircuitBreakerState, 0)
+	err := db.Where("state = ?", ChannelCircuitBreakerStateHalfOpen).Find(&rows).Error
 	return rows, err
 }
