@@ -110,6 +110,28 @@ func TestEstimateUnknownFallback(t *testing.T) {
 	}
 }
 
+func TestEstimateGeminiRawRequest(t *testing.T) {
+	req := EstimateRequest{
+		RelayMode: relaymode.ChatCompletions,
+		Model:     "gemini-2.0-flash",
+		RawBody: []byte(`{
+			"contents": [
+				{"role": "user", "parts": [{"text": "hello gemini"}]}
+			]
+		}`),
+	}
+	got, err := Estimate(req)
+	if err != nil {
+		t.Fatalf("Estimate returned error: %v", err)
+	}
+	if got.Estimator != "gemini_heuristic" || got.Precision != PrecisionHeuristic {
+		t.Fatalf("unexpected result metadata: %+v", got)
+	}
+	if got.PromptTokens <= 0 {
+		t.Fatalf("PromptTokens = %d, want > 0", got.PromptTokens)
+	}
+}
+
 func TestEstimateAnthropicRequiresRawBody(t *testing.T) {
 	req := EstimateRequest{
 		RelayMode: relaymode.Messages,
