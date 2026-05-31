@@ -244,6 +244,10 @@ const formatAlertTypeText = (row, t) => {
       return t('channel.edit.billing.alert_table.event_expiring_soon');
     case 'low_remaining':
       return t('channel.edit.billing.alert_table.event_low_remaining');
+    case 'plan_expired':
+      return t('channel.edit.billing.alert_table.event_plan_expired');
+    case 'refresh_failed':
+      return t('channel.edit.billing.alert_table.event_refresh_failed');
     default:
       return eventType || '-';
   }
@@ -352,6 +356,12 @@ const ChannelDetailBillingTab = ({
   const quotaItems = Array.isArray(billingSummary?.quota_items)
     ? billingSummary.quota_items
     : [];
+  const latestSnapshotStatus = normalizeBillingValue(
+    billingSummary?.latest_snapshot_status,
+  );
+  const latestSnapshotMessage = (billingSummary?.latest_snapshot_message || '')
+    .toString()
+    .trim();
   const alertRecords = Array.isArray(billingAlerts) ? billingAlerts : [];
   const entitlementModeSummary = summarizeEntitlementMode(quotaItems, t);
 
@@ -570,6 +580,18 @@ const ChannelDetailBillingTab = ({
             </AppTag>
             <span>{entitlementModeSummary.description}</span>
           </div>
+          {latestSnapshotStatus === 'failed' ? (
+            <AppAlert
+              type='warning'
+              showIcon
+              className='router-section-message'
+              title={t('channel.edit.billing.latest_refresh_failed', {
+                message:
+                  latestSnapshotMessage ||
+                  t('channel.edit.billing.latest_refresh_failed_unknown'),
+              })}
+            />
+          ) : null}
           <AppTable
             className='router-detail-table'
             pagination={false}

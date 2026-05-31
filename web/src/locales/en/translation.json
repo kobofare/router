@@ -607,6 +607,8 @@
         "profile_update_success": "Billing profile updated",
         "profile_update_failed": "Failed to update billing profile",
         "refresh_now": "Refresh",
+        "latest_refresh_failed": "Latest billing refresh failed: {{message}}",
+        "latest_refresh_failed_unknown": "Upstream billing API returned an error",
         "current_quotas_title": "Entitlement Status",
         "billing_mode": "Billing Mode",
         "updated_at": "Updated At",
@@ -730,6 +732,8 @@
           "empty": "No alert records",
           "event_expiring_soon": "Expiring Soon",
           "event_low_remaining": "Low Remaining",
+          "event_plan_expired": "Plan Expired",
+          "event_refresh_failed": "Refresh Failed",
           "status_sent": "Sent",
           "status_failed": "Failed"
         }

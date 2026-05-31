@@ -545,6 +545,8 @@ const normalizeChannelBillingSummary = (item) => {
     manual_update_supported: item.manual_update_supported === true,
     refresh_supported: item.refresh_supported === true,
     latest_snapshot_at: Number(item.latest_snapshot_at || 0),
+    latest_snapshot_status: (item.latest_snapshot_status || '').toString().trim(),
+    latest_snapshot_message: (item.latest_snapshot_message || '').toString().trim(),
     quota_items: Array.isArray(item.quota_items)
       ? item.quota_items.map((quotaItem) => ({
           resource_type: (quotaItem?.resource_type || '').toString().trim(),

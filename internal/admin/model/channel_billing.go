@@ -60,8 +60,10 @@ const (
 	ChannelBillingItemStatusDepleted = "depleted"
 	ChannelBillingItemStatusExpired  = "expired"
 
-	ChannelBillingAlertTypeExpiringSoon = "expiring_soon"
-	ChannelBillingAlertTypeLowRemaining = "low_remaining"
+	ChannelBillingAlertTypeExpiringSoon  = "expiring_soon"
+	ChannelBillingAlertTypeLowRemaining  = "low_remaining"
+	ChannelBillingAlertTypePlanExpired   = "plan_expired"
+	ChannelBillingAlertTypeRefreshFailed = "refresh_failed"
 
 	ChannelBillingAlertStatusSent   = "sent"
 	ChannelBillingAlertStatusFailed = "failed"

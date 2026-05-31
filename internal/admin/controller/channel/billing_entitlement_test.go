@@ -85,3 +85,32 @@ func TestShouldDisableChannelForBillingEntitlementsDisablesExhaustedPackageChann
 		t.Fatalf("package channel without usable plan or periodic quota should be disabled")
 	}
 }
+
+func TestDetermineBillingItemStatusExpiresPastPlan(t *testing.T) {
+	now := time.Now()
+	item := model.ChannelBillingSnapshotItem{
+		ResourceType:    model.ChannelBillingResourceTypePlan,
+		QuotaType:       "custom",
+		RemainingAmount: 1,
+		ExpiresAt:       now.Add(-time.Minute).Unix(),
+	}
+
+	if status := determineBillingItemStatus(item, now, 0.2); status != model.ChannelBillingItemStatusExpired {
+		t.Fatalf("past plan status=%q, want expired", status)
+	}
+}
+
+func TestDetermineBillingItemStatusExpiresPastPeriodicReset(t *testing.T) {
+	now := time.Now()
+	item := model.ChannelBillingSnapshotItem{
+		ResourceType:    model.ChannelBillingResourceTypeQuota,
+		QuotaType:       "daily",
+		LimitAmount:     55,
+		RemainingAmount: 37.76,
+		ResetAt:         now.Add(-time.Minute).Unix(),
+	}
+
+	if status := determineBillingItemStatus(item, now, 0.2); status != model.ChannelBillingItemStatusExpired {
+		t.Fatalf("past reset status=%q, want expired", status)
+	}
+}

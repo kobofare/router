@@ -607,6 +607,8 @@
         "profile_update_success": "账务配置保存成功",
         "profile_update_failed": "账务配置保存失败",
         "refresh_now": "刷新",
+        "latest_refresh_failed": "最近一次账务刷新失败：{{message}}",
+        "latest_refresh_failed_unknown": "上游账务接口返回异常",
         "current_quotas_title": "权益项状态",
         "billing_mode": "账务方式",
         "updated_at": "更新时间",
@@ -730,6 +732,8 @@
           "empty": "当前没有告警记录",
           "event_expiring_soon": "即将到期",
           "event_low_remaining": "余额偏低",
+          "event_plan_expired": "套餐到期",
+          "event_refresh_failed": "刷新失败",
           "status_sent": "已发送",
           "status_failed": "发送失败"
         }
