@@ -248,6 +248,8 @@ const formatAlertTypeText = (row, t) => {
       return t('channel.edit.billing.alert_table.event_plan_expired');
     case 'refresh_failed':
       return t('channel.edit.billing.alert_table.event_refresh_failed');
+    case 'response_error':
+      return t('channel.edit.billing.alert_table.event_response_error');
     default:
       return eventType || '-';
   }

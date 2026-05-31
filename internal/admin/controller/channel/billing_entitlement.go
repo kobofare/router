@@ -433,6 +433,17 @@ func isCDKAuthExpiredBillingError(profile model.ChannelBillingProfile, err error
 		strings.Contains(reason, "invalid")
 }
 
+func isBillingResponseParseError(err error) bool {
+	if err == nil {
+		return false
+	}
+	reason := strings.ToLower(strings.TrimSpace(err.Error()))
+	return strings.Contains(reason, "invalid character") ||
+		strings.Contains(reason, "cannot unmarshal") ||
+		strings.Contains(reason, "unexpected end of json") ||
+		strings.Contains(reason, "json")
+}
+
 func createBillingRefreshFailureContent(channel *model.Channel, profile model.ChannelBillingProfile, err error) (string, string, string, string) {
 	if channel == nil || err == nil {
 		return "", "", "", ""
@@ -452,17 +463,23 @@ func createBillingRefreshFailureContent(channel *model.Channel, profile model.Ch
 			<p>处理：续费、切换备用渠道或主动下线，避免继续路由到不可用渠道。</p>
 		`, channelName, channelID, reason)
 	}
-	channelText := channelName
-	if channelID != "" {
-		channelText = fmt.Sprintf("%s (#%s)", channelName, channelID)
+	if isBillingResponseParseError(err) {
+		return model.ChannelBillingAlertTypeResponseError, "响应异常", "渠道账务接口响应异常", fmt.Sprintf(`
+			<p>类别：响应异常</p>
+			<p>渠道：%s</p>
+			<p>标识：%s</p>
+			<p>原因：上游账务接口返回了非预期内容，无法解析为账务数据。</p>
+			<p>详情：%s</p>
+			<p>处理：检查账务 API 地址、CDK 类型和上游服务状态；如果地址打开的是网页或错误页，请改为正确的账务接口地址。</p>
+		`, channelName, channelID, reason)
 	}
 	return model.ChannelBillingAlertTypeRefreshFailed, "刷新失败", "渠道账务刷新失败", fmt.Sprintf(`
-		<p><strong>账务刷新失败</strong></p>
 		<p>类别：刷新失败</p>
 		<p>渠道：%s</p>
+		<p>标识：%s</p>
 		<p>原因：%s</p>
 		<p>处理：检查 CDK、账务 API 地址或上游账号状态；恢复后下次刷新会重新同步权益项。</p>
-	`, channelText, reason)
+	`, channelName, channelID, reason)
 }
 
 func createBillingAlertContent(channel *model.Channel, item model.ChannelBillingSnapshotItem, eventType string) (string, string) {

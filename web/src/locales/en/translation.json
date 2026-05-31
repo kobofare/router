@@ -734,6 +734,7 @@
           "event_low_remaining": "Low Remaining",
           "event_plan_expired": "Plan Expired",
           "event_refresh_failed": "Refresh Failed",
+          "event_response_error": "Response Error",
           "status_sent": "Sent",
           "status_failed": "Failed"
         }

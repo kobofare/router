@@ -64,6 +64,7 @@ const (
 	ChannelBillingAlertTypeLowRemaining  = "low_remaining"
 	ChannelBillingAlertTypePlanExpired   = "plan_expired"
 	ChannelBillingAlertTypeRefreshFailed = "refresh_failed"
+	ChannelBillingAlertTypeResponseError = "response_error"
 
 	ChannelBillingAlertStatusSent   = "sent"
 	ChannelBillingAlertStatusFailed = "failed"

@@ -734,6 +734,7 @@
           "event_low_remaining": "余额偏低",
           "event_plan_expired": "套餐到期",
           "event_refresh_failed": "刷新失败",
+          "event_response_error": "响应异常",
           "status_sent": "已发送",
           "status_failed": "发送失败"
         }
