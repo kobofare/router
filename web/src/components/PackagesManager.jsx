@@ -542,10 +542,6 @@ const PackagesManager = () => {
     const visibleUserIDs = Array.isArray(form.visible_user_ids)
       ? [...new Set(form.visible_user_ids.map((item) => (item || '').toString().trim()).filter(Boolean))]
       : [];
-    if (visibilityScope === 'partial_users' && visibleUserIDs.length === 0) {
-      showInfo(t('package_manage.messages.visible_users_required'));
-      return null;
-    }
     const dailyStored = billingInputValueToYYC(
       form.daily_amount ?? 0,
       form.daily_amount_unit,
@@ -578,7 +574,7 @@ const PackagesManager = () => {
       description: (form.description || '').trim(),
       group_id: groupID,
       visibility_scope: visibilityScope,
-      visible_user_ids: visibilityScope === 'partial_users' ? visibleUserIDs : [],
+      visible_user_ids: visibleUserIDs,
       sale_price: Number(form.sale_price || 0),
       sale_currency: (form.sale_currency || 'CNY').trim().toUpperCase() || 'CNY',
       daily_quota_limit: Math.trunc(dailyStored),

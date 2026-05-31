@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { API, copy, isRoot, showError, showInfo, showSuccess } from '../../helpers';
+import { API, isRoot, showError, showInfo, showSuccess } from '../../helpers';
 import {
   BALANCE_LOT_COLUMN_WIDTHS,
   BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH,
@@ -21,7 +21,6 @@ import {
   AppFilterHeader,
   AppFormActions,
   AppFormRow,
-  AppIcon,
   AppInput,
   AppInputNumber,
   AppModal,
@@ -912,18 +911,6 @@ const UserDetail = () => {
     navigate('/admin/topup');
   }, [navigate]);
 
-  const copyWalletAddress = useCallback(async () => {
-    const value = (inputs.wallet_address || '').toString().trim();
-    if (value === '') {
-      return;
-    }
-    if (await copy(value)) {
-      showSuccess(t('user.messages.wallet_copy_success'));
-      return;
-    }
-    showError(t('user.messages.wallet_copy_failed'));
-  }, [inputs.wallet_address, t]);
-
   const refreshBalanceSection = useCallback(async () => {
     await Promise.all([loadUser(), loadBalanceLots()]);
   }, [loadBalanceLots, loadUser]);
@@ -1271,17 +1258,6 @@ const UserDetail = () => {
                   {renderReadonlyMetaField({
                     label: t('user.table.wallet'),
                     value: readOnlyValue(inputs.wallet_address),
-                    action:
-                      inputs.wallet_address && inputs.wallet_address.toString().trim() !== '' ? (
-                        <AppButton
-                          type='button'
-                          basic
-                          className='router-inline-meta-copy'
-                          onClick={copyWalletAddress}
-                        >
-                          <AppIcon name='copy outline' />
-                        </AppButton>
-                      ) : null,
                   })}
                 </AppFormRow>
 

@@ -1883,7 +1883,7 @@ body,
 .router-inline-meta-value {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.35;
     color: #1f2937;
     overflow: hidden;
