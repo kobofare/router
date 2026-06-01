@@ -475,15 +475,10 @@ func createServicePackageWithDB(db *gorm.DB, item ServicePackage) (ServicePackag
 	}
 	visibilityScope := normalizeServicePackageVisibilityScope(item.VisibilityScope)
 	visibleUserIDs := normalizeServicePackageVisibleUserIDs(item.VisibleUserIDs)
-	if visibilityScope == ServicePackageVisibilityScopeUser {
-		if len(visibleUserIDs) == 0 {
-			return ServicePackage{}, fmt.Errorf("部分用户可见时必须选择用户")
-		}
+	if len(visibleUserIDs) > 0 {
 		if _, err := resolveServicePackageVisibleUsersWithDB(db, visibleUserIDs); err != nil {
 			return ServicePackage{}, err
 		}
-	} else {
-		visibleUserIDs = nil
 	}
 	maxSortOrder := 0
 	if err := db.Model(&ServicePackage{}).Select("COALESCE(MAX(sort_order), 0)").Scan(&maxSortOrder).Error; err != nil {
@@ -567,15 +562,10 @@ func updateServicePackageWithDB(db *gorm.DB, item ServicePackage) (ServicePackag
 	}
 	visibilityScope := normalizeServicePackageVisibilityScope(item.VisibilityScope)
 	visibleUserIDs := normalizeServicePackageVisibleUserIDs(item.VisibleUserIDs)
-	if visibilityScope == ServicePackageVisibilityScopeUser {
-		if len(visibleUserIDs) == 0 {
-			return ServicePackage{}, fmt.Errorf("部分用户可见时必须选择用户")
-		}
+	if len(visibleUserIDs) > 0 {
 		if _, err := resolveServicePackageVisibleUsersWithDB(db, visibleUserIDs); err != nil {
 			return ServicePackage{}, err
 		}
-	} else {
-		visibleUserIDs = nil
 	}
 	row.Name = nextName
 	row.Description = normalizeServicePackageDescription(item.Description)

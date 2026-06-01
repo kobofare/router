@@ -458,10 +458,6 @@ const PackageDetail = () => {
     const visibleUserIDs = Array.isArray(form.visible_user_ids)
       ? [...new Set(form.visible_user_ids.map((item) => (item || '').toString().trim()).filter(Boolean))]
       : [];
-    if (visibilityScope === 'partial_users' && visibleUserIDs.length === 0) {
-      showInfo(t('package_manage.messages.visible_users_required'));
-      return null;
-    }
     const dailyStored = billingInputValueToYYC(
       form.daily_amount ?? 0,
       form.daily_amount_unit,
@@ -494,7 +490,7 @@ const PackageDetail = () => {
       description: (form.description || '').trim(),
       group_id: groupID,
       visibility_scope: visibilityScope,
-      visible_user_ids: visibilityScope === 'partial_users' ? visibleUserIDs : [],
+      visible_user_ids: visibleUserIDs,
       sale_price: Number(form.sale_price || 0),
       sale_currency: (form.sale_currency || 'CNY').trim().toUpperCase() || 'CNY',
       daily_quota_limit: Math.trunc(dailyStored),
@@ -540,18 +536,11 @@ const PackageDetail = () => {
       return false;
     }
     const normalizedScope = (nextScope || 'all').toString().trim() || 'all';
-    const normalizedUserIDs =
-      normalizedScope === 'partial_users'
-        ? [...new Set(
-            (Array.isArray(nextUserIDs) ? nextUserIDs : [])
-              .map((item) => (item || '').toString().trim())
-              .filter(Boolean),
-          )]
-        : [];
-    if (normalizedScope === 'partial_users' && normalizedUserIDs.length === 0) {
-      showInfo(t('package_manage.messages.visible_users_required'));
-      return false;
-    }
+    const normalizedUserIDs = [...new Set(
+      (Array.isArray(nextUserIDs) ? nextUserIDs : [])
+        .map((item) => (item || '').toString().trim())
+        .filter(Boolean),
+    )];
     setVisibilitySubmitting(true);
     try {
       const res = await API.put('/api/v1/admin/package/', {
@@ -1019,9 +1008,7 @@ const PackageDetail = () => {
                               value={visibilityScope}
                               onChange={(_, { value }) => {
                                 const nextScope = (value || 'all').toString();
-                                const nextUserIDs =
-                                  nextScope === 'partial_users' ? visibilityUserIDs : [];
-                                persistVisibility(nextScope, nextUserIDs).then();
+                                persistVisibility(nextScope, visibilityUserIDs).then();
                               }}
                               onClick={() => {
                                 if (userOptions.length === 0) {
