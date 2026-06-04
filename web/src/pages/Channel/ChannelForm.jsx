@@ -766,7 +766,7 @@ const ENDPOINT_POLICY_TEMPLATES = [
               input_types: [
                 'anthropic.image_url',
                 'openai.image_url',
-                'responses.input_image_url',
+                'openai.input_image',
               ],
               reason: 'convert image url to base64 for upstream compatibility',
               limits: {

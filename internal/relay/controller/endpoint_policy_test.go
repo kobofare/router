@@ -176,7 +176,7 @@ func TestApplyEndpointRequestPolicyConvertsResponsesInputImageURLToDataURL(t *te
 			ID:            "policy-responses",
 			Enabled:       true,
 			Endpoint:      model.ChannelModelEndpointResponses,
-			RequestPolicy: `{"actions":[{"type":"image_url_to_base64","input_types":["responses.input_image_url"],"reason":"convert image url","limits":{"max_bytes":10240,"timeout_ms":2000,"allowed_content_types":["image/png"]}}]}`,
+			RequestPolicy: `{"actions":[{"type":"image_url_to_base64","input_types":["openai.input_image"],"reason":"convert image url","limits":{"max_bytes":10240,"timeout_ms":2000,"allowed_content_types":["image/png"]}}]}`,
 		},
 	}
 	updatedRaw, err := applyEndpointRequestPolicy(c, meta, []byte(body))

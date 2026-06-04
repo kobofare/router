@@ -184,7 +184,7 @@ const ChannelEndpointPolicyEditorModal = ({
             >
               <AppTextarea
                 className='router-section-textarea router-code-textarea router-code-textarea-md'
-                placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url","openai.image_url","responses.input_image_url"]}]}'
+                placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url","openai.image_url","openai.input_image"]}]}'
                 value={policyDraft.request_policy}
                 onChange={(e, { value }) =>
                   setPolicyDraft((prev) => ({
