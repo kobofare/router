@@ -62,7 +62,38 @@ func SelectRandomSatisfiedChannelWithStats(channels []*Channel, ignoreFirstPrior
 	default:
 		stats.SelectionScope = "same_priority"
 	}
-	return filtered[rand.Intn(endIdx)], stats
+	return selectWeightedChannel(filtered[:endIdx]), stats
+}
+
+func selectWeightedChannel(channels []*Channel) *Channel {
+	if len(channels) == 0 {
+		return nil
+	}
+	if len(channels) == 1 {
+		return channels[0]
+	}
+	var totalWeight uint64
+	for _, channel := range channels {
+		if channel == nil {
+			continue
+		}
+		totalWeight += uint64(channel.GetWeight())
+	}
+	if totalWeight == 0 {
+		return channels[rand.Intn(len(channels))]
+	}
+	target := uint64(rand.Int63n(int64(totalWeight)))
+	var cumulative uint64
+	for _, channel := range channels {
+		if channel == nil {
+			continue
+		}
+		cumulative += uint64(channel.GetWeight())
+		if target < cumulative {
+			return channel
+		}
+	}
+	return channels[len(channels)-1]
 }
 
 func filterExcludedChannels(channels []*Channel, excludedChannelIDs map[string]struct{}) []*Channel {
