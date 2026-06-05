@@ -175,6 +175,8 @@ func openAIProviderModelDescription(modelName string) string {
 
 func anthropicProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "claude-opus-4-8":
+		return "Claude Opus 4.8 是 Anthropic 当前最强的 Claude 模型，适合复杂推理、长链路智能体编码和高自主性任务。"
 	case "claude-opus-4-7":
 		return "Claude Opus 4.7 是 Anthropic 的高能力 Claude 模型，适合复杂分析与代码任务。"
 	case "claude-opus-4-6":

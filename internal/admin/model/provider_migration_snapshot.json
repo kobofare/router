@@ -1113,6 +1113,21 @@
         "updated_at": 1700000000
       },
       {
+        "model": "claude-opus-4-8",
+        "type": "text",
+        "status": "active",
+        "description": "Claude Opus 4.8 是 Anthropic 当前最强的 Claude 模型，适合复杂推理、长链路智能体编码和高自主性任务。",
+        "supported_endpoints": [
+          "/v1/messages"
+        ],
+        "input_price": 0.005,
+        "output_price": 0.025,
+        "price_unit": "per_1k_tokens",
+        "currency": "USD",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
         "model": "claude-sonnet-4-5",
         "type": "text",
         "status": "active",

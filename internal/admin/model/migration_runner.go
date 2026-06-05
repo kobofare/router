@@ -1311,6 +1311,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&RedemptionIssueAuditLog{})
 			},
 		},
+		{
+			Version:     "202606051130_anthropic_claude48_provider_catalog",
+			Description: "upsert anthropic provider migration rows for claude opus 4.8 pricing",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "anthropic")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
