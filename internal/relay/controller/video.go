@@ -492,16 +492,6 @@ func RelayVideoHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	}(c.Request.Context())
 	groupQuotaSettled = true
 
-	for k, v := range resp.Header {
-		if len(v) == 0 {
-			continue
-		}
-		c.Writer.Header().Set(k, v[0])
-	}
-	c.Writer.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(c.Writer, bytes.NewReader(responseBody)); err != nil {
-		return openai.ErrorWrapper(err, "copy_response_body_failed", http.StatusInternalServerError)
-	}
 	c.Set(ctxkey.UpstreamStatus, resp.StatusCode)
 	return relayVideoRawResponse(c, resp, responseBody)
 }

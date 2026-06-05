@@ -1,9 +1,13 @@
 package controller
 
 import (
+	"bytes"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestExtractVideoResponseSummary_TopLevelFields(t *testing.T) {
@@ -74,5 +78,36 @@ func TestAppendVideoSummaryToLogContent(t *testing.T) {
 		if !strings.Contains(content, expected) {
 			t.Fatalf("content=%q does not contain %q", content, expected)
 		}
+	}
+}
+
+func TestRelayVideoRawResponse_WritesBodyOnce(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	resp := &http.Response{
+		StatusCode: http.StatusAccepted,
+		Header: http.Header{
+			"Content-Type": []string{"application/json"},
+			"X-Request-Id": []string{"req-video-1"},
+		},
+	}
+	body := []byte(`{"id":"video_123","status":"queued"}`)
+
+	err := relayVideoRawResponse(c, resp, body)
+	if err != nil {
+		t.Fatalf("relayVideoRawResponse returned error: %v", err)
+	}
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("status=%d, want %d", recorder.Code, http.StatusAccepted)
+	}
+	if recorder.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("content-type=%q, want %q", recorder.Header().Get("Content-Type"), "application/json")
+	}
+	if recorder.Header().Get("X-Request-Id") != "req-video-1" {
+		t.Fatalf("x-request-id=%q, want %q", recorder.Header().Get("X-Request-Id"), "req-video-1")
+	}
+	if !bytes.Equal(recorder.Body.Bytes(), body) {
+		t.Fatalf("body=%q, want %q", recorder.Body.Bytes(), body)
 	}
 }
