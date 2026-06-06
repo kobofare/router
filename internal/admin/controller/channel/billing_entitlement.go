@@ -367,6 +367,54 @@ func buildChannelBillingRefreshFailureAlertKey(channel *model.Channel, profile m
 	}, "::")
 }
 
+const channelBillingRefreshFailureAlertThresholdSeconds int64 = 30 * 60
+
+func shouldNotifyChannelBillingRefreshFailureForStreak(nowTs int64, lastSuccessAt int64, firstFailureAt int64) bool {
+	if firstFailureAt <= 0 || nowTs <= 0 {
+		return false
+	}
+	if lastSuccessAt > 0 && lastSuccessAt >= nowTs-channelBillingRefreshFailureAlertThresholdSeconds {
+		return false
+	}
+	return firstFailureAt <= nowTs-channelBillingRefreshFailureAlertThresholdSeconds
+}
+
+func resolveChannelBillingRefreshFailureStreakStart(channelID string, nowTs int64) (int64, error) {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" || nowTs <= 0 {
+		return 0, nil
+	}
+	lastSuccessAt, err := model.GetLatestChannelBillingSnapshotCreatedAtByStatusWithDB(
+		model.DB,
+		normalizedChannelID,
+		model.ChannelBillingSnapshotSourceAPI,
+		"ok",
+	)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, err
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		lastSuccessAt = 0
+	}
+	firstFailureAt, err := model.GetEarliestChannelBillingSnapshotCreatedAtByStatusAfterWithDB(
+		model.DB,
+		normalizedChannelID,
+		model.ChannelBillingSnapshotSourceAPI,
+		"failed",
+		lastSuccessAt,
+	)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if !shouldNotifyChannelBillingRefreshFailureForStreak(nowTs, lastSuccessAt, firstFailureAt) {
+		return 0, nil
+	}
+	return firstFailureAt, nil
+}
+
 func copyBillingSnapshotItemsForSnapshot(items []model.ChannelBillingSnapshotItem) []model.ChannelBillingSnapshotItem {
 	copied := model.NormalizeChannelBillingSnapshotItems(items)
 	for index := range copied {
@@ -444,13 +492,20 @@ func isBillingResponseParseError(err error) bool {
 		strings.Contains(reason, "json")
 }
 
+func sanitizeBillingAlertReason(err error) string {
+	if err == nil {
+		return ""
+	}
+	return model.SanitizeChannelBillingAlertReason(err.Error())
+}
+
 func createBillingRefreshFailureContent(channel *model.Channel, profile model.ChannelBillingProfile, err error) (string, string, string, string) {
 	if channel == nil || err == nil {
 		return "", "", "", ""
 	}
 	channelName := strings.TrimSpace(channel.DisplayName())
 	channelID := strings.TrimSpace(channel.Id)
-	reason := strings.TrimSpace(err.Error())
+	reason := sanitizeBillingAlertReason(err)
 	if reason == "" {
 		reason = "账务接口返回异常"
 	}
@@ -592,12 +647,20 @@ func maybeNotifyChannelBillingRefreshFailure(channel *model.Channel, profile mod
 	if channel == nil || cause == nil {
 		return nil
 	}
+	nowTs := helper.GetTimestamp()
+	streakStartAt, err := resolveChannelBillingRefreshFailureStreakStart(channel.Id, nowTs)
+	if err != nil {
+		return err
+	}
+	if streakStartAt <= 0 {
+		return nil
+	}
 	today := time.Now().Format("2006-01-02")
 	eventType, category, title, content := createBillingRefreshFailureContent(channel, profile, cause)
 	if eventType == "" || title == "" || content == "" {
 		return nil
 	}
-	alertKey := buildChannelBillingRefreshFailureAlertKey(channel, profile)
+	alertKey := fmt.Sprintf("%s::%d", buildChannelBillingRefreshFailureAlertKey(channel, profile), streakStartAt)
 	shouldSkip, err := shouldSkipExistingBillingAlert(channel.Id, eventType, alertKey, today)
 	if err != nil {
 		return err
@@ -610,10 +673,12 @@ func maybeNotifyChannelBillingRefreshFailure(channel *model.Channel, profile mod
 		status = model.ChannelBillingAlertStatusFailed
 	}
 	payload := map[string]any{
-		"billing_mode":         strings.TrimSpace(profile.BillingMode),
-		"billing_api_base_url": resolveChannelBillingAPIBaseURL(channel, profile),
-		"category":             category,
-		"reason":               strings.TrimSpace(cause.Error()),
+		"billing_mode":                  strings.TrimSpace(profile.BillingMode),
+		"billing_api_base_url":          resolveChannelBillingAPIBaseURL(channel, profile),
+		"category":                      category,
+		"reason":                        sanitizeBillingAlertReason(cause),
+		"failure_streak_started_at":     streakStartAt,
+		"failure_streak_window_seconds": channelBillingRefreshFailureAlertThresholdSeconds,
 	}
 	if eventType == model.ChannelBillingAlertTypePlanExpired {
 		payload["resource_type"] = model.ChannelBillingResourceTypePlan
