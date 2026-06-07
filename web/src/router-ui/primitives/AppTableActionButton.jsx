@@ -9,6 +9,7 @@ function AppTableActionButton({
   className = '',
   color,
   disabled = false,
+  loading = false,
   ...props
 }) {
   const button = (
@@ -17,12 +18,13 @@ function AppTableActionButton({
       type='button'
       color={color}
       disabled={disabled}
+      loading={loading}
       aria-label={title}
       className={['router-inline-button', 'router-table-action-button', className]
         .filter(Boolean)
         .join(' ')}
     >
-      <AppIcon name={icon} />
+      {loading ? null : <AppIcon name={icon} />}
     </AppButton>
   );
 
