@@ -246,7 +246,7 @@ const Header = ({ workspace = 'user', hideNavButtons = false }) => {
           open={showSidebar}
           onClose={() => setShowSidebar(false)}
           placement='right'
-          width={320}
+          size='default'
           title={
             currentWorkspace === 'admin'
               ? t('header.admin_workspace')

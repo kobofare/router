@@ -2189,9 +2189,18 @@
         "empty": "There are no active alerts right now",
         "active_count": "{{count}} active",
         "page_count": "{{page_count}} on this page / {{total_count}} total",
+        "dialog": {
+          "acknowledge_title": "Acknowledge Alert",
+          "resolve_title": "Resolve Alert",
+          "note_placeholder": "Add handling details, diagnosis, or recovery notes"
+        },
+        "meta": {
+          "acknowledged": "Handled by {{actor}} · Acknowledged at {{time}}",
+          "resolved": "Handled by {{actor}} · Resolved at {{time}}"
+        },
         "filters": {
           "status": {
-            "all": "All",
+            "all": "All Statuses",
             "active": "Active",
             "unacknowledged": "Unacknowledged",
             "acknowledged": "Acknowledged",
@@ -2218,6 +2227,7 @@
         "columns": {
           "level": "Level",
           "event": "Event",
+          "type": "Type",
           "channel": "Channel",
           "summary": "Summary",
           "time": "Occurred At",

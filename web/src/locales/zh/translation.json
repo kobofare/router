@@ -2189,9 +2189,18 @@
         "empty": "当前没有活跃告警",
         "active_count": "当前 {{count}} 条",
         "page_count": "当前页 {{page_count}} 条 / 共 {{total_count}} 条",
+        "dialog": {
+          "acknowledge_title": "确认告警",
+          "resolve_title": "恢复告警",
+          "note_placeholder": "补充处理说明、定位结果或恢复原因"
+        },
+        "meta": {
+          "acknowledged": "处理人：{{actor}} · 确认于 {{time}}",
+          "resolved": "处理人：{{actor}} · 恢复于 {{time}}"
+        },
         "filters": {
           "status": {
-            "all": "全部",
+            "all": "全部状态",
             "active": "活跃",
             "unacknowledged": "未确认",
             "acknowledged": "已确认",
@@ -2218,6 +2227,7 @@
         "columns": {
           "level": "级别",
           "event": "事件",
+          "type": "类型",
           "channel": "渠道",
           "summary": "摘要",
           "time": "发生时间",
