@@ -392,6 +392,50 @@ func GetLatestChannelBillingSnapshotByChannelIDWithDB(db *gorm.DB, channelID str
 	return rows[0], nil
 }
 
+func GetLatestChannelBillingSnapshotCreatedAtByStatusWithDB(db *gorm.DB, channelID string, sourceType string, rawStatus string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedSourceType := strings.TrimSpace(sourceType)
+	normalizedRawStatus := strings.TrimSpace(rawStatus)
+	if normalizedChannelID == "" || normalizedSourceType == "" || normalizedRawStatus == "" {
+		return 0, gorm.ErrRecordNotFound
+	}
+	row := ChannelBillingSnapshot{}
+	if err := db.Select("created_at").
+		Where("channel_id = ? AND source_type = ? AND raw_status = ?", normalizedChannelID, normalizedSourceType, normalizedRawStatus).
+		Order("created_at desc, id desc").
+		Take(&row).Error; err != nil {
+		return 0, err
+	}
+	return row.CreatedAt, nil
+}
+
+func GetEarliestChannelBillingSnapshotCreatedAtByStatusAfterWithDB(db *gorm.DB, channelID string, sourceType string, rawStatus string, createdAfter int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedSourceType := strings.TrimSpace(sourceType)
+	normalizedRawStatus := strings.TrimSpace(rawStatus)
+	if normalizedChannelID == "" || normalizedSourceType == "" || normalizedRawStatus == "" {
+		return 0, gorm.ErrRecordNotFound
+	}
+	row := ChannelBillingSnapshot{}
+	query := db.Select("created_at").
+		Where("channel_id = ? AND source_type = ? AND raw_status = ?", normalizedChannelID, normalizedSourceType, normalizedRawStatus)
+	if createdAfter > 0 {
+		query = query.Where("created_at > ?", createdAfter)
+	}
+	if err := query.
+		Order("created_at asc, id asc").
+		Take(&row).Error; err != nil {
+		return 0, err
+	}
+	return row.CreatedAt, nil
+}
+
 func ListLatestChannelBillingSnapshotsByChannelIDsWithDB(db *gorm.DB, channelIDs []string) ([]ChannelBillingSnapshot, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database handle is nil")
@@ -460,6 +504,23 @@ func ListChannelBillingAlertEventsByChannelIDWithDB(db *gorm.DB, channelID strin
 	}
 	rows := make([]ChannelBillingAlertEvent, 0, limit)
 	if err := db.Where("channel_id = ?", normalizedChannelID).
+		Order("created_at desc").
+		Limit(limit).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func ListRecentChannelBillingAlertEventsWithDB(db *gorm.DB, limit int) ([]ChannelBillingAlertEvent, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	rows := make([]ChannelBillingAlertEvent, 0, limit)
+	if err := db.
 		Order("created_at desc").
 		Limit(limit).
 		Find(&rows).Error; err != nil {
@@ -571,6 +632,8 @@ func SaveChannelBillingAlertEventWithDB(db *gorm.DB, row ChannelBillingAlertEven
 	if normalized.ChannelId == "" || normalized.EventType == "" || normalized.AlertKey == "" || normalized.NotifyDate == "" {
 		return ChannelBillingAlertEvent{}, fmt.Errorf("渠道账务告警事件无效")
 	}
+	normalized.Content = SanitizeChannelBillingAlertContent(normalized.Content)
+	normalized.Payload = SanitizeChannelBillingAlertPayload(normalized.Payload)
 	if normalized.Status == "" {
 		normalized.Status = ChannelBillingAlertStatusSent
 	}

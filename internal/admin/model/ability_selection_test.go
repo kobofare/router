@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+)
 
 func TestSelectRandomSatisfiedChannelExcludesFailedChannels(t *testing.T) {
 	channels := []*Channel{
@@ -155,5 +158,88 @@ func TestResolveRuntimeChannelPriorityDemotesHalfOpen(t *testing.T) {
 	enabledPriority := resolveRuntimeChannelPriority(&Channel{Status: ChannelStatusEnabled}, 100)
 	if enabledPriority != 100 {
 		t.Fatalf("enabled priority = %d, want 100", enabledPriority)
+	}
+}
+
+func TestChannelGetWeightDefaultsZeroAndNilToOne(t *testing.T) {
+	var zero uint
+	if got := (&Channel{}).GetWeight(); got != 1 {
+		t.Fatalf("nil weight = %d, want 1", got)
+	}
+	if got := (&Channel{Weight: &zero}).GetWeight(); got != 1 {
+		t.Fatalf("zero weight = %d, want 1", got)
+	}
+	custom := uint(7)
+	if got := (&Channel{Weight: &custom}).GetWeight(); got != 7 {
+		t.Fatalf("custom weight = %d, want 7", got)
+	}
+}
+
+func TestSelectRandomSatisfiedChannelUsesWeightWithinSamePriorityTier(t *testing.T) {
+	rand.Seed(1)
+	priority := int64(10)
+	heavyWeight := uint(9)
+	lightWeight := uint(1)
+	channels := []*Channel{
+		{Id: "channel-heavy", Priority: &priority, Weight: &heavyWeight},
+		{Id: "channel-light", Priority: &priority, Weight: &lightWeight},
+	}
+	counts := map[string]int{
+		"channel-heavy": 0,
+		"channel-light": 0,
+	}
+
+	for i := 0; i < 2000; i++ {
+		got, stats := SelectRandomSatisfiedChannelWithStats(channels, false, nil)
+		if got == nil {
+			t.Fatalf("expected channel, got nil")
+		}
+		counts[got.Id]++
+		if stats.SelectedPriority != priority {
+			t.Fatalf("selected priority = %d, want %d", stats.SelectedPriority, priority)
+		}
+	}
+
+	if counts["channel-heavy"] <= counts["channel-light"] {
+		t.Fatalf("weighted selection ignored: heavy=%d light=%d", counts["channel-heavy"], counts["channel-light"])
+	}
+}
+
+func TestSelectRandomSatisfiedChannelIgnoresExhaustedHighPriorityAndUsesWeightOnFallbackTier(t *testing.T) {
+	rand.Seed(2)
+	high := int64(10)
+	low := int64(1)
+	heavyWeight := uint(9)
+	lightWeight := uint(1)
+	channels := []*Channel{
+		{Id: "channel-a", Priority: &high},
+		{Id: "channel-b", Priority: &high},
+		{Id: "channel-c", Priority: &low, Weight: &heavyWeight},
+		{Id: "channel-d", Priority: &low, Weight: &lightWeight},
+	}
+	counts := map[string]int{
+		"channel-c": 0,
+		"channel-d": 0,
+	}
+
+	for i := 0; i < 1000; i++ {
+		got, stats := SelectRandomSatisfiedChannelWithStats(channels, false, map[string]struct{}{
+			"channel-a": {},
+			"channel-b": {},
+		})
+		if got == nil {
+			t.Fatalf("expected channel, got nil")
+		}
+		if got.Id != "channel-c" && got.Id != "channel-d" {
+			t.Fatalf("unexpected fallback channel id: %q", got.Id)
+		}
+		if stats.SelectionScope != "downgraded" {
+			t.Fatalf("unexpected selection scope: got %q", stats.SelectionScope)
+		}
+		counts[got.Id]++
+	}
+
+	if counts["channel-c"] <= counts["channel-d"] {
+		t.Fatalf("fallback weighted selection ignored: c=%d d=%d", counts["channel-c"], counts["channel-d"])
 	}
 }

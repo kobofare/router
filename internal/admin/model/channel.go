@@ -203,6 +203,13 @@ func (channel *Channel) GetPriority() int64 {
 	return *channel.Priority
 }
 
+func (channel *Channel) GetWeight() uint {
+	if channel == nil || channel.Weight == nil || *channel.Weight == 0 {
+		return 1
+	}
+	return *channel.Weight
+}
+
 func CloneChannelWithPriority(channel *Channel, priority int64) *Channel {
 	if channel == nil {
 		return nil

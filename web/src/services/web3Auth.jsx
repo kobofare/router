@@ -1,16 +1,21 @@
 import {
+  clearAccessToken as sdkClearAccessToken,
+  getAccessToken as sdkGetAccessToken,
+  getChainId,
   getProvider,
-  requestAccounts,
+  isUserRejectedWalletAction,
+  isWalletReconnectError,
   loginWithChallenge,
   logout as sdkLogout,
-  getAccessToken as sdkGetAccessToken,
   refreshAccessToken as sdkRefreshAccessToken,
-  clearAccessToken as sdkClearAccessToken,
+  requestAccounts,
   signMessage,
-  getChainId,
+  watchProvider,
 } from '@yeying-community/web3-bs';
 
 import { WEB3_AUTH_OPTIONS, WEB3_TOKEN_STORAGE_KEY } from '../helpers/web3';
+
+const WALLET_RECONNECT_TIMEOUT_MS = 1600;
 
 export function normalizeChainId(chainId) {
   if (!chainId) return '';
@@ -22,6 +27,35 @@ export function normalizeChainId(chainId) {
     }
   }
   return chainId;
+}
+
+function waitForWalletProviderReconnect(timeoutMs = WALLET_RECONNECT_TIMEOUT_MS) {
+  if (typeof window === 'undefined') {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    let stopWatching = () => {};
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      stopWatching();
+      window.clearTimeout(timer);
+      resolve();
+    };
+    const timer = window.setTimeout(finish, timeoutMs);
+    stopWatching = watchProvider(
+      ({ present }) => {
+        if (present) {
+          finish();
+        }
+      },
+      { preferYeYing: true, pollIntervalMs: 100, maxPolls: 16 },
+    );
+    if (settled) {
+      stopWatching();
+    }
+  });
 }
 
 export async function requireWalletProvider() {
@@ -43,7 +77,7 @@ export async function getWalletContext() {
   return { provider, address, chainId };
 }
 
-export async function loginWithWallet() {
+async function loginWithWalletOnce() {
   const { provider, address } = await getWalletContext();
   const loginResult = await loginWithChallenge({
     provider,
@@ -51,6 +85,22 @@ export async function loginWithWallet() {
     ...WEB3_AUTH_OPTIONS,
   });
   return { ...loginResult, provider, address };
+}
+
+export async function loginWithWallet() {
+  try {
+    return await loginWithWalletOnce();
+  } catch (error) {
+    if (!isWalletReconnectError(error) || isUserRejectedWalletAction(error)) {
+      throw error;
+    }
+    await waitForWalletProviderReconnect();
+    return await loginWithWalletOnce();
+  }
+}
+
+export function isWalletUserRejectedError(error) {
+  return isUserRejectedWalletAction(error);
 }
 
 export async function signWalletMessage(message, address, provider) {

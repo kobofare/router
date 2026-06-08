@@ -21,9 +21,9 @@ import {
 } from '../../router-ui';
 
 const PAGE_SIZE = 20;
-const TASK_PAGE_KIND_WORKSPACE_USER = 'workspace_user';
-const TASK_PAGE_KIND_ADMIN_USER = 'admin_user';
-const TASK_PAGE_KIND_ADMIN_SYSTEM = 'admin_system';
+export const TASK_PAGE_KIND_WORKSPACE_USER = 'workspace_user';
+export const TASK_PAGE_KIND_ADMIN_USER = 'admin_user';
+export const TASK_PAGE_KIND_ADMIN_SYSTEM = 'admin_system';
 
 const normalizeTaskStatus = (value) => {
   const normalized = (value || '').toString().trim().toLowerCase();
@@ -181,7 +181,7 @@ const renderTaskFilterSummary = (filterKey, filters, t, optionResolvers = {}) =>
   return value;
 };
 
-const Task = () => {
+const Task = ({ pageKind: pageKindOverride = '' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -231,10 +231,12 @@ const Task = () => {
       contextLabel,
     };
   }, [contextLabel, contextType, returnLabel, returnPath]);
-  const pageKind = useMemo(
-    () => resolveTaskPageKind(location.pathname),
-    [location.pathname],
-  );
+  const pageKind = useMemo(() => {
+    if (pageKindOverride) {
+      return pageKindOverride;
+    }
+    return resolveTaskPageKind(location.pathname);
+  }, [location.pathname, pageKindOverride]);
   const isAdminPage = pageKind !== TASK_PAGE_KIND_WORKSPACE_USER;
   const isSystemTaskPage = pageKind === TASK_PAGE_KIND_ADMIN_SYSTEM;
   const isAdminUserTaskPage = pageKind === TASK_PAGE_KIND_ADMIN_USER;

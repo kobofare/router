@@ -15,6 +15,8 @@ const AppButton = forwardRef(function AppButton(
     basic,
     danger,
     fluid = false,
+    icon,
+    loading,
     ...props
   },
   ref,
@@ -30,6 +32,8 @@ const AppButton = forwardRef(function AppButton(
       className={nextClassName}
       type={mapButtonType(color, basic)}
       danger={nextDanger}
+      icon={loading ? undefined : icon}
+      loading={loading}
     >
       {children}
     </Button>
