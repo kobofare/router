@@ -17,9 +17,9 @@ import {
   AppTag,
 } from '../../router-ui';
 
-const TASK_DETAIL_KIND_WORKSPACE_USER = 'workspace_user';
-const TASK_DETAIL_KIND_ADMIN_USER = 'admin_user';
-const TASK_DETAIL_KIND_ADMIN_SYSTEM = 'admin_system';
+export const TASK_DETAIL_KIND_WORKSPACE_USER = 'workspace_user';
+export const TASK_DETAIL_KIND_ADMIN_USER = 'admin_user';
+export const TASK_DETAIL_KIND_ADMIN_SYSTEM = 'admin_system';
 
 const normalizeTaskStatus = (value) => {
   const normalized = (value || '').toString().trim().toLowerCase();
@@ -147,16 +147,18 @@ const resolveTaskDetailKind = (pathname = '') => {
   return TASK_DETAIL_KIND_WORKSPACE_USER;
 };
 
-const TaskDetail = () => {
+const TaskDetail = ({ detailKind: detailKindOverride = '' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { id } = useParams();
-  const detailKind = useMemo(
-    () => resolveTaskDetailKind(location.pathname),
-    [location.pathname],
-  );
+  const detailKind = useMemo(() => {
+    if (detailKindOverride) {
+      return detailKindOverride;
+    }
+    return resolveTaskDetailKind(location.pathname);
+  }, [detailKindOverride, location.pathname]);
   const isAdminPage = detailKind !== TASK_DETAIL_KIND_WORKSPACE_USER;
   const isSystemTaskPage = detailKind === TASK_DETAIL_KIND_ADMIN_SYSTEM;
   const isAdminUserTaskPage = detailKind === TASK_DETAIL_KIND_ADMIN_USER;
