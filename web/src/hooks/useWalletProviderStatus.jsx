@@ -1,20 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getProvider } from '@yeying-community/web3-bs';
+import * as web3bs from '@yeying-community/web3-bs';
 
 import { normalizeChainId } from '../services/web3Auth';
 
 const PROVIDER_DETECT_TIMEOUT_MS = 1200;
 
-const getProviderAccounts = async (provider) => {
-  if (!provider?.request) return [];
-  const accounts = await provider.request({ method: 'eth_accounts' });
-  return Array.isArray(accounts) ? accounts : [];
+const watchProviderCompat = (handler, options) => {
+  if (typeof web3bs.watchProvider === 'function') {
+    return web3bs.watchProvider(handler, options);
+  }
+  let stopped = false;
+  let lastProvider;
+  const emit = () => {
+    if (stopped) return;
+    const provider = window.ethereum || null;
+    if (provider === lastProvider) return;
+    lastProvider = provider;
+    handler({ provider, present: Boolean(provider) });
+  };
+  const handleProviderReady = () => emit();
+  window.addEventListener('ethereum#initialized', handleProviderReady);
+  window.addEventListener('eip6963:announceProvider', handleProviderReady);
+  try {
+    window.dispatchEvent(new Event('eip6963:requestProvider'));
+  } catch (error) {
+    // Ignore unsupported discovery events.
+  }
+  emit();
+  return () => {
+    stopped = true;
+    window.removeEventListener('ethereum#initialized', handleProviderReady);
+    window.removeEventListener('eip6963:announceProvider', handleProviderReady);
+  };
 };
 
-const getProviderChainId = async (provider) => {
-  if (!provider?.request) return '';
-  const chainId = await provider.request({ method: 'eth_chainId' });
-  return normalizeChainId(chainId);
+const watchAccountsCompat = (provider, handler) => {
+  if (typeof web3bs.watchAccounts === 'function') {
+    return web3bs.watchAccounts(provider, handler);
+  }
+  const handleAccountsChanged = (accounts) => {
+    const nextAccounts = Array.isArray(accounts) ? accounts : [];
+    handler({ account: nextAccounts[0] || null, accounts: nextAccounts });
+  };
+  provider.on?.('accountsChanged', handleAccountsChanged);
+  return () => provider.removeListener?.('accountsChanged', handleAccountsChanged);
 };
 
 export function useWalletProviderStatus({
@@ -25,6 +54,7 @@ export function useWalletProviderStatus({
   const providerRef = useRef(null);
   const detectInFlightRef = useRef(null);
   const cleanupProviderListenersRef = useRef(() => {});
+  const cleanupProviderWatcherRef = useRef(() => {});
   const callbacksRef = useRef({ onAccountsChanged, onConnect, onDisconnect });
   const [status, setStatus] = useState({
     detecting: true,
@@ -52,16 +82,19 @@ export function useWalletProviderStatus({
 
     try {
       const [accounts, chainId] = await Promise.all([
-        getProviderAccounts(provider),
-        getProviderChainId(provider).catch(() => ''),
+        web3bs.getAccounts(provider),
+        web3bs.getChainId(provider).catch(() => ''),
       ]);
+      const normalizedChainId = normalizeChainId(chainId);
       setStatus({
         detecting: false,
         available: true,
         connected:
-          Boolean(provider.isConnected?.()) || accounts.length > 0 || chainId !== '',
+          Boolean(provider.isConnected?.()) ||
+          accounts.length > 0 ||
+          normalizedChainId !== '',
         accounts,
-        chainId,
+        chainId: normalizedChainId,
       });
     } catch (error) {
       setStatus((previous) => ({
@@ -84,7 +117,7 @@ export function useWalletProviderStatus({
         return;
       }
 
-      const handleAccountsChanged = (accounts) => {
+      const stopWatchingAccounts = watchAccountsCompat(provider, ({ account, accounts }) => {
         const nextAccounts = Array.isArray(accounts) ? accounts : [];
         setStatus((previous) => ({
           ...previous,
@@ -97,7 +130,7 @@ export function useWalletProviderStatus({
           callbacksRef.current.onConnect?.();
         }
         callbacksRef.current.onAccountsChanged?.(nextAccounts);
-      };
+      });
 
       const handleChainChanged = (chainId) => {
         setStatus((previous) => ({
@@ -130,13 +163,12 @@ export function useWalletProviderStatus({
         callbacksRef.current.onDisconnect?.(error);
       };
 
-      provider.on('accountsChanged', handleAccountsChanged);
       provider.on('chainChanged', handleChainChanged);
       provider.on('connect', handleConnect);
       provider.on('disconnect', handleDisconnect);
 
       cleanupProviderListenersRef.current = () => {
-        provider.removeListener?.('accountsChanged', handleAccountsChanged);
+        stopWatchingAccounts();
         provider.removeListener?.('chainChanged', handleChainChanged);
         provider.removeListener?.('connect', handleConnect);
         provider.removeListener?.('disconnect', handleDisconnect);
@@ -151,7 +183,7 @@ export function useWalletProviderStatus({
     }
     setStatus((previous) => ({ ...previous, detecting: true }));
     detectInFlightRef.current = (async () => {
-      const provider = await getProvider({
+      const provider = await web3bs.getProvider({
         preferYeYing: true,
         timeoutMs: PROVIDER_DETECT_TIMEOUT_MS,
       });
@@ -168,31 +200,21 @@ export function useWalletProviderStatus({
 
   useEffect(() => {
     let active = true;
-    const runDetectProvider = async () => {
-      if (!active) return;
-      await detectProvider();
-    };
-
-    const handleProviderChanged = () => {
-      runDetectProvider();
-    };
-
-    runDetectProvider();
-    window.addEventListener('ethereum#initialized', handleProviderChanged);
-    window.addEventListener('eip6963:announceProvider', handleProviderChanged);
-    try {
-      window.dispatchEvent(new Event('eip6963:requestProvider'));
-    } catch (error) {
-      // Ignore browsers that cannot dispatch the provider discovery event.
-    }
+    cleanupProviderWatcherRef.current = watchProviderCompat(
+      ({ provider }) => {
+        if (!active) return;
+        bindProviderListeners(provider);
+        updateProviderState(provider);
+      },
+      { preferYeYing: true, pollIntervalMs: 100, maxPolls: 20 },
+    );
 
     return () => {
       active = false;
-      window.removeEventListener('ethereum#initialized', handleProviderChanged);
-      window.removeEventListener('eip6963:announceProvider', handleProviderChanged);
+      cleanupProviderWatcherRef.current();
       cleanupProviderListenersRef.current();
     };
-  }, [detectProvider]);
+  }, [bindProviderListeners, updateProviderState]);
 
   return {
     ...status,

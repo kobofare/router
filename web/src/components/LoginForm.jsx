@@ -5,7 +5,7 @@ import { UserContext } from '../context/User';
 import { StatusContext } from '../context/Status';
 import { API, getLogo, showError } from '../helpers';
 import { toastConstants } from '../constants';
-import { loginWithWallet } from '../services/web3Auth';
+import { isWalletUserRejectedError, loginWithWallet } from '../services/web3Auth';
 import { useWalletProviderStatus } from '../hooks/useWalletProviderStatus';
 import { AppAlert, AppButton, AppDivider, AppInput } from '../router-ui';
 import './LoginForm.css';
@@ -100,7 +100,7 @@ const LoginForm = () => {
       localStorage.setItem('user', JSON.stringify(userData));
       navigate(resolveLandingPath(userData.role));
     } catch (error) {
-      if (error?.code === 4001) {
+      if (isWalletUserRejectedError(error)) {
         showError('用户拒绝了请求');
       } else {
         showError(error.message || '钱包登录失败');
