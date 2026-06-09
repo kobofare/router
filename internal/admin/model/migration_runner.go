@@ -1325,6 +1325,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
 			},
 		},
+		{
+			Version:     "202606091130_group_channel_billing_ratio",
+			Description: "add group channel billing ratio and backfill from group ratio",
+			Up: func(tx *gorm.DB) error {
+				return backfillGroupChannelBillingRatioWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
