@@ -19,7 +19,7 @@ type ChannelModelEndpoint struct {
 	Model          string `json:"model" gorm:"primaryKey;type:varchar(255)"`
 	Endpoint       string `json:"endpoint" gorm:"primaryKey;type:varchar(255)"`
 	BaseURL        string `json:"base_url,omitempty" gorm:"column:base_url;type:text"`
-	Enabled        bool   `json:"enabled" gorm:"not null;default:true;index"`
+	Enabled        bool   `json:"enabled" gorm:"not null;index"`
 	UpdatedAt      int64  `json:"updated_at" gorm:"bigint"`
 	DisabledReason string `json:"disabled_reason,omitempty" gorm:"type:text"`
 	DisabledAt     int64  `json:"disabled_at,omitempty" gorm:"bigint;index"`

@@ -17,7 +17,7 @@ const (
 type GroupChannel struct {
 	Group        string  `json:"group" gorm:"column:group;primaryKey;type:varchar(32);autoIncrement:false"`
 	ChannelId    string  `json:"channel_id" gorm:"primaryKey;type:varchar(64);autoIncrement:false;index"`
-	Enabled      bool    `json:"enabled" gorm:"not null;default:true;index"`
+	Enabled      bool    `json:"enabled" gorm:"not null;index"`
 	Priority     int64   `json:"priority" gorm:"bigint;not null;default:0;index"`
 	BillingRatio float64 `json:"billing_ratio" gorm:"type:numeric(12,6);not null;default:1"`
 	CreatedAt    int64   `json:"created_at" gorm:"bigint;index"`
