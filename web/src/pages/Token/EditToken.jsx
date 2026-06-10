@@ -7,15 +7,15 @@ import {
 } from 'react-router-dom';
 import {
   API,
-  copy,
   showError,
   showSuccess,
-  showWarning,
   timestamp2string,
 } from '../../helpers';
 import { renderAmountEquivalentPrompt } from '../../helpers/render';
+import UnitDropdown from '../../components/UnitDropdown';
 import {
   AppButton,
+  AppCompact,
   AppDetailSection,
   AppField,
   AppFilterHeader,
@@ -25,8 +25,12 @@ import {
   AppInputNumber,
   AppSwitch,
   AppTable,
+  AppTabs,
   AppTag,
+  AppTextarea,
 } from '../../router-ui';
+
+const TOKEN_QUOTA_UNIT_OPTIONS = [{ key: 'YYC', value: 'YYC', text: 'YYC' }];
 
 const EditToken = () => {
   const { t } = useTranslation();
@@ -48,6 +52,8 @@ const EditToken = () => {
   const [allModelsSelected, setAllModelsSelected] = useState(isCreateMode);
   const [modelKeyword, setModelKeyword] = useState('');
   const [detailEditingSection, setDetailEditingSection] = useState('');
+  const [activeDetailTab, setActiveDetailTab] = useState('basic');
+  const [createdToken, setCreatedToken] = useState(null);
   const originInputs = {
     name: '',
     remain_quota: isDetailMode ? 0 : 500000,
@@ -57,6 +63,7 @@ const EditToken = () => {
     subnet: '',
     status: 1,
     created_time: 0,
+    updated_time: 0,
     key: '',
     used_quota: 0,
   };
@@ -73,9 +80,15 @@ const EditToken = () => {
   const filteredModelOptions = modelOptions.filter((option) =>
     option.value.toLowerCase().includes(modelKeyword.trim().toLowerCase())
   );
+  const formatQuotaInput = (value) => {
+    if (value === undefined || value === null || `${value}` === '') {
+      return '';
+    }
+    return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  const parseQuotaInput = (value) => `${value || ''}`.replace(/[^\d]/g, '');
   const basicReadonly = isDetailMode && detailEditingSection !== 'basic';
   const modelsReadonly = isDetailMode && detailEditingSection !== 'models';
-  const limitsReadonly = isDetailMode && detailEditingSection !== 'limits';
   const isEveryModelSelected = modelOptions.length > 0 && (
     allModelsSelected || inputs.models.length === modelOptions.length
   );
@@ -116,16 +129,12 @@ const EditToken = () => {
     }
   };
 
-  const renderShortToken = (key) => {
+  const renderFullToken = (key) => {
     const raw = typeof key === 'string' ? key.trim() : '';
     if (raw === '') {
       return '-';
     }
-    const withPrefix = raw.startsWith('sk-') ? raw : `sk-${raw}`;
-    if (withPrefix.length <= 24) {
-      return withPrefix;
-    }
-    return `${withPrefix.slice(0, 12)}...${withPrefix.slice(-8)}`;
+    return raw.startsWith('sk-') ? raw : `sk-${raw}`;
   };
 
   const syncTokenState = useCallback((data) => {
@@ -179,19 +188,6 @@ const EditToken = () => {
     );
     setDetailEditingSection('');
   }, [persistedInputs]);
-
-  const handleCopyToken = async () => {
-    const raw = typeof inputs.key === 'string' ? inputs.key.trim() : '';
-    if (raw === '') {
-      return;
-    }
-    const tokenValue = raw.startsWith('sk-') ? raw : `sk-${raw}`;
-    if (await copy(tokenValue)) {
-      showSuccess(t('token.messages.copy_success'));
-      return;
-    }
-    showWarning(t('token.messages.copy_failed'));
-  };
 
   const handleCancel = () => {
     if (isCreateMode) {
@@ -325,23 +321,21 @@ const EditToken = () => {
     } else {
       res = await API.post(`/api/v1/public/token/`, localInputs);
     }
-    const { success, message } = res.data;
+    const { success, message, data } = res.data;
     if (success) {
       if (isDetailMode) {
         showSuccess(t('token.edit.messages.update_success'));
-        syncTokenState({
+        syncTokenState(data || {
           ...inputs,
-          id: parseInt(tokenId),
+          id: tokenId,
           models: localInputs.models,
           expired_time: localInputs.expired_time,
         });
         setDetailEditingSection('');
       } else {
         showSuccess(t('token.edit.messages.create_success'));
+        setCreatedToken(data || null);
         setInputs(originInputs);
-      }
-      if (isCreateMode) {
-        navigate('/token');
       }
     } else {
       showError(message);
@@ -449,7 +443,7 @@ const EditToken = () => {
             },
             {
               key: 'token-current',
-              label: inputs.name || renderShortToken(inputs.key) || tokenId,
+              label: inputs.name || tokenId,
               active: true,
             },
           ]}
@@ -482,13 +476,41 @@ const EditToken = () => {
             </AppButton>
           }
           end={
+            createdToken ? null :
             <AppButton className='router-page-button' color='blue' onClick={submit}>
               {t('token.edit.buttons.submit')}
             </AppButton>
           }
         />
       )}
-      {isCreateMode ? (
+      {isCreateMode && createdToken ? (
+            <div className='router-page-stack'>
+              <AppDetailSection title='令牌已创建'>
+                <div className='router-section-message'>
+                  令牌只会在创建成功后显示一次，请现在保存到你的客户端或密钥管理工具中。离开当前页面后，系统不会再次展示完整令牌。
+                </div>
+                <AppFormRow className='router-token-basic-info-row'>
+                  <AppField label={t('token.table.token')} readOnly>
+                    <AppTextarea
+                      className='router-section-input'
+                      value={renderFullToken(createdToken.key)}
+                      readOnly
+                      autoSize={{ minRows: 2, maxRows: 5 }}
+                    />
+                  </AppField>
+                </AppFormRow>
+                <AppFormActions>
+                  <AppButton
+                    className='router-page-button'
+                    color='blue'
+                    onClick={() => navigate('/token')}
+                  >
+                    {t('common.back')}
+                  </AppButton>
+                </AppFormActions>
+              </AppDetailSection>
+            </div>
+      ) : isCreateMode ? (
             <div className='router-page-stack'>
                 <AppFormRow>
                   <AppField label={t('token.edit.name')} required={isCreateMode}>
@@ -591,25 +613,36 @@ const EditToken = () => {
                     {t('token.edit.buttons.expire_1_minute')}
                   </AppButton>
                 </div>
-                <div className='router-section-message'>{t('token.edit.quota_notice')}</div>
                 <AppFormRow>
                   <AppField
                     label={`${t('token.edit.quota')}${renderAmountEquivalentPrompt(
                       remainingYYC,
                       t
                     )}`}
+                    hint={t('token.edit.quota_notice')}
                   >
-                    <AppInputNumber
-                      className='router-section-input'
-                      name='remain_quota'
-                      placeholder={t('token.edit.quota_placeholder')}
-                      onChange={handleInputChange}
-                      value={remainingYYC}
-                      min={0}
-                      precision={0}
-                      fluid
-                      disabled={hasUnlimitedYYCLimit}
-                    />
+                    <AppCompact className='router-section-input-with-unit' block>
+                      <AppInputNumber
+                        className='router-section-input router-section-input-with-unit-field'
+                        name='remain_quota'
+                        placeholder={t('token.edit.quota_placeholder')}
+                        onChange={handleInputChange}
+                        value={remainingYYC}
+                        min={0}
+                        precision={0}
+                        fluid
+                        formatter={formatQuotaInput}
+                        parser={parseQuotaInput}
+                        disabled={hasUnlimitedYYCLimit}
+                      />
+                      <UnitDropdown
+                        variant='inputUnit'
+                        options={TOKEN_QUOTA_UNIT_OPTIONS}
+                        value='YYC'
+                        disabled
+                        aria-label={t('token.edit.quota')}
+                      />
+                    </AppCompact>
                   </AppField>
                 </AppFormRow>
                 <AppFormRow>
@@ -624,7 +657,20 @@ const EditToken = () => {
                 </AppFormRow>
               </div>
       ) : (
-        <div className='router-entity-detail-page'>
+        <div className='router-tab-detail-page router-entity-detail-page'>
+          <div className='router-entity-detail-tabs router-block-gap-sm'>
+            <AppTabs
+              className='router-detail-tab-menu'
+              activeKey={activeDetailTab}
+              onChange={setActiveDetailTab}
+              items={[
+                { key: 'basic', label: t('common.basic_info') },
+                { key: 'models', label: t('token.detail.sections.models') },
+              ]}
+            />
+          </div>
+          <div className='router-page-stack'>
+            {activeDetailTab === 'basic' ? (
               <AppDetailSection
                 title={t('common.basic_info')}
                 headerStart={renderStatus(Number(inputs.status || 0))}
@@ -651,7 +697,7 @@ const EditToken = () => {
                 }
                 bodyClassName='router-page-stack'
               >
-                  <AppFormRow>
+                  <AppFormRow className='router-token-basic-info-row'>
                     <AppField label={t('token.edit.name')}>
                       <AppInput
                         className='router-section-input'
@@ -664,26 +710,7 @@ const EditToken = () => {
                       />
                     </AppField>
                   </AppFormRow>
-                  <AppFormRow>
-                    <AppField label={t('token.table.token')} readOnly>
-                      <AppInput
-                        className='router-section-input'
-                        value={renderShortToken(inputs.key)}
-                        readOnly
-                        action={(
-                          <AppButton
-                            type='button'
-                            basic
-                            className='router-page-button'
-                            onClick={handleCopyToken}
-                            disabled={!inputs.key}
-                            aria-label={t('token.buttons.copy')}
-                          >
-                            {t('token.buttons.copy')}
-                          </AppButton>
-                        )}
-                      />
-                    </AppField>
+                  <AppFormRow className='router-token-basic-info-row'>
                     <AppField label={t('token.table.created_time')} readOnly>
                       <AppInput
                         className='router-section-input'
@@ -696,68 +723,19 @@ const EditToken = () => {
                       />
                     </AppField>
                   </AppFormRow>
-              </AppDetailSection>
-              <AppDetailSection
-                title={t('token.detail.sections.models')}
-                headerEnd={
-                  detailEditingSection === 'models' ? (
-                    <>
-                      <AppButton className='router-page-button' onClick={cancelDetailSectionEdit}>
-                        {t('token.edit.buttons.cancel')}
-                      </AppButton>
-                      <AppButton className='router-page-button' color='blue' onClick={submit}>
-                        {t('token.edit.buttons.submit')}
-                      </AppButton>
-                    </>
-                  ) : (
-                    <AppButton
-                      className='router-page-button'
-                      color='blue'
-                      onClick={() => startDetailSectionEdit('models')}
-                      disabled={detailEditingSection !== ''}
-                    >
-                      {t('token.buttons.edit')}
-                    </AppButton>
-                  )
-                }
-                bodyClassName='router-page-stack'
-              >
-                  <div className='router-section-message'>
-                    {t('token.edit.models_table_notice')}
-                  </div>
-                  <AppInput
-                    className='router-section-input router-token-model-search'
-                    placeholder={t('token.edit.models_search_placeholder')}
-                    value={modelKeyword}
-                    onChange={handleModelKeywordChange}
-                  />
-                  {renderModelTable(modelsReadonly)}
-              </AppDetailSection>
-              <AppDetailSection
-                title={t('token.detail.sections.limits')}
-                headerEnd={
-                  detailEditingSection === 'limits' ? (
-                    <>
-                      <AppButton className='router-page-button' onClick={cancelDetailSectionEdit}>
-                        {t('token.edit.buttons.cancel')}
-                      </AppButton>
-                      <AppButton className='router-page-button' color='blue' onClick={submit}>
-                        {t('token.edit.buttons.submit')}
-                      </AppButton>
-                    </>
-                  ) : (
-                    <AppButton
-                      className='router-page-button'
-                      color='blue'
-                      onClick={() => startDetailSectionEdit('limits')}
-                      disabled={detailEditingSection !== ''}
-                    >
-                      {t('token.buttons.edit')}
-                    </AppButton>
-                  )
-                }
-                bodyClassName='router-page-stack'
-              >
+                  <AppFormRow className='router-token-basic-info-row'>
+                    <AppField label={t('token.table.updated_time')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={
+                          inputs.updated_time || inputs.created_time
+                            ? timestamp2string(inputs.updated_time || inputs.created_time)
+                            : ''
+                        }
+                        readOnly
+                      />
+                    </AppField>
+                  </AppFormRow>
                   <AppFormRow>
                     <AppField label={t('token.edit.ip_limit')}>
                       <AppInput
@@ -767,7 +745,7 @@ const EditToken = () => {
                         onChange={handleInputChange}
                         value={inputs.subnet}
                         autoComplete='new-password'
-                        readOnly={limitsReadonly}
+                        readOnly={basicReadonly}
                       />
                     </AppField>
                   </AppFormRow>
@@ -781,11 +759,11 @@ const EditToken = () => {
                         value={expired_time}
                         autoComplete='new-password'
                         type='datetime-local'
-                        readOnly={limitsReadonly}
+                        readOnly={basicReadonly}
                       />
                     </AppField>
                   </AppFormRow>
-                  {detailEditingSection === 'limits' ? (
+                  {detailEditingSection === 'basic' ? (
                     <div className='router-token-expire-actions'>
                       <AppButton
                         className='router-inline-button'
@@ -834,28 +812,39 @@ const EditToken = () => {
                       </AppButton>
                     </div>
                   ) : null}
-                  <div className='router-section-message'>{t('token.edit.quota_notice')}</div>
                   <AppFormRow>
                     <AppField
                       label={`${t('token.edit.quota')}${renderAmountEquivalentPrompt(
                         remainingYYC,
                         t
                       )}`}
+                      hint={t('token.edit.quota_notice')}
                     >
-                      <AppInputNumber
-                        className='router-section-input'
-                        name='remain_quota'
-                        placeholder={t('token.edit.quota_placeholder')}
-                        onChange={handleInputChange}
-                        value={remainingYYC}
-                        min={0}
-                        precision={0}
-                        fluid
-                        disabled={hasUnlimitedYYCLimit || limitsReadonly}
-                      />
+                      <AppCompact className='router-section-input-with-unit' block>
+                        <AppInputNumber
+                          className='router-section-input router-section-input-with-unit-field'
+                          name='remain_quota'
+                          placeholder={t('token.edit.quota_placeholder')}
+                          onChange={handleInputChange}
+                          value={remainingYYC}
+                          min={0}
+                          precision={0}
+                          fluid
+                          formatter={formatQuotaInput}
+                          parser={parseQuotaInput}
+                          disabled={hasUnlimitedYYCLimit || basicReadonly}
+                        />
+                        <UnitDropdown
+                          variant='inputUnit'
+                          options={TOKEN_QUOTA_UNIT_OPTIONS}
+                          value='YYC'
+                          disabled
+                          aria-label={t('token.edit.quota')}
+                        />
+                      </AppCompact>
                     </AppField>
                   </AppFormRow>
-                  {detailEditingSection === 'limits' ? (
+                  {detailEditingSection === 'basic' ? (
                     <AppFormRow>
                       <AppField label={t('token.edit.buttons.unlimited_quota')}>
                         <AppSwitch
@@ -868,6 +857,46 @@ const EditToken = () => {
                     </AppFormRow>
                   ) : null}
               </AppDetailSection>
+            ) : null}
+            {activeDetailTab === 'models' ? (
+            <AppDetailSection
+                title={t('token.detail.sections.models')}
+                headerEnd={
+                  detailEditingSection === 'models' ? (
+                    <>
+                      <AppButton className='router-page-button' onClick={cancelDetailSectionEdit}>
+                        {t('token.edit.buttons.cancel')}
+                      </AppButton>
+                      <AppButton className='router-page-button' color='blue' onClick={submit}>
+                        {t('token.edit.buttons.submit')}
+                      </AppButton>
+                    </>
+                  ) : (
+                    <AppButton
+                      className='router-page-button'
+                      color='blue'
+                      onClick={() => startDetailSectionEdit('models')}
+                      disabled={detailEditingSection !== ''}
+                    >
+                      {t('token.buttons.edit')}
+                    </AppButton>
+                  )
+                }
+                bodyClassName='router-page-stack'
+              >
+                  <div className='router-section-message'>
+                    {t('token.edit.models_table_notice')}
+                  </div>
+                  <AppInput
+                    className='router-section-input router-token-model-search'
+                    placeholder={t('token.edit.models_search_placeholder')}
+                    value={modelKeyword}
+                    onChange={handleModelKeywordChange}
+                  />
+                  {renderModelTable(modelsReadonly)}
+            </AppDetailSection>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

@@ -3943,6 +3943,15 @@ body,
     padding-bottom: 10px !important;
 }
 
+.router-token-basic-info-row {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.router-token-basic-info-row .router-ui-textarea {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    word-break: break-all;
+}
+
 .router-token-expire-actions {
     display: flex;
     align-items: center;
