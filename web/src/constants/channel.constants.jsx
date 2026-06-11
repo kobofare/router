@@ -56,7 +56,7 @@ export const CHANNEL_PROTOCOL_OPTIONS = [
     color: 'blue',
     tip: 'HTTP 版本的讯飞接口，前往<a href="https://console.xfyun.cn/services/cbm" target="_blank">此处</a>获取 HTTP 服务接口认证密钥',
   },
-  {key: 'zhipu', text: '智谱 ChatGLM', value: 'zhipu', color: 'violet'},
+  {key: 'zhipu', text: 'ChatGLM', value: 'zhipu', color: 'violet'},
   {key: 'ai360', text: '360 智脑', value: 'ai360', color: 'blue'},
   {key: 'moonshot', text: 'Moonshot AI', value: 'moonshot', color: 'black'},
   {key: 'tencent', text: '腾讯混元', value: 'tencent', color: 'teal'},

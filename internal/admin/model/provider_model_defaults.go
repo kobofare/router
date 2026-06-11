@@ -420,6 +420,8 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 		strings.Contains(lowerModelName, "asr"):
 		return normalizedEndpoint == ChannelModelEndpointChat ||
 			normalizedEndpoint == ChannelModelEndpointRealtime
+	case isZhipuVisionChatModel(lowerModelName):
+		return normalizedEndpoint == ChannelModelEndpointChat
 	case strings.Contains(lowerModelName, "tts"):
 		return false
 	}
@@ -444,6 +446,23 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 		default:
 			return false
 		}
+	}
+}
+
+func isZhipuVisionChatModel(lowerModelName string) bool {
+	switch lowerModelName {
+	case "glm-4v-plus-0111",
+		"glm-4v-plus",
+		"glm-4v",
+		"glm-4v-flash",
+		"glm-4.5v",
+		"glm-4.6v",
+		"glm-4.6v-flash",
+		"glm-4.6v-flashx",
+		"glm-5v-turbo":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -585,6 +604,11 @@ func isKnownImageModel(modelName string) bool {
 		"ali-stable-diffusion-v1.5",
 		"wanx-v1",
 		"cogview-3",
+		"glm-4.5v",
+		"glm-4.6v",
+		"glm-4.6v-flash",
+		"glm-4.6v-flashx",
+		"glm-5v-turbo",
 		"step-1x-medium":
 		return true
 	default:

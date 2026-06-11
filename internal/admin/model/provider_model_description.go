@@ -403,16 +403,46 @@ func stepFunProviderModelDescription(modelName string) string {
 
 func zhipuProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "glm-5.1":
+		return "GLM-5.1 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。"
+	case "glm-5-turbo":
+		return "GLM-5-Turbo 是智谱的高速通用模型。"
+	case "glm-5":
+		return "GLM-5 是智谱的通用模型，面向推理、编码和智能体任务。"
+	case "glm-5v-turbo":
+		return "GLM-5V-Turbo 是智谱的多模态 Agent 基座模型，支持图像、视频、文本和文件输入。"
+	case "glm-4.7":
+		return "GLM-4.7 是智谱的旗舰通用模型，面向编程、多步骤推理和智能体任务。"
+	case "glm-4.7-flashx":
+		return "GLM-4.7-FlashX 是智谱的轻量语言模型。"
+	case "glm-4.7-flash":
+		return "GLM-4.7-Flash 是智谱的免费轻量语言模型。"
 	case "glm-4.5-air":
-		return "GLM-4.5-Air 是智谱的通用模型，适合对话和生成任务。"
+		return "GLM-4.5-Air 是智谱的轻量通用模型，支持推理、编码和智能体任务。"
+	case "glm-4.6v":
+		return "GLM-4.6V 是智谱的视觉推理模型，支持多模态工具调用。"
+	case "glm-4.6v-flashx":
+		return "GLM-4.6V-FlashX 是智谱的轻量视觉理解模型。"
+	case "glm-4.6v-flash":
+		return "GLM-4.6V-Flash 是智谱的免费视觉理解模型。"
+	case "glm-4.5v":
+		return "GLM-4.5V 是智谱的视觉理解模型。"
 	case "glm-4v-plus-0111":
 		return "GLM-4V-Plus 是智谱的视觉语言模型。"
 	case "glm-4-voice":
 		return "GLM-4-Voice 是智谱的语音模型。"
+	case "glm-image":
+		return "GLM-Image 是智谱的图像生成模型。"
 	case "cogview-4-250304":
 		return "CogView 4 是智谱的图像生成模型。"
+	case "cogvideox-2":
+		return "CogVideoX-2 是智谱的视频生成模型。"
 	case "cogvideox-flash":
 		return "CogVideoX Flash 是智谱的视频生成模型。"
+	case "embedding-2":
+		return "Embedding-2 是智谱的向量模型。"
+	case "embedding-3":
+		return "Embedding-3 是智谱的向量模型。"
 	default:
 		return ""
 	}

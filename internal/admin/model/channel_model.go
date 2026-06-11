@@ -1541,6 +1541,9 @@ func DefaultChannelModelEndpointWithProtocol(modelType string, channelProtocol i
 		if channelProtocol == relaychannel.Anthropic {
 			return ChannelModelEndpointMessages
 		}
+		if channelProtocol == relaychannel.Zhipu {
+			return ChannelModelEndpointChat
+		}
 	}
 	return DefaultChannelModelEndpoint(modelType)
 }

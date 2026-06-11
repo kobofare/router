@@ -544,7 +544,7 @@ const OFFICIAL_PROVIDER_BASE_URLS = {
   deepseek: 'https://api.deepseek.com',
   baidu: 'https://qianfan.baidubce.com/v2',
   qwen: 'https://dashscope.aliyuncs.com',
-  zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+  zhipu: 'https://open.bigmodel.cn',
   hunyuan: 'https://api.hunyuan.cloud.tencent.com/v1',
   minimax: 'https://api.minimax.io/v1',
   stepfun: 'https://api.stepfun.com/v1',

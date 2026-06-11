@@ -327,6 +327,10 @@ func TestBuildProviderMigrationSeeds_TokenBasedImageModelsUseResponsesEndpoint(t
 						t.Fatalf("%s supported_endpoints=%#v, missing %s", detail.Model, detail.SupportedEndpoints, endpoint)
 					}
 				}
+			} else if seed.Provider == "zhipu" {
+				if len(detail.SupportedEndpoints) != 1 || detail.SupportedEndpoints[0] != ChannelModelEndpointChat {
+					t.Fatalf("%s supported_endpoints=%#v, want [%s]", detail.Model, detail.SupportedEndpoints, ChannelModelEndpointChat)
+				}
 			} else if len(detail.SupportedEndpoints) != 1 || detail.SupportedEndpoints[0] != ChannelModelEndpointResponses {
 				t.Fatalf("%s supported_endpoints=%#v, want [%s]", detail.Model, detail.SupportedEndpoints, ChannelModelEndpointResponses)
 			}
@@ -772,9 +776,22 @@ func TestBuildProviderMigrationSeeds_OfficialPricingBackfillForPreviouslyUnprice
 			"image-01":              {modelType: ProviderModelTypeImage, input: 0.0035, priceUnit: ProviderPriceUnitPerImage, currency: ProviderPriceCurrencyUSD},
 		},
 		"zhipu": {
+			"glm-5.1":          {modelType: ProviderModelTypeText, input: 0.006, output: 0.024, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-5-turbo":      {modelType: ProviderModelTypeText, input: 0.005, output: 0.022, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-5":            {modelType: ProviderModelTypeText, input: 0.004, output: 0.018, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-5v-turbo":     {modelType: ProviderModelTypeImage, input: 0.005, output: 0.022, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.7":          {modelType: ProviderModelTypeText, input: 0.002, output: 0.008, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.7-flashx":   {modelType: ProviderModelTypeText, input: 0.0005, output: 0.003, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.6v":         {modelType: ProviderModelTypeImage, input: 0.001, output: 0.003, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.6v-flashx":  {modelType: ProviderModelTypeImage, input: 0.00015, output: 0.0015, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.5v":         {modelType: ProviderModelTypeImage, input: 0.002, output: 0.006, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"glm-4.5-air":      {modelType: ProviderModelTypeText, input: 0.0008, output: 0.002, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-4v-plus-0111": {modelType: ProviderModelTypeImage, input: 0.004, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-4-voice":      {modelType: ProviderModelTypeAudio, input: 0.08, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"cogview-4-250304": {modelType: ProviderModelTypeImage, input: 0.06, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
+			"cogvideox-2":      {modelType: ProviderModelTypeVideo, input: 0.5, priceUnit: ProviderPriceUnitPerVideo, currency: "CNY"},
+			"embedding-2":      {modelType: ProviderModelTypeEmbedding, input: 0.0005, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"embedding-3":      {modelType: ProviderModelTypeEmbedding, input: 0.0005, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 		},
 		"hunyuan": {
 			"Hunyuan-Image": {modelType: ProviderModelTypeImage, input: 0.2, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
@@ -838,6 +855,17 @@ func TestBuildProviderMigrationSeeds_ComplexPricingComponentsForLiveAndOmniModel
 			"doubao-seed-1.6":                 {componentCount: 3},
 			"doubao-seed-1.6-thinking":        {componentCount: 3},
 			"doubao-seed-code-preview-latest": {componentCount: 3},
+		},
+		"zhipu": {
+			"glm-5.1":         {componentCount: 2},
+			"glm-5-turbo":     {componentCount: 2},
+			"glm-5":           {componentCount: 2},
+			"glm-5v-turbo":    {componentCount: 2},
+			"glm-4.7":         {componentCount: 3},
+			"glm-4.6v":        {componentCount: 2},
+			"glm-4.6v-flashx": {componentCount: 2},
+			"glm-4.5v":        {componentCount: 2},
+			"glm-4.5-air":     {componentCount: 3},
 		},
 	}
 
@@ -938,9 +966,85 @@ func TestBuildProviderMigrationSeeds_DeepSeekTextModelsSupportChatAndMessages(t 
 	}
 }
 
+func TestBuildProviderMigrationSeeds_ZhipuClaudeCompatibleModelsExposeMessagesEndpoint(t *testing.T) {
+	seeds := mustLoadProviderMigrationSeeds(t)
+	expectedModels := map[string]bool{
+		"glm-5.1": false,
+		"glm-5":   false,
+		"glm-4.7": false,
+	}
+
+	for _, seed := range seeds {
+		if seed.Provider != "zhipu" {
+			continue
+		}
+		for _, detail := range seed.ModelDetails {
+			if providerModelEndpointsContain(detail.SupportedEndpoints, ChannelModelEndpointResponses) {
+				t.Fatalf("%s supported_endpoints=%#v, zhipu should not expose responses endpoint", detail.Model, detail.SupportedEndpoints)
+			}
+			if _, ok := expectedModels[detail.Model]; !ok {
+				continue
+			}
+			if len(detail.SupportedEndpoints) != 2 ||
+				detail.SupportedEndpoints[0] != ChannelModelEndpointChat ||
+				detail.SupportedEndpoints[1] != ChannelModelEndpointMessages {
+				t.Fatalf("%s supported_endpoints=%#v, want [chat messages]", detail.Model, detail.SupportedEndpoints)
+			}
+			expectedModels[detail.Model] = true
+		}
+	}
+
+	for modelName, found := range expectedModels {
+		if !found {
+			t.Fatalf("expected zhipu seed to include %s", modelName)
+		}
+	}
+}
+
+func TestBuildProviderMigrationSeeds_ZhipuEmbeddingModelsUseEmbeddingsEndpoint(t *testing.T) {
+	seeds := mustLoadProviderMigrationSeeds(t)
+	expectedModels := map[string]bool{
+		"embedding-2": false,
+		"embedding-3": false,
+	}
+
+	for _, seed := range seeds {
+		if seed.Provider != "zhipu" {
+			continue
+		}
+		for _, detail := range seed.ModelDetails {
+			if _, ok := expectedModels[detail.Model]; !ok {
+				continue
+			}
+			if detail.Type != ProviderModelTypeEmbedding {
+				t.Fatalf("%s type=%q, want %q", detail.Model, detail.Type, ProviderModelTypeEmbedding)
+			}
+			if len(detail.SupportedEndpoints) != 1 || detail.SupportedEndpoints[0] != ChannelModelEndpointEmbeddings {
+				t.Fatalf("%s supported_endpoints=%#v, want [%s]", detail.Model, detail.SupportedEndpoints, ChannelModelEndpointEmbeddings)
+			}
+			expectedModels[detail.Model] = true
+		}
+	}
+
+	for modelName, found := range expectedModels {
+		if !found {
+			t.Fatalf("expected zhipu seed to include %s", modelName)
+		}
+	}
+}
+
 func providerModelTagsContain(tags []string, target string) bool {
 	for _, tag := range tags {
 		if tag == target {
+			return true
+		}
+	}
+	return false
+}
+
+func providerModelEndpointsContain(endpoints []string, target string) bool {
+	for _, endpoint := range endpoints {
+		if endpoint == target {
 			return true
 		}
 	}
@@ -1109,6 +1213,9 @@ func TestBuildProviderMigrationSeeds_RemainingUnpricedModelsAreExplicitlyTracked
 		},
 		"zhipu": {
 			"cogvideox-flash": false,
+			"glm-4.6v-flash":  false,
+			"glm-4.7-flash":   false,
+			"glm-image":       false,
 		},
 		"mistral": {
 			"pixtral-large-latest": false,

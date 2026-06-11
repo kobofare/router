@@ -33,7 +33,7 @@ var defaultChannelProtocolSeeds = []channelProtocolSeed{
 	{ID: 17, Label: "Ali", Color: "orange", Tip: "阿里兼容模式与原生接口统一使用该渠道"},
 	{ID: 18, Label: "讯飞星火认知", Color: "blue", Tip: "本渠道基于讯飞 WebSocket 版本 API，如需 HTTP 版本，请使用<strong>讯飞星火认知 V2</strong>渠道"},
 	{ID: 48, Label: "讯飞星火认知 V2", Color: "blue", Tip: "HTTP 版本的讯飞接口，前往<a href=\"https://console.xfyun.cn/services/cbm\" target=\"_blank\">此处</a>获取 HTTP 服务接口认证密钥"},
-	{ID: 16, Label: "智谱 ChatGLM", Color: "violet"},
+	{ID: 16, Label: "ChatGLM", Color: "violet"},
 	{ID: 19, Label: "360 智脑", Color: "blue"},
 	{ID: 25, Label: "Moonshot AI", Color: "black"},
 	{ID: 23, Label: "腾讯混元", Color: "teal"},

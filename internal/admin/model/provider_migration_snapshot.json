@@ -2600,13 +2600,15 @@
   {
     "Provider": "zhipu",
     "Name": "Zhipu",
-    "BaseURL": "https://open.bigmodel.cn/api/paas/v4",
-    "OfficialURL": "https://docs.bigmodel.cn/cn/guide/models/text/glm-4.5",
+    "BaseURL": "https://open.bigmodel.cn",
+    "OfficialURL": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5.1",
     "SortOrder": 155,
     "ModelDetails": [
       {
         "model": "cogvideox-flash",
-        "type": "video",
+        "tags": [
+          "video"
+        ],
         "status": "active",
         "description": "CogVideoX Flash 是智谱的视频生成模型。",
         "supported_endpoints": [
@@ -2618,8 +2620,26 @@
         "updated_at": 1700000000
       },
       {
+        "model": "cogvideox-2",
+        "tags": [
+          "video"
+        ],
+        "status": "active",
+        "description": "CogVideoX-2 是智谱的视频生成模型。",
+        "supported_endpoints": [
+          "/v1/videos"
+        ],
+        "input_price": 0.5,
+        "price_unit": "per_video",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
         "model": "cogview-4-250304",
-        "type": "image",
+        "tags": [
+          "image"
+        ],
         "status": "active",
         "description": "CogView 4 是智谱的图像生成模型。",
         "supported_endpoints": [
@@ -2632,8 +2652,42 @@
         "updated_at": 1700000000
       },
       {
+        "model": "embedding-2",
+        "tags": [
+          "embedding"
+        ],
+        "status": "active",
+        "description": "Embedding-2 是智谱的向量模型。",
+        "supported_endpoints": [
+          "/v1/embeddings"
+        ],
+        "input_price": 0.0005,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "embedding-3",
+        "tags": [
+          "embedding"
+        ],
+        "status": "active",
+        "description": "Embedding-3 是智谱的向量模型。",
+        "supported_endpoints": [
+          "/v1/embeddings"
+        ],
+        "input_price": 0.0005,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
         "model": "glm-4-voice",
-        "type": "audio",
+        "tags": [
+          "audio"
+        ],
         "status": "active",
         "description": "GLM-4-Voice 是智谱的语音模型。",
         "supported_endpoints": [
@@ -2647,9 +2701,13 @@
       },
       {
         "model": "glm-4.5-air",
-        "type": "text",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
         "status": "active",
-        "description": "GLM-4.5-Air 是智谱的通用模型，适合对话和生成任务。",
+        "description": "GLM-4.5-Air 是智谱的轻量通用模型，支持推理、编码和智能体任务。",
         "supported_endpoints": [
           "/v1/chat/completions"
         ],
@@ -2658,18 +2716,478 @@
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000;completion_tokens_lt=200",
+            "input_price": 0.0008,
+            "output_price": 0.002,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000;completion_tokens_gte=200",
+            "input_price": 0.0008,
+            "output_price": 0.006,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000;prompt_tokens_lt=128000",
+            "input_price": 0.0012,
+            "output_price": 0.008,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 3,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-4.5v",
+        "tags": [
+          "image",
+          "vision"
+        ],
+        "status": "active",
+        "description": "GLM-4.5V 是智谱的视觉理解模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.002,
+        "output_price": 0.006,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.002,
+            "output_price": 0.006,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000;prompt_tokens_lt=64000",
+            "input_price": 0.004,
+            "output_price": 0.012,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-4.6v",
+        "tags": [
+          "image",
+          "reasoning",
+          "tool_calling",
+          "vision"
+        ],
+        "status": "active",
+        "description": "GLM-4.6V 是智谱的视觉推理模型，支持多模态工具调用。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.001,
+        "output_price": 0.003,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.001,
+            "output_price": 0.003,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000;prompt_tokens_lt=128000",
+            "input_price": 0.002,
+            "output_price": 0.006,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-4.6v-flash",
+        "tags": [
+          "image",
+          "vision"
+        ],
+        "status": "active",
+        "description": "GLM-4.6V-Flash 是智谱的免费视觉理解模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "glm-4.6v-flashx",
+        "tags": [
+          "image",
+          "tool_calling",
+          "vision"
+        ],
+        "status": "active",
+        "description": "GLM-4.6V-FlashX 是智谱的轻量视觉理解模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.00015,
+        "output_price": 0.0015,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.00015,
+            "output_price": 0.0015,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000;prompt_tokens_lt=128000",
+            "input_price": 0.0003,
+            "output_price": 0.003,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-4.7",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
+        "status": "active",
+        "description": "GLM-4.7 是智谱的旗舰通用模型，面向编程、多步骤推理和智能体任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "input_price": 0.002,
+        "output_price": 0.008,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000;completion_tokens_lt=200",
+            "input_price": 0.002,
+            "output_price": 0.008,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000;completion_tokens_gte=200",
+            "input_price": 0.003,
+            "output_price": 0.014,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000;prompt_tokens_lt=200000",
+            "input_price": 0.004,
+            "output_price": 0.016,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 3,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-4.7-flash",
+        "tags": [
+          "text"
+        ],
+        "status": "active",
+        "description": "GLM-4.7-Flash 是智谱的免费轻量语言模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "glm-4.7-flashx",
+        "tags": [
+          "text"
+        ],
+        "status": "active",
+        "description": "GLM-4.7-FlashX 是智谱的轻量语言模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.0005,
+        "output_price": 0.003,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
         "updated_at": 1700000000
       },
       {
         "model": "glm-4v-plus-0111",
-        "type": "image",
+        "tags": [
+          "image",
+          "vision"
+        ],
         "status": "active",
         "description": "GLM-4V-Plus 是智谱的视觉语言模型。",
         "supported_endpoints": [
-          "/v1/responses"
+          "/v1/chat/completions"
         ],
         "input_price": 0.004,
         "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "glm-5",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
+        "status": "active",
+        "description": "GLM-5 是智谱的通用模型，面向推理、编码和智能体任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "input_price": 0.004,
+        "output_price": 0.018,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.004,
+            "output_price": 0.018,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000",
+            "input_price": 0.006,
+            "output_price": 0.022,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-5-turbo",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
+        "status": "active",
+        "description": "GLM-5-Turbo 是智谱的高速通用模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.005,
+        "output_price": 0.022,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.005,
+            "output_price": 0.022,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000",
+            "input_price": 0.007,
+            "output_price": 0.026,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-5.1",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
+        "status": "active",
+        "description": "GLM-5.1 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "input_price": 0.006,
+        "output_price": 0.024,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.006,
+            "output_price": 0.024,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000",
+            "input_price": 0.008,
+            "output_price": 0.028,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-5v-turbo",
+        "tags": [
+          "image",
+          "reasoning",
+          "tool_calling",
+          "vision"
+        ],
+        "status": "active",
+        "description": "GLM-5V-Turbo 是智谱的多模态 Agent 基座模型，支持图像、视频、文本和文件输入。",
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ],
+        "input_price": 0.005,
+        "output_price": 0.022,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_lt=32000",
+            "input_price": 0.005,
+            "output_price": 0.022,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 1,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "text",
+            "condition": "mode=standard;prompt_tokens_gte=32000",
+            "input_price": 0.007,
+            "output_price": 0.026,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 2,
+            "updated_at": 1700000000
+          }
+        ]
+      },
+      {
+        "model": "glm-image",
+        "tags": [
+          "image"
+        ],
+        "status": "active",
+        "description": "GLM-Image 是智谱的图像生成模型。",
+        "supported_endpoints": [
+          "/v1/images/generations"
+        ],
+        "price_unit": "per_image",
         "currency": "CNY",
         "source": "migration",
         "updated_at": 1700000000

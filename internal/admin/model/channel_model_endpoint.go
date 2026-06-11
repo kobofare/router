@@ -149,8 +149,7 @@ func MergeChannelModelEndpointListRows(snapshotRows []ChannelModelEndpoint, expl
 		}
 		explicitByKey[normalized.ChannelId+"::"+normalized.Model+"::"+normalized.Endpoint] = normalized
 	}
-	items := make([]ChannelModelEndpoint, 0, len(snapshotRows)+len(explicitRows))
-	seen := make(map[string]struct{}, len(snapshotRows)+len(explicitRows))
+	items := make([]ChannelModelEndpoint, 0, len(snapshotRows))
 	for _, row := range snapshotRows {
 		normalized := ChannelModelEndpoint{
 			ChannelId: strings.TrimSpace(row.ChannelId),
@@ -177,34 +176,6 @@ func MergeChannelModelEndpointListRows(snapshotRows []ChannelModelEndpoint, expl
 			normalized.DisabledAt = 0
 			normalized.DisabledBy = ""
 		}
-		seen[key] = struct{}{}
-		items = append(items, normalized)
-	}
-	for _, row := range explicitRows {
-		normalized := ChannelModelEndpoint{
-			ChannelId:      strings.TrimSpace(row.ChannelId),
-			Model:          strings.TrimSpace(row.Model),
-			Endpoint:       NormalizeRequestedChannelModelEndpoint(row.Endpoint),
-			BaseURL:        normalizeConfiguredBaseURL(row.BaseURL),
-			Enabled:        row.Enabled,
-			UpdatedAt:      row.UpdatedAt,
-			DisabledReason: strings.TrimSpace(row.DisabledReason),
-			DisabledAt:     row.DisabledAt,
-			DisabledBy:     strings.TrimSpace(row.DisabledBy),
-		}
-		if normalized.ChannelId == "" || normalized.Model == "" || normalized.Endpoint == "" {
-			continue
-		}
-		key := normalized.ChannelId + "::" + normalized.Model + "::" + normalized.Endpoint
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		if normalized.Enabled {
-			normalized.DisabledReason = ""
-			normalized.DisabledAt = 0
-			normalized.DisabledBy = ""
-		}
-		seen[key] = struct{}{}
 		items = append(items, normalized)
 	}
 	return items

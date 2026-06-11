@@ -33,3 +33,15 @@ func TestResolveModelsURL_DeepSeekRootBaseURLUsesModelsEndpoint(t *testing.T) {
 		t.Fatalf("resolveModelsURL() = %q, want %q", got, want)
 	}
 }
+
+func TestZhipuModelSyncUsesProviderOfficialModels(t *testing.T) {
+	if !usesProviderOfficialModelsForSync("zhipu") {
+		t.Fatalf("zhipu model sync should use provider official models")
+	}
+}
+
+func TestOpenAIModelSyncUsesUpstreamModelsEndpoint(t *testing.T) {
+	if usesProviderOfficialModelsForSync("openai") {
+		t.Fatalf("openai model sync should use upstream models endpoint")
+	}
+}
