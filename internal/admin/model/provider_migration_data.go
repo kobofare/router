@@ -48,7 +48,24 @@ func explicitProviderModelSupportedEndpoints(provider string, modelType string, 
 	switch provider {
 	case "qwen":
 		return qwenProviderSupportedEndpoints(modelType, modelName, current)
+	case "volcengine":
+		return volcengineProviderSupportedEndpoints(modelType, modelName, current)
 	default:
+		return nil, false
+	}
+}
+
+func volcengineProviderSupportedEndpoints(modelType string, modelName string, current []string) ([]string, bool) {
+	normalizedType := normalizeModelType(modelType, modelName)
+	switch normalizedType {
+	case ProviderModelTypeEmbedding:
+		return []string{ChannelModelEndpointEmbeddings}, true
+	case ProviderModelTypeText:
+		return []string{ChannelModelEndpointChat, ChannelModelEndpointResponses}, true
+	default:
+		if len(current) > 0 {
+			return NormalizeProviderModelSupportedEndpointsForModel(modelType, modelName, current), true
+		}
 		return nil, false
 	}
 }

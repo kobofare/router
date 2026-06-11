@@ -420,6 +420,9 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 		strings.Contains(lowerModelName, "asr"):
 		return normalizedEndpoint == ChannelModelEndpointChat ||
 			normalizedEndpoint == ChannelModelEndpointRealtime
+	case isDoubaoVisionChatModel(lowerModelName):
+		return normalizedEndpoint == ChannelModelEndpointChat ||
+			normalizedEndpoint == ChannelModelEndpointResponses
 	case isZhipuVisionChatModel(lowerModelName):
 		return normalizedEndpoint == ChannelModelEndpointChat
 	case strings.Contains(lowerModelName, "tts"):
@@ -463,6 +466,66 @@ func isZhipuVisionChatModel(lowerModelName string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func isDoubaoVisionChatModel(lowerModelName string) bool {
+	return strings.HasPrefix(lowerModelName, "doubao-seed-") && strings.Contains(lowerModelName, "vision")
+}
+
+func VolcengineOfficialUpstreamModel(modelName string) string {
+	normalizedModel := strings.TrimSpace(modelName)
+	switch normalizedModel {
+	case "doubao-seed-2.0-pro":
+		return "doubao-seed-2-0-pro-260215"
+	case "doubao-seed-2.0-lite":
+		return "doubao-seed-2-0-lite-260428"
+	case "doubao-seed-2.0-mini":
+		return "doubao-seed-2-0-mini-260428"
+	case "doubao-seed-2.0-code":
+		return "doubao-seed-2-0-code-preview-260215"
+	case "doubao-seed-1.8":
+		return "doubao-seed-1-8-251228"
+	case "doubao-seed-1.6-vision":
+		return "doubao-seed-1-6-vision-250815"
+	case "doubao-seed-code":
+		return "doubao-seed-code-preview-251028"
+	case "doubao-seed-translation":
+		return "doubao-seed-translation-250915"
+	case "doubao-seed-character":
+		return "doubao-seed-character-251128"
+	case "doubao-embedding-vision":
+		return "doubao-embedding-vision-251215"
+	default:
+		return normalizedModel
+	}
+}
+
+func VolcenginePublicModelAlias(modelName string) string {
+	normalizedModel := strings.TrimSpace(modelName)
+	switch normalizedModel {
+	case "doubao-seed-2-0-pro-260215":
+		return "doubao-seed-2.0-pro"
+	case "doubao-seed-2-0-lite-260428":
+		return "doubao-seed-2.0-lite"
+	case "doubao-seed-2-0-mini-260428":
+		return "doubao-seed-2.0-mini"
+	case "doubao-seed-2-0-code-preview-260215":
+		return "doubao-seed-2.0-code"
+	case "doubao-seed-1-8-251228":
+		return "doubao-seed-1.8"
+	case "doubao-seed-1-6-vision-250815":
+		return "doubao-seed-1.6-vision"
+	case "doubao-seed-code-preview-251028":
+		return "doubao-seed-code"
+	case "doubao-seed-translation-250915":
+		return "doubao-seed-translation"
+	case "doubao-seed-character-251128":
+		return "doubao-seed-character"
+	case "doubao-embedding-vision-251215":
+		return "doubao-embedding-vision"
+	default:
+		return normalizedModel
 	}
 }
 
@@ -534,6 +597,8 @@ func inferProviderByModel(modelName string, channelProtocol int, hasChannelProto
 		return "groq"
 	case strings.HasPrefix(lower, "ollama-"):
 		return "ollama"
+	case strings.HasPrefix(lower, "doubao-"):
+		return "volcengine"
 	}
 	return "other"
 }
@@ -553,6 +618,9 @@ func normalizeModelType(raw string, modelName string) string {
 		strings.HasPrefix(lower, "text-embedding"),
 		strings.HasPrefix(lower, "seed1.6-embedding"):
 		return ProviderModelTypeEmbedding
+	}
+	if isDoubaoVisionChatModel(lower) {
+		return ProviderModelTypeText
 	}
 	switch {
 	case strings.HasPrefix(lower, "veo"),

@@ -242,13 +242,6 @@ const formatChannelDisplayName = (item) => {
   return item.name || item.id || '-';
 };
 
-const summarizeGroupChannels = (items, maxVisible = 2) => {
-  const channels = Array.isArray(items) ? items : [];
-  const visible = channels.slice(0, Math.max(0, maxVisible));
-  const hiddenCount = Math.max(0, channels.length - visible.length);
-  return { visible, hiddenCount };
-};
-
 const channelStatusColor = (status) => {
   const normalized = Number(status || 0);
   if (normalized === 1) return 'green';
@@ -1322,24 +1315,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             dataIndex: 'channels',
             key: 'channels',
             width: GROUP_LIST_COLUMN_WIDTHS.channels,
-            render: (channels) => {
-              const { visible, hiddenCount } = summarizeGroupChannels(channels, 2);
-              if (visible.length === 0) {
-                return '-';
-              }
-              return (
-                <div className='router-tag-group'>
-                  {visible.map((item) => (
-                    <AppTag key={item.id} className='router-tag'>
-                      {formatChannelDisplayName(item)}
-                    </AppTag>
-                  ))}
-                  {hiddenCount > 0 ? (
-                    <AppTag className='router-tag'>... +{hiddenCount}</AppTag>
-                  ) : null}
-                </div>
-              );
-            },
+            render: (channels) => (Array.isArray(channels) ? channels.length : 0),
           },
           {
             title: t('group_manage.table.billing_ratio'),

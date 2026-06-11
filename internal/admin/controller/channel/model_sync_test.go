@@ -44,6 +44,27 @@ func TestZhipuModelSyncUsesProviderOfficialModels(t *testing.T) {
 	}
 }
 
+func TestDoubaoModelSyncUsesProviderOfficialModels(t *testing.T) {
+	if !usesProviderOfficialModelsForSync("doubao") {
+		t.Fatalf("doubao model sync should use provider official models")
+	}
+}
+
+func TestProviderOfficialUpstreamModelMapsVolcengineStableAlias(t *testing.T) {
+	got := providerOfficialUpstreamModel("volcengine", "doubao-seed-2.0-pro")
+	want := "doubao-seed-2-0-pro-260215"
+	if got != want {
+		t.Fatalf("providerOfficialUpstreamModel() = %q, want %q", got, want)
+	}
+}
+
+func TestProviderOfficialUpstreamModelKeepsNonVolcengineModel(t *testing.T) {
+	got := providerOfficialUpstreamModel("zhipu", "glm-4.7")
+	if got != "glm-4.7" {
+		t.Fatalf("providerOfficialUpstreamModel() = %q, want glm-4.7", got)
+	}
+}
+
 func TestOpenAIModelSyncUsesUpstreamModelsEndpoint(t *testing.T) {
 	if usesProviderOfficialModelsForSync("openai") {
 		t.Fatalf("openai model sync should use upstream models endpoint")

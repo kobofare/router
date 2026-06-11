@@ -548,7 +548,7 @@ const OFFICIAL_PROVIDER_BASE_URLS = {
   hunyuan: 'https://api.hunyuan.cloud.tencent.com/v1',
   minimax: 'https://api.minimax.io/v1',
   stepfun: 'https://api.stepfun.com/v1',
-  volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
+  volcengine: 'https://ark.cn-beijing.volces.com',
 };
 
 const cloneEditableRow = (row) => toEditableRows([row])[0] || createEmptyRow();
@@ -2224,27 +2224,6 @@ const ProvidersManager = () => {
                   )}
                 </div>
               ),
-            },
-            {
-              title: t('channel.providers.model_detail_table.supported_endpoints'),
-              dataIndex: ['detail', 'supported_endpoints'],
-              key: 'supported_endpoints',
-              width: 260,
-              render: (endpoints, record) =>
-                Array.isArray(endpoints) && endpoints.length > 0 ? (
-                  <div>
-                    {endpoints.map((endpoint) => (
-                      <AppTag
-                        key={`${record.detail?.model || 'model'}-${endpoint}`}
-                        className='router-tag router-provider-endpoint-tag'
-                      >
-                        {endpoint}
-                      </AppTag>
-                    ))}
-                  </div>
-                ) : (
-                  '-'
-                ),
             },
             {
               title: t('channel.providers.model_detail_table.price_compact'),

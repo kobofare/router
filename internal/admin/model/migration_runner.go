@@ -1395,8 +1395,81 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return cleanupChannelEndpointBaselineWithDB(tx, "ali", "qwen", false)
 			},
 		},
+		{
+			Version:     "202606111210_refresh_volcengine_provider_models",
+			Description: "upsert latest volcengine doubao provider models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "volcengine")
+			},
+		},
+		{
+			Version:     "202606111220_volcengine_channel_upstream_models",
+			Description: "map volcengine stable model aliases to official upstream model ids",
+			Up: func(tx *gorm.DB) error {
+				return updateVolcengineChannelUpstreamModelsWithDB(tx)
+			},
+		},
+		{
+			Version:     "202606111230_channel_protocol_volcengine_label",
+			Description: "rename doubao channel protocol label to Volcengine",
+			Up: func(tx *gorm.DB) error {
+				return tx.Model(&ChannelProtocolCatalog{}).
+					Where("name = ?", "doubao").
+					Updates(map[string]any{
+						"label":       "Volcengine",
+						"description": "Volcengine Ark",
+						"updated_at":  helper.GetTimestamp(),
+					}).Error
+			},
+		},
+		{
+			Version:     "202606111240_volcengine_channel_endpoint_baseline_cleanup",
+			Description: "rebuild volcengine channel endpoints from official provider endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "volcengine"); err != nil {
+					return err
+				}
+				return cleanupChannelEndpointBaselineWithDB(tx, "doubao", "volcengine", false)
+			},
+		},
+		{
+			Version:     "202606120010_refresh_volcengine_provider_pricing",
+			Description: "refresh volcengine provider pricing from official model pricing document",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "volcengine")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func updateVolcengineChannelUpstreamModelsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	models := []string{
+		"doubao-seed-2.0-pro",
+		"doubao-seed-2.0-lite",
+		"doubao-seed-2.0-mini",
+		"doubao-seed-2.0-code",
+		"doubao-seed-1.8",
+		"doubao-seed-1.6-vision",
+		"doubao-seed-code",
+		"doubao-seed-translation",
+		"doubao-seed-character",
+		"doubao-embedding-vision",
+	}
+	for _, publicModel := range models {
+		upstreamModel := VolcengineOfficialUpstreamModel(publicModel)
+		if err := db.Model(&ChannelModel{}).
+			Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+			Where("model = ?", publicModel).
+			Where("(upstream_model = '' OR upstream_model = ?)", publicModel).
+			Update("upstream_model", upstreamModel).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func cleanupChannelEndpointBaselineWithDB(db *gorm.DB, channelProtocol string, provider string, assignAllRows bool) error {

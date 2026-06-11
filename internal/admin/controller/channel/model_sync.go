@@ -278,7 +278,7 @@ func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) (
 
 func usesProviderOfficialModelsForSync(protocol string) bool {
 	switch relaychannel.NormalizeProtocolName(protocol) {
-	case "zhipu":
+	case "doubao", "zhipu":
 		return true
 	default:
 		return false
@@ -313,7 +313,7 @@ func fetchChannelModelsFromProviderOfficialData(protocol string, providerFilter 
 		seen[modelName] = struct{}{}
 		rows = append(rows, model.ChannelModel{
 			Model:         modelName,
-			UpstreamModel: modelName,
+			UpstreamModel: providerOfficialUpstreamModel(provider, modelName),
 			Provider:      provider,
 			Type:          detail.Type,
 			Selected:      false,
@@ -323,6 +323,15 @@ func fetchChannelModelsFromProviderOfficialData(protocol string, providerFilter 
 		return nil, trace, fmt.Errorf("未找到供应商官方模型")
 	}
 	return rows, trace, nil
+}
+
+func providerOfficialUpstreamModel(provider string, modelName string) string {
+	normalizedProvider := commonutils.NormalizeProvider(provider)
+	normalizedModel := strings.TrimSpace(modelName)
+	if normalizedProvider != "volcengine" || normalizedModel == "" {
+		return normalizedModel
+	}
+	return model.VolcengineOfficialUpstreamModel(normalizedModel)
 }
 
 func loadChannelSyncState(protocol string, key string, baseURL string, channelID string, configRaw json.RawMessage, selectedModels []string, channelModels []model.ChannelModel, testModel string) (*model.Channel, string, error) {

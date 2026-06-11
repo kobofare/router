@@ -51,6 +51,12 @@ func TestCanonicalizeModelNameForProvider(t *testing.T) {
 			model:    "meta/meta-llama-3-70b",
 			want:     "llama-3-70b",
 		},
+		{
+			name:     "map volcengine official upstream id to stable alias",
+			provider: "volcengine",
+			model:    "doubao-seed-2-0-pro-260215",
+			want:     "doubao-seed-2.0-pro",
+		},
 	}
 
 	for _, tt := range tests {

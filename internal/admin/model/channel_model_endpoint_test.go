@@ -55,6 +55,16 @@ func TestDefaultProviderModelSupportedEndpointsByProvider(t *testing.T) {
 		t.Fatalf("embedding default endpoints = %#v, want embeddings", embedding)
 	}
 
+	volcengineText := DefaultProviderModelSupportedEndpoints("volcengine", ProviderModelTypeText, "doubao-seed-2.0-pro")
+	if len(volcengineText) != 2 ||
+		volcengineText[0] != ChannelModelEndpointChat ||
+		volcengineText[1] != ChannelModelEndpointResponses {
+		t.Fatalf("volcengine text default endpoints = %#v, want chat+responses", volcengineText)
+	}
+	if providerModelEndpointsContain(volcengineText, ChannelModelEndpointMessages) {
+		t.Fatalf("volcengine text default endpoints = %#v, should not include messages", volcengineText)
+	}
+
 	qwenVL := DefaultProviderModelSupportedEndpoints("qwen", ProviderModelTypeImage, "qwen-vl-max")
 	if len(qwenVL) != 1 || qwenVL[0] != ChannelModelEndpointChat {
 		t.Fatalf("qwen vl default endpoints = %#v, want chat", qwenVL)

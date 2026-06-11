@@ -16,10 +16,10 @@ export const CHANNEL_PROTOCOL_OPTIONS = [
   {key: 'novita', text: 'Novita', value: 'novita', color: 'purple'},
   {
     key: 'doubao',
-    text: '字节火山引擎',
+    text: 'Volcengine',
     value: 'doubao',
     color: 'blue',
-    description: '原字节跳动豆包',
+    description: 'Volcengine Ark',
   },
   {
     key: 'baidu',

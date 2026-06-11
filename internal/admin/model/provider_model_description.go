@@ -271,6 +271,24 @@ func xAIProviderModelDescription(modelName string) string {
 
 func volcengineProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "doubao-seed-2.0-pro":
+		return "Doubao Seed 2.0 Pro 是火山方舟的新一代高能力通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2.0-lite":
+		return "Doubao Seed 2.0 Lite 是火山方舟的新一代轻量通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2.0-mini":
+		return "Doubao Seed 2.0 Mini 是火山方舟的新一代低成本通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2.0-code":
+		return "Doubao Seed 2.0 Code Preview 是火山方舟面向代码生成、补全和工程任务优化的新一代编程模型。"
+	case "doubao-seed-1.8":
+		return "Doubao Seed 1.8 是火山方舟的通用模型，适合文本生成、多模态理解和工具调用。"
+	case "doubao-seed-1.6-vision":
+		return "Doubao Seed 1.6 Vision 是火山方舟的多模态理解模型，支持视觉理解和文本生成。"
+	case "doubao-seed-code":
+		return "Doubao Seed Code Preview 是火山方舟面向代码生成、补全和工程任务优化的编程模型。"
+	case "doubao-seed-translation":
+		return "Doubao Seed Translation 是火山方舟面向翻译任务优化的模型。"
+	case "doubao-seed-character":
+		return "Doubao Seed Character 是火山方舟面向角色对话和个性化交互的模型。"
 	case "doubao-seed-1.6":
 		return "Doubao Seed 1.6 是火山方舟的通用高能力模型，适合复杂对话、推理和多模态任务。"
 	case "doubao-seed-1.6-thinking":
@@ -281,6 +299,8 @@ func volcengineProviderModelDescription(modelName string) string {
 		return "Seed1.6-Embedding 是火山方舟的全模态向量化模型，支持文本、图像和视频混合模态检索。"
 	case "doubao-seed-code-preview-latest":
 		return "Doubao Seed Code 是火山方舟面向代码生成、补全和工程任务优化的编程模型。"
+	case "doubao-embedding-vision":
+		return "Doubao Embedding Vision 是火山方舟的多模态向量模型，支持文本、图像等内容的向量化检索。"
 	default:
 		return ""
 	}
