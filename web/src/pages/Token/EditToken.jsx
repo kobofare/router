@@ -32,6 +32,7 @@ import {
   AppFormRow,
   AppInput,
   AppInputNumber,
+  AppSelect,
   AppSwitch,
   AppTable,
   AppTabs,
@@ -61,6 +62,7 @@ const EditToken = () => {
   const [detailEditingSection, setDetailEditingSection] = useState('');
   const [activeDetailTab, setActiveDetailTab] = useState('basic');
   const [createdToken, setCreatedToken] = useState(null);
+  const [expireTimeMode, setExpireTimeMode] = useState('custom');
   const [billingCurrencyIndex, setBillingCurrencyIndex] = useState(
     buildPublicDisplayCurrencyIndex([])
   );
@@ -94,6 +96,41 @@ const EditToken = () => {
   const quotaUnitOptions = useMemo(
     () => buildBillingUnitOptions(billingCurrencyIndex),
     [billingCurrencyIndex]
+  );
+  const expireTimeModeOptions = useMemo(
+    () => [
+      {
+        key: 'custom',
+        value: 'custom',
+        text: t('token.edit.expire_time_options.custom'),
+      },
+      {
+        key: 'never',
+        value: 'never',
+        text: t('token.edit.buttons.never_expire'),
+      },
+      {
+        key: '1_month',
+        value: '1_month',
+        text: t('token.edit.buttons.expire_1_month'),
+      },
+      {
+        key: '1_day',
+        value: '1_day',
+        text: t('token.edit.buttons.expire_1_day'),
+      },
+      {
+        key: '1_hour',
+        value: '1_hour',
+        text: t('token.edit.buttons.expire_1_hour'),
+      },
+      {
+        key: '1_minute',
+        value: '1_minute',
+        text: t('token.edit.buttons.expire_1_minute'),
+      },
+    ],
+    [t]
   );
   const basicReadonly = isDetailMode && detailEditingSection !== 'basic';
   const modelsReadonly = isDetailMode && detailEditingSection !== 'models';
@@ -174,6 +211,7 @@ const EditToken = () => {
     }
     setInputs(normalizedData);
     setPersistedInputs(normalizedData);
+    setExpireTimeMode('custom');
     setQuotaInputValue(
       yycToBillingInputValue(
         normalizedData.remain_quota,
@@ -187,6 +225,14 @@ const EditToken = () => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
   };
 
+  const formatDateTimeLocalInputValue = (value) => {
+    const normalizedValue = (value || '').toString().trim();
+    if (normalizedValue === '') {
+      return '';
+    }
+    return normalizedValue.replace(' ', 'T').slice(0, 16);
+  };
+
   const startDetailSectionEdit = useCallback((section) => {
     if (!isDetailMode) {
       return;
@@ -196,6 +242,7 @@ const EditToken = () => {
 
   const cancelDetailSectionEdit = useCallback(() => {
     setInputs(persistedInputs);
+    setExpireTimeMode('custom');
     setQuotaInputValue(
       yycToBillingInputValue(
         persistedInputs.remain_quota,
@@ -244,9 +291,38 @@ const EditToken = () => {
     seconds += minute * 60;
     if (seconds !== 0) {
       timestamp += seconds;
-      setInputs({ ...inputs, expired_time: timestamp2string(timestamp) });
+      setInputs((prev) => ({ ...prev, expired_time: timestamp2string(timestamp) }));
     } else {
-      setInputs({ ...inputs, expired_time: '' });
+      setInputs((prev) => ({ ...prev, expired_time: '' }));
+    }
+  };
+
+  const handleExpiredTimeChange = (event, data) => {
+    handleInputChange(event, data);
+    setExpireTimeMode('custom');
+  };
+
+  const handleExpireTimeModeChange = (_, { value }) => {
+    const nextMode = (value || 'custom').toString();
+    setExpireTimeMode(nextMode);
+    switch (nextMode) {
+      case 'never':
+        setExpiredTime(0, 0, 0, 0);
+        break;
+      case '1_month':
+        setExpiredTime(1, 0, 0, 0);
+        break;
+      case '1_day':
+        setExpiredTime(0, 1, 0, 0);
+        break;
+      case '1_hour':
+        setExpiredTime(0, 0, 1, 0);
+        break;
+      case '1_minute':
+        setExpiredTime(0, 0, 0, 1);
+        break;
+      default:
+        break;
     }
   };
 
@@ -380,9 +456,14 @@ const EditToken = () => {
     localInputs.models = isEveryModelSelected ? '' : localInputs.models.join(',');
     let res;
     if (isDetailMode) {
+      const normalizedTokenId = (tokenId || '').toString().trim();
+      if (normalizedTokenId === '') {
+        showError(t('token.edit.messages.id_required'));
+        return;
+      }
       res = await API.put(`/api/v1/public/token/`, {
         ...localInputs,
-        id: parseInt(tokenId),
+        id: normalizedTokenId,
       });
     } else {
       res = await API.post(`/api/v1/public/token/`, localInputs);
@@ -402,6 +483,7 @@ const EditToken = () => {
         showSuccess(t('token.edit.messages.create_success'));
         setCreatedToken(data || null);
         setInputs(originInputs);
+        setExpireTimeMode('custom');
         setQuotaInputValue(
           yycToBillingInputValue(
             originInputs.remain_quota,
@@ -625,67 +707,29 @@ const EditToken = () => {
                     />
                   </AppField>
                 </AppFormRow>
-                <AppFormRow>
+                <AppFormRow className='router-token-expire-row'>
                   <AppField label={t('token.edit.expire_time')}>
+                    <AppSelect
+                      className='router-section-dropdown router-token-expire-mode-select'
+                      options={expireTimeModeOptions}
+                      value={expireTimeMode}
+                      onChange={handleExpireTimeModeChange}
+                    />
+                  </AppField>
+                  <AppField label={t('token.edit.expire_time_options.custom')}>
                     <AppInput
                       className='router-section-input'
                       name='expired_time'
                       placeholder={t('token.edit.expire_time_placeholder')}
-                      onChange={handleInputChange}
-                      value={expired_time}
+                      onChange={handleExpiredTimeChange}
+                      value={formatDateTimeLocalInputValue(expired_time)}
                       autoComplete='new-password'
                       type='datetime-local'
+                      disabled={expireTimeMode !== 'custom'}
                       readOnly={false}
                     />
                   </AppField>
                 </AppFormRow>
-                <div className='router-token-expire-actions'>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.never_expire')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(1, 0, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_month')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 1, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_day')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 1, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_hour')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 0, 1);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_minute')}
-                  </AppButton>
-                </div>
                 <AppFormRow className='router-token-quota-row'>
                   <AppField
                     className='router-token-quota-field'
@@ -817,69 +861,30 @@ const EditToken = () => {
                       />
                     </AppField>
                   </AppFormRow>
-                  <AppFormRow>
+                  <AppFormRow className='router-token-expire-row'>
                     <AppField label={t('token.edit.expire_time')}>
+                      <AppSelect
+                        className='router-section-dropdown router-token-expire-mode-select'
+                        options={expireTimeModeOptions}
+                        value={expireTimeMode}
+                        onChange={handleExpireTimeModeChange}
+                        disabled={basicReadonly}
+                      />
+                    </AppField>
+                    <AppField label={t('token.edit.expire_time_options.custom')}>
                       <AppInput
                         className='router-section-input'
                         name='expired_time'
                         placeholder={t('token.edit.expire_time_placeholder')}
-                        onChange={handleInputChange}
-                        value={expired_time}
+                        onChange={handleExpiredTimeChange}
+                        value={formatDateTimeLocalInputValue(expired_time)}
                         autoComplete='new-password'
                         type='datetime-local'
+                        disabled={basicReadonly || expireTimeMode !== 'custom'}
                         readOnly={basicReadonly}
                       />
                     </AppField>
                   </AppFormRow>
-                  {detailEditingSection === 'basic' ? (
-                    <div className='router-token-expire-actions'>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.never_expire')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(1, 0, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_month')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 1, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_day')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 1, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_hour')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 0, 1);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_minute')}
-                      </AppButton>
-                    </div>
-                  ) : null}
                   <AppFormRow className='router-token-quota-row'>
                     <AppField
                       className='router-token-quota-field'
