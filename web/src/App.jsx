@@ -259,7 +259,7 @@ function App() {
   const walletDisconnectTimerRef = useRef(null);
 
   const clearWalletSession = useCallback(
-    async (message) => {
+    async () => {
       window.clearTimeout(walletDisconnectTimerRef.current);
       walletDisconnectTimerRef.current = null;
       try {
@@ -278,9 +278,6 @@ function App() {
       localStorage.removeItem('user');
       localStorage.removeItem(WEB3_TOKEN_STORAGE_KEY);
       localStorage.removeItem('wallet_token_expires_at');
-      if (message) {
-        showNotice(message);
-      }
       if (location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
@@ -313,7 +310,7 @@ function App() {
     walletDisconnectTimerRef.current = window.setTimeout(() => {
       walletDisconnectTimerRef.current = null;
       if (isWalletSessionActive()) {
-        clearWalletSession('钱包连接已断开，请重新登录').then();
+        clearWalletSession().then();
       }
     }, 2200);
   }, [clearWalletSession, isWalletSessionActive]);
@@ -332,7 +329,7 @@ function App() {
         return;
       }
       if (currentWalletAddress === '' || currentWalletAddress !== nextWalletAddress) {
-        clearWalletSession('钱包账户已变更，请重新登录').then();
+        clearWalletSession().then();
       }
     },
     [
