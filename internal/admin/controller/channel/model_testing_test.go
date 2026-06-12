@@ -100,6 +100,22 @@ func TestBuildChannelModelTestResult_PreserveIsStream(t *testing.T) {
 	}
 }
 
+func TestResolveChannelImageModelTestSize_UsesLargeSizeForVolcengineSeedream(t *testing.T) {
+	channel := &adminmodel.Channel{Protocol: "doubao"}
+	got := resolveChannelImageModelTestSize(channel, "doubao-seedream-5-0-lite-260128")
+	if got != "2048x2048" {
+		t.Fatalf("resolveChannelImageModelTestSize() = %q, want 2048x2048", got)
+	}
+}
+
+func TestResolveChannelImageModelTestSize_KeepsDefaultForRegularImages(t *testing.T) {
+	channel := &adminmodel.Channel{Protocol: "openai"}
+	got := resolveChannelImageModelTestSize(channel, "gpt-image-1")
+	if got != "1024x1024" {
+		t.Fatalf("resolveChannelImageModelTestSize() = %q, want 1024x1024", got)
+	}
+}
+
 func TestResolveChannelModelTestEndpoint_StrictRejectsEmpty(t *testing.T) {
 	_, err := resolveChannelModelTestEndpoint(adminmodel.ProviderModelTypeText, "")
 	if err == nil {
@@ -163,6 +179,38 @@ func TestResolveChannelModelTestEndpointForRow_AllowsRealtimeForAudioModel(t *te
 	}
 	if endpoint != adminmodel.ChannelModelEndpointRealtime {
 		t.Fatalf("endpoint = %q, want %q", endpoint, adminmodel.ChannelModelEndpointRealtime)
+	}
+}
+
+func TestResolveChannelModelTestEndpointForRow_AllowsEmbeddingsForEmbeddingModel(t *testing.T) {
+	endpoint, err := resolveChannelModelTestEndpointForRow(adminmodel.ChannelModel{
+		Model:     "text-embedding-3-small",
+		Type:      adminmodel.ProviderModelTypeEmbedding,
+		Endpoint:  adminmodel.ChannelModelEndpointEmbeddings,
+		Endpoints: []string{adminmodel.ChannelModelEndpointEmbeddings},
+	})
+	if err != nil {
+		t.Fatalf("resolveChannelModelTestEndpointForRow returned error: %v", err)
+	}
+	if endpoint != adminmodel.ChannelModelEndpointEmbeddings {
+		t.Fatalf("endpoint = %q, want %q", endpoint, adminmodel.ChannelModelEndpointEmbeddings)
+	}
+}
+
+func TestResolveChannelModelTestEndpoint_RejectsResponsesForEmbedding(t *testing.T) {
+	_, err := resolveChannelModelTestEndpoint(adminmodel.ProviderModelTypeEmbedding, adminmodel.ChannelModelEndpointResponses)
+	if err == nil {
+		t.Fatalf("expected error when embedding model uses responses endpoint")
+	}
+}
+
+func TestParseEmbeddingModelTestResponse(t *testing.T) {
+	message, err := parseEmbeddingModelTestResponse(`{"object":"list","data":[{"object":"embedding","embedding":[0.1,0.2,0.3],"index":0}]}`)
+	if err != nil {
+		t.Fatalf("parseEmbeddingModelTestResponse returned error: %v", err)
+	}
+	if message != "embedding dimensions: 3" {
+		t.Fatalf("message = %q, want embedding dimensions: 3", message)
 	}
 }
 

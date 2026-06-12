@@ -48,7 +48,28 @@ func explicitProviderModelSupportedEndpoints(provider string, modelType string, 
 	switch provider {
 	case "qwen":
 		return qwenProviderSupportedEndpoints(modelType, modelName, current)
+	case "volcengine":
+		return volcengineProviderSupportedEndpoints(modelType, modelName, current)
 	default:
+		return nil, false
+	}
+}
+
+func volcengineProviderSupportedEndpoints(modelType string, modelName string, current []string) ([]string, bool) {
+	normalizedType := normalizeModelType(modelType, modelName)
+	switch normalizedType {
+	case ProviderModelTypeEmbedding:
+		return []string{ChannelModelEndpointEmbeddings}, true
+	case ProviderModelTypeImage:
+		return []string{ChannelModelEndpointImages}, true
+	case ProviderModelTypeVideo:
+		return []string{}, true
+	case ProviderModelTypeText:
+		return []string{ChannelModelEndpointChat, ChannelModelEndpointResponses}, true
+	default:
+		if len(current) > 0 {
+			return NormalizeProviderModelSupportedEndpointsForModel(modelType, modelName, current), true
+		}
 		return nil, false
 	}
 }
@@ -62,9 +83,6 @@ func qwenProviderSupportedEndpoints(modelType string, modelName string, current 
 	case strings.Contains(normalizedModelName, "tts"):
 		return []string{}, true
 	case strings.HasPrefix(normalizedModelName, "qwen-image"):
-		if len(current) > 0 {
-			return NormalizeProviderModelSupportedEndpointsForModel(modelType, modelName, current), true
-		}
 		return []string{ChannelModelEndpointImages, ChannelModelEndpointImageEdit}, true
 	case strings.HasSuffix(normalizedModelName, "-realtime"),
 		strings.Contains(normalizedModelName, "omni-realtime"):

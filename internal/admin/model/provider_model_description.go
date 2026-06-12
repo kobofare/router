@@ -271,6 +271,24 @@ func xAIProviderModelDescription(modelName string) string {
 
 func volcengineProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "doubao-seed-2-0-pro-260215":
+		return "Doubao Seed 2.0 Pro 是火山方舟的新一代高能力通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2-0-lite-260428":
+		return "Doubao Seed 2.0 Lite 是火山方舟的新一代轻量通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2-0-mini-260428":
+		return "Doubao Seed 2.0 Mini 是火山方舟的新一代低成本通用模型，支持深度思考、文本生成、多模态理解和工具调用。"
+	case "doubao-seed-2-0-code-preview-260215":
+		return "Doubao Seed 2.0 Code Preview 是火山方舟面向代码生成、补全和工程任务优化的新一代编程模型。"
+	case "doubao-seed-1-8-251228":
+		return "Doubao Seed 1.8 是火山方舟的通用模型，适合文本生成、多模态理解和工具调用。"
+	case "doubao-seed-1-6-vision-250815":
+		return "Doubao Seed 1.6 Vision 是火山方舟的多模态理解模型，支持视觉理解和文本生成。"
+	case "doubao-seed-code-preview-251028":
+		return "Doubao Seed Code Preview 是火山方舟面向代码生成、补全和工程任务优化的编程模型。"
+	case "doubao-seed-translation-250915":
+		return "Doubao Seed Translation 是火山方舟面向翻译任务优化的模型。"
+	case "doubao-seed-character-251128":
+		return "Doubao Seed Character 是火山方舟面向角色对话和个性化交互的模型。"
 	case "doubao-seed-1.6":
 		return "Doubao Seed 1.6 是火山方舟的通用高能力模型，适合复杂对话、推理和多模态任务。"
 	case "doubao-seed-1.6-thinking":
@@ -281,6 +299,24 @@ func volcengineProviderModelDescription(modelName string) string {
 		return "Seed1.6-Embedding 是火山方舟的全模态向量化模型，支持文本、图像和视频混合模态检索。"
 	case "doubao-seed-code-preview-latest":
 		return "Doubao Seed Code 是火山方舟面向代码生成、补全和工程任务优化的编程模型。"
+	case "doubao-embedding-vision-251215":
+		return "Doubao Embedding Vision 是火山方舟的多模态向量模型，支持文本、图像等内容的向量化检索。"
+	case "doubao-seedream-5-0-lite-260128":
+		return "Doubao Seedream 5.0 Lite 是火山方舟图片生成模型，按成功输出图片数量计费。"
+	case "doubao-seedream-4-5-251128":
+		return "Doubao Seedream 4.5 是火山方舟图片生成模型，按成功输出图片数量计费。"
+	case "doubao-seedream-4-0-250828":
+		return "Doubao Seedream 4.0 是火山方舟图片生成模型，按成功输出图片数量计费。"
+	case "doubao-seedance-2-0-260128":
+		return "Doubao Seedance 2.0 是火山方舟视频生成模型，按 token 用量和视频规格分档计费。"
+	case "doubao-seedance-2-0-fast-260128":
+		return "Doubao Seedance 2.0 Fast 是火山方舟视频生成模型，按 token 用量和输入是否包含视频分档计费。"
+	case "doubao-seedance-1-5-pro-251215":
+		return "Doubao Seedance 1.5 Pro 是火山方舟视频生成模型，按 token 用量和是否有声分档计费。"
+	case "doubao-seedance-1-0-pro-250528":
+		return "Doubao Seedance 1.0 Pro 是火山方舟视频生成模型，按 token 用量计费。"
+	case "doubao-seedance-1-0-pro-fast-251015":
+		return "Doubao Seedance 1.0 Pro Fast 是火山方舟视频生成模型，按 token 用量计费。"
 	default:
 		return ""
 	}
@@ -403,16 +439,46 @@ func stepFunProviderModelDescription(modelName string) string {
 
 func zhipuProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "glm-5.1":
+		return "GLM-5.1 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。"
+	case "glm-5-turbo":
+		return "GLM-5-Turbo 是智谱的高速通用模型。"
+	case "glm-5":
+		return "GLM-5 是智谱的通用模型，面向推理、编码和智能体任务。"
+	case "glm-5v-turbo":
+		return "GLM-5V-Turbo 是智谱的多模态 Agent 基座模型，支持图像、视频、文本和文件输入。"
+	case "glm-4.7":
+		return "GLM-4.7 是智谱的旗舰通用模型，面向编程、多步骤推理和智能体任务。"
+	case "glm-4.7-flashx":
+		return "GLM-4.7-FlashX 是智谱的轻量语言模型。"
+	case "glm-4.7-flash":
+		return "GLM-4.7-Flash 是智谱的免费轻量语言模型。"
 	case "glm-4.5-air":
-		return "GLM-4.5-Air 是智谱的通用模型，适合对话和生成任务。"
+		return "GLM-4.5-Air 是智谱的轻量通用模型，支持推理、编码和智能体任务。"
+	case "glm-4.6v":
+		return "GLM-4.6V 是智谱的视觉推理模型，支持多模态工具调用。"
+	case "glm-4.6v-flashx":
+		return "GLM-4.6V-FlashX 是智谱的轻量视觉理解模型。"
+	case "glm-4.6v-flash":
+		return "GLM-4.6V-Flash 是智谱的免费视觉理解模型。"
+	case "glm-4.5v":
+		return "GLM-4.5V 是智谱的视觉理解模型。"
 	case "glm-4v-plus-0111":
 		return "GLM-4V-Plus 是智谱的视觉语言模型。"
 	case "glm-4-voice":
 		return "GLM-4-Voice 是智谱的语音模型。"
+	case "glm-image":
+		return "GLM-Image 是智谱的图像生成模型。"
 	case "cogview-4-250304":
 		return "CogView 4 是智谱的图像生成模型。"
+	case "cogvideox-2":
+		return "CogVideoX-2 是智谱的视频生成模型。"
 	case "cogvideox-flash":
 		return "CogVideoX Flash 是智谱的视频生成模型。"
+	case "embedding-2":
+		return "Embedding-2 是智谱的向量模型。"
+	case "embedding-3":
+		return "Embedding-3 是智谱的向量模型。"
 	default:
 		return ""
 	}

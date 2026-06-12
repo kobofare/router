@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -54,6 +55,16 @@ func TestDefaultProviderModelSupportedEndpointsByProvider(t *testing.T) {
 		t.Fatalf("embedding default endpoints = %#v, want embeddings", embedding)
 	}
 
+	volcengineText := DefaultProviderModelSupportedEndpoints("volcengine", ProviderModelTypeText, "doubao-seed-2-0-pro-260215")
+	if len(volcengineText) != 2 ||
+		volcengineText[0] != ChannelModelEndpointChat ||
+		volcengineText[1] != ChannelModelEndpointResponses {
+		t.Fatalf("volcengine text default endpoints = %#v, want chat+responses", volcengineText)
+	}
+	if providerModelEndpointsContain(volcengineText, ChannelModelEndpointMessages) {
+		t.Fatalf("volcengine text default endpoints = %#v, should not include messages", volcengineText)
+	}
+
 	qwenVL := DefaultProviderModelSupportedEndpoints("qwen", ProviderModelTypeImage, "qwen-vl-max")
 	if len(qwenVL) != 1 || qwenVL[0] != ChannelModelEndpointChat {
 		t.Fatalf("qwen vl default endpoints = %#v, want chat", qwenVL)
@@ -77,6 +88,13 @@ func TestDefaultProviderModelSupportedEndpointsByProvider(t *testing.T) {
 	qwenImage := DefaultProviderModelSupportedEndpoints("qwen", ProviderModelTypeImage, "qwen-image-2.0")
 	if len(qwenImage) != 2 || qwenImage[0] != ChannelModelEndpointImages || qwenImage[1] != ChannelModelEndpointImageEdit {
 		t.Fatalf("qwen image default endpoints = %#v, want images+edits", qwenImage)
+	}
+}
+
+func TestDefaultChannelModelEndpointWithProtocol_ZhipuTextUsesChat(t *testing.T) {
+	got := DefaultChannelModelEndpointWithProtocol(ProviderModelTypeText, relaychannel.Zhipu)
+	if got != ChannelModelEndpointChat {
+		t.Fatalf("zhipu text default endpoint = %q, want %q", got, ChannelModelEndpointChat)
 	}
 }
 
@@ -108,13 +126,16 @@ func TestNormalizeProviderModelSupportedEndpointsForQwenSpecialModels(t *testing
 		t.Fatalf("qwen tts normalized endpoints = %#v, want empty", qwenTTS)
 	}
 
-	qwenImage := NormalizeProviderModelSupportedEndpointsForModel(
+	qwenImage, handled := qwenProviderSupportedEndpoints(
 		ProviderModelTypeImage,
 		"qwen-image-2.0",
 		[]string{ChannelModelEndpointResponses, ChannelModelEndpointImages, ChannelModelEndpointImageEdit},
 	)
-	if len(qwenImage) != 3 || qwenImage[0] != ChannelModelEndpointResponses || qwenImage[1] != ChannelModelEndpointImages || qwenImage[2] != ChannelModelEndpointImageEdit {
-		t.Fatalf("qwen image normalized endpoints = %#v, want responses+images+edits", qwenImage)
+	if !handled {
+		t.Fatalf("qwen image endpoint rule handled=false, want true")
+	}
+	if len(qwenImage) != 2 || qwenImage[0] != ChannelModelEndpointImages || qwenImage[1] != ChannelModelEndpointImageEdit {
+		t.Fatalf("qwen image normalized endpoints = %#v, want images+edits", qwenImage)
 	}
 }
 
@@ -255,17 +276,14 @@ func TestMergeChannelModelEndpointListRowsExplicitOverridesSnapshotState(t *test
 	}
 }
 
-func TestMergeChannelModelEndpointListRowsKeepsExplicitOnlyRows(t *testing.T) {
+func TestMergeChannelModelEndpointListRowsDropsExplicitOnlyRows(t *testing.T) {
 	explicitRows := []ChannelModelEndpoint{
 		{ChannelId: "channel-1", Model: "gpt-5.4", Endpoint: ChannelModelEndpointChat, Enabled: false, UpdatedAt: 789},
 	}
 
 	got := MergeChannelModelEndpointListRows(nil, explicitRows)
-	if len(got) != 1 {
-		t.Fatalf("len(got) = %d, want 1 for explicit-only row", len(got))
-	}
-	if got[0].Endpoint != ChannelModelEndpointChat || got[0].Enabled {
-		t.Fatalf("explicit-only row = (%q, %t), want (%q, false)", got[0].Endpoint, got[0].Enabled, ChannelModelEndpointChat)
+	if len(got) != 0 {
+		t.Fatalf("len(got) = %d, want 0 for endpoint outside provider baseline", len(got))
 	}
 }
 

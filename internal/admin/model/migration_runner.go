@@ -1352,8 +1352,314 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				).Error
 			},
 		},
+		{
+			Version:     "202606111030_refresh_zhipu_provider_models",
+			Description: "upsert zhipu official provider models and pricing",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
+			},
+		},
+		{
+			Version:     "202606111130_zhipu_messages_endpoint_support",
+			Description: "upsert zhipu official messages endpoint support for claude-compatible models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
+			},
+		},
+		{
+			Version:     "202606111140_channel_protocol_zhipu_label",
+			Description: "rename zhipu channel protocol label to ChatGLM",
+			Up: func(tx *gorm.DB) error {
+				return tx.Model(&ChannelProtocolCatalog{}).
+					Where("name = ?", "zhipu").
+					Updates(map[string]any{
+						"label":      "ChatGLM",
+						"updated_at": helper.GetTimestamp(),
+					}).Error
+			},
+		},
+		{
+			Version:     "202606111150_zhipu_channel_endpoint_baseline_cleanup",
+			Description: "rebuild zhipu channel endpoints from official provider endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				return cleanupChannelEndpointBaselineWithDB(tx, "zhipu", "zhipu", true)
+			},
+		},
+		{
+			Version:     "202606111160_qwen_channel_endpoint_baseline_cleanup",
+			Description: "rebuild qwen channel endpoints from official provider endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "qwen"); err != nil {
+					return err
+				}
+				return cleanupChannelEndpointBaselineWithDB(tx, "ali", "qwen", false)
+			},
+		},
+		{
+			Version:     "202606111210_refresh_volcengine_provider_models",
+			Description: "upsert latest volcengine doubao provider models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "volcengine")
+			},
+		},
+		{
+			Version:     "202606111220_volcengine_channel_upstream_models",
+			Description: "map volcengine stable model aliases to official upstream model ids",
+			Up: func(tx *gorm.DB) error {
+				return updateVolcengineChannelUpstreamModelsWithDB(tx)
+			},
+		},
+		{
+			Version:     "202606111230_channel_protocol_volcengine_label",
+			Description: "rename doubao channel protocol label to Volcengine",
+			Up: func(tx *gorm.DB) error {
+				return tx.Model(&ChannelProtocolCatalog{}).
+					Where("name = ?", "doubao").
+					Updates(map[string]any{
+						"label":       "Volcengine",
+						"description": "Volcengine Ark",
+						"updated_at":  helper.GetTimestamp(),
+					}).Error
+			},
+		},
+		{
+			Version:     "202606111240_volcengine_channel_endpoint_baseline_cleanup",
+			Description: "rebuild volcengine channel endpoints from official provider endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "volcengine"); err != nil {
+					return err
+				}
+				return cleanupChannelEndpointBaselineWithDB(tx, "doubao", "volcengine", false)
+			},
+		},
+		{
+			Version:     "202606120010_refresh_volcengine_provider_pricing",
+			Description: "refresh volcengine provider pricing from official model pricing document",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "volcengine")
+			},
+		},
+		{
+			Version:     "202606120030_refresh_volcengine_multimodal_official_models",
+			Description: "refresh volcengine official multimodal models and rename old model names to official ids",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "volcengine"); err != nil {
+					return err
+				}
+				return renameVolcengineOldModelNamesWithDB(tx)
+			},
+		},
+		{
+			Version:     "202606120040_fix_volcengine_multimodal_api_model_ids",
+			Description: "rename volcengine multimodal display model names to official api model ids",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "volcengine"); err != nil {
+					return err
+				}
+				return renameVolcengineOldModelNamesWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func volcengineOldModelNameToOfficialModelMap() map[string]string {
+	return map[string]string{
+		"doubao-seed-2.0-pro":          "doubao-seed-2-0-pro-260215",
+		"doubao-seed-2.0-lite":         "doubao-seed-2-0-lite-260428",
+		"doubao-seed-2.0-mini":         "doubao-seed-2-0-mini-260428",
+		"doubao-seed-2.0-code":         "doubao-seed-2-0-code-preview-260215",
+		"doubao-seed-1.8":              "doubao-seed-1-8-251228",
+		"doubao-seed-1.6-vision":       "doubao-seed-1-6-vision-250815",
+		"doubao-seed-code":             "doubao-seed-code-preview-251028",
+		"doubao-seed-translation":      "doubao-seed-translation-250915",
+		"doubao-seed-character":        "doubao-seed-character-251128",
+		"doubao-embedding-vision":      "doubao-embedding-vision-251215",
+		"doubao-seedream-5.0-lite":     "doubao-seedream-5-0-lite-260128",
+		"doubao-seedream-4.5":          "doubao-seedream-4-5-251128",
+		"doubao-seedream-4.0":          "doubao-seedream-4-0-250828",
+		"doubao-seedance-2.0":          "doubao-seedance-2-0-260128",
+		"doubao-seedance-2.0-fast":     "doubao-seedance-2-0-fast-260128",
+		"doubao-seedance-1.5-pro":      "doubao-seedance-1-5-pro-251215",
+		"doubao-seedance-1.0-pro":      "doubao-seedance-1-0-pro-250528",
+		"doubao-seedance-1.0-pro-fast": "doubao-seedance-1-0-pro-fast-251015",
+	}
+}
+
+func renameVolcengineOldModelNamesWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	for oldModelName, officialModel := range volcengineOldModelNameToOfficialModelMap() {
+		for _, tableName := range []string{
+			ChannelModelsTableName,
+			ChannelModelEndpointsTableName,
+			ChannelModelEndpointTestResultsTableName,
+			ChannelModelSyncResultsTableName,
+			ChannelTestsTableName,
+			ChannelModelPriceComponentsTableName,
+			ChannelModelEndpointPoliciesTableName,
+		} {
+			if err := db.Table(tableName).
+				Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+				Where("model = ?", oldModelName).
+				Updates(map[string]any{"model": officialModel}).Error; err != nil {
+				return err
+			}
+		}
+		for _, tableName := range []string{
+			ChannelModelsTableName,
+			ChannelModelEndpointTestResultsTableName,
+			ChannelModelSyncResultsTableName,
+			ChannelTestsTableName,
+		} {
+			if err := db.Table(tableName).
+				Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+				Where("upstream_model = ? OR upstream_model = ?", oldModelName, officialModel).
+				Updates(map[string]any{"upstream_model": officialModel}).Error; err != nil {
+				return err
+			}
+		}
+		if err := db.Table(GroupModelChannelsTableName).
+			Where("provider = ?", "volcengine").
+			Where("upstream_model = ? OR upstream_model = ?", oldModelName, officialModel).
+			Updates(map[string]any{"upstream_model": officialModel}).Error; err != nil {
+			return err
+		}
+		for _, tableName := range []string{
+			GroupModelsTableName,
+			GroupModelChannelsTableName,
+		} {
+			if err := db.Table(tableName).
+				Where("provider = ?", "volcengine").
+				Where("model = ?", oldModelName).
+				Updates(map[string]any{"model": officialModel}).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func updateVolcengineChannelUpstreamModelsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	for publicModel, upstreamModel := range volcengineOldModelNameToOfficialModelMap() {
+		if err := db.Model(&ChannelModel{}).
+			Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+			Where("model = ?", publicModel).
+			Where("(upstream_model = '' OR upstream_model = ?)", publicModel).
+			Update("upstream_model", upstreamModel).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupChannelEndpointBaselineWithDB(db *gorm.DB, channelProtocol string, provider string, assignAllRows bool) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedProtocol := strings.TrimSpace(strings.ToLower(channelProtocol))
+	normalizedProvider := NormalizeGroupModelProviderValue(provider)
+	if normalizedProtocol == "" || normalizedProvider == "" {
+		return nil
+	}
+	channels := make([]Channel, 0)
+	if err := db.
+		Select("id").
+		Where("protocol = ?", normalizedProtocol).
+		Find(&channels).Error; err != nil {
+		return err
+	}
+	for _, channel := range channels {
+		channelID := strings.TrimSpace(channel.Id)
+		if channelID == "" {
+			continue
+		}
+		rows, err := listChannelModelRowsByChannelIDWithDB(db, channelID)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			continue
+		}
+		modelNames := channelModelProviderLookupCandidates(rows)
+		endpointsByModel, err := LoadProviderModelEndpointMapByModelsWithDB(db, normalizedProvider, modelNames)
+		if err != nil {
+			return err
+		}
+		if len(endpointsByModel) == 0 {
+			continue
+		}
+		providerEndpoints := make(map[string][]string, len(endpointsByModel))
+		for modelName, endpoints := range endpointsByModel {
+			key := buildProviderModelEndpointKey(normalizedProvider, modelName)
+			if key == "" {
+				continue
+			}
+			providerEndpoints[key] = endpoints
+		}
+		now := helper.GetTimestamp()
+		changed := false
+		for idx := range rows {
+			if !assignAllRows && !channelModelMatchesProviderEndpointBaseline(rows[idx], normalizedProvider, providerEndpoints) {
+				continue
+			}
+			rows[idx].Provider = normalizedProvider
+			supportedEndpoints := resolveProviderEndpointCandidatesForChannelModel(rows[idx], providerEndpoints)
+			currentEndpoint := NormalizeRequestedChannelModelEndpoint(rows[idx].Endpoint)
+			if len(supportedEndpoints) > 0 && !channelModelEndpointInSet(currentEndpoint, supportedEndpoints) {
+				rows[idx].Endpoint = supportedEndpoints[0]
+			}
+			changed = true
+			if err := db.Model(&ChannelModel{}).
+				Where("channel_id = ? AND model = ?", channelID, rows[idx].Model).
+				Updates(map[string]any{
+					"provider":   rows[idx].Provider,
+					"endpoint":   rows[idx].Endpoint,
+					"updated_at": now,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		if !changed {
+			continue
+		}
+		if err := SyncChannelModelEndpointsWithDB(db, channelID, rows); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func channelModelMatchesProviderEndpointBaseline(row ChannelModel, provider string, providerEndpoints map[string][]string) bool {
+	if NormalizeGroupModelProviderValue(row.Provider) == NormalizeGroupModelProviderValue(provider) {
+		return true
+	}
+	normalized := row
+	normalizeChannelModelRow(&normalized)
+	for _, modelName := range NormalizeProviderLookupCandidates(normalized.Model, normalized.UpstreamModel) {
+		key := buildProviderModelEndpointKey(provider, modelName)
+		if len(providerEndpoints[key]) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func channelModelEndpointInSet(endpoint string, candidates []string) bool {
+	normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
+	if normalizedEndpoint == "" {
+		return false
+	}
+	for _, candidate := range candidates {
+		if normalizedEndpoint == NormalizeRequestedChannelModelEndpoint(candidate) {
+			return true
+		}
+	}
+	return false
 }
 
 func backfillProviderModelTagsWithDB(db *gorm.DB) error {

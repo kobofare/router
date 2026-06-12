@@ -1,9 +1,27 @@
 package doubao
 
 var ModelList = []string{
+	"doubao-seed-2-0-pro-260215",
+	"doubao-seed-2-0-lite-260428",
+	"doubao-seed-2-0-mini-260428",
+	"doubao-seed-2-0-code-preview-260215",
+	"doubao-seed-1-8-251228",
+	"doubao-seed-1-6-vision-250815",
+	"doubao-seed-code-preview-251028",
+	"doubao-seed-translation-250915",
+	"doubao-seed-character-251128",
 	"doubao-seed-1.6-thinking",
 	"doubao-seed-1.6",
 	"doubao-seed-1.6-flash",
 	"doubao-seed-code-preview-latest",
 	"Seed1.6-Embedding",
+	"doubao-embedding-vision-251215",
+	"doubao-seedream-5-0-lite-260128",
+	"doubao-seedream-4-5-251128",
+	"doubao-seedream-4-0-250828",
+	"doubao-seedance-2-0-260128",
+	"doubao-seedance-2-0-fast-260128",
+	"doubao-seedance-1-5-pro-251215",
+	"doubao-seedance-1-0-pro-250528",
+	"doubao-seedance-1-0-pro-fast-251015",
 }

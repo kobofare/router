@@ -1407,6 +1407,8 @@ func normalizeExplicitChannelModelType(raw string) string {
 		return ProviderModelTypeAudio
 	case ProviderModelTypeVideo:
 		return ProviderModelTypeVideo
+	case ProviderModelTypeEmbedding:
+		return ProviderModelTypeEmbedding
 	default:
 		return ""
 	}
@@ -1540,6 +1542,9 @@ func DefaultChannelModelEndpointWithProtocol(modelType string, channelProtocol i
 	case ProviderModelTypeText:
 		if channelProtocol == relaychannel.Anthropic {
 			return ChannelModelEndpointMessages
+		}
+		if channelProtocol == relaychannel.Zhipu {
+			return ChannelModelEndpointChat
 		}
 	}
 	return DefaultChannelModelEndpoint(modelType)

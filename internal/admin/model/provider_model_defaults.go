@@ -420,6 +420,11 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 		strings.Contains(lowerModelName, "asr"):
 		return normalizedEndpoint == ChannelModelEndpointChat ||
 			normalizedEndpoint == ChannelModelEndpointRealtime
+	case isDoubaoVisionChatModel(lowerModelName):
+		return normalizedEndpoint == ChannelModelEndpointChat ||
+			normalizedEndpoint == ChannelModelEndpointResponses
+	case isZhipuVisionChatModel(lowerModelName):
+		return normalizedEndpoint == ChannelModelEndpointChat
 	case strings.Contains(lowerModelName, "tts"):
 		return false
 	}
@@ -445,6 +450,27 @@ func IsChannelModelEndpointAllowedForModel(modelType string, modelName string, e
 			return false
 		}
 	}
+}
+
+func isZhipuVisionChatModel(lowerModelName string) bool {
+	switch lowerModelName {
+	case "glm-4v-plus-0111",
+		"glm-4v-plus",
+		"glm-4v",
+		"glm-4v-flash",
+		"glm-4.5v",
+		"glm-4.6v",
+		"glm-4.6v-flash",
+		"glm-4.6v-flashx",
+		"glm-5v-turbo":
+		return true
+	default:
+		return false
+	}
+}
+
+func isDoubaoVisionChatModel(lowerModelName string) bool {
+	return strings.HasPrefix(lowerModelName, "doubao-seed-") && strings.Contains(lowerModelName, "vision")
 }
 
 func defaultPriceUnitByComponent(component string) string {
@@ -515,6 +541,8 @@ func inferProviderByModel(modelName string, channelProtocol int, hasChannelProto
 		return "groq"
 	case strings.HasPrefix(lower, "ollama-"):
 		return "ollama"
+	case strings.HasPrefix(lower, "doubao-"):
+		return "volcengine"
 	}
 	return "other"
 }
@@ -535,9 +563,13 @@ func normalizeModelType(raw string, modelName string) string {
 		strings.HasPrefix(lower, "seed1.6-embedding"):
 		return ProviderModelTypeEmbedding
 	}
+	if isDoubaoVisionChatModel(lower) {
+		return ProviderModelTypeText
+	}
 	switch {
 	case strings.HasPrefix(lower, "veo"),
 		strings.HasPrefix(lower, "sora"),
+		strings.Contains(lower, "seedance"),
 		strings.Contains(lower, "text-to-video"),
 		strings.Contains(lower, "video-generation"),
 		strings.Contains(lower, "video_generation"),
@@ -559,6 +591,7 @@ func normalizeModelType(raw string, modelName string) string {
 	case strings.HasPrefix(lower, "dall-e"),
 		strings.HasPrefix(lower, "gpt-image"),
 		strings.HasPrefix(lower, "qwen-image"),
+		strings.Contains(lower, "seedream"),
 		strings.HasPrefix(lower, "pixtral"),
 		strings.HasPrefix(lower, "cogview"),
 		strings.Contains(lower, "image"),
@@ -585,6 +618,11 @@ func isKnownImageModel(modelName string) bool {
 		"ali-stable-diffusion-v1.5",
 		"wanx-v1",
 		"cogview-3",
+		"glm-4.5v",
+		"glm-4.6v",
+		"glm-4.6v-flash",
+		"glm-4.6v-flashx",
+		"glm-5v-turbo",
 		"step-1x-medium":
 		return true
 	default:

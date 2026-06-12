@@ -59,3 +59,48 @@ func ListActiveProviderModelsWithDB(db *gorm.DB, provider string) ([]string, err
 	}
 	return result, nil
 }
+
+func ListActiveProviderModelDetailsWithDB(db *gorm.DB, provider string) ([]ProviderModelDetail, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedProvider := NormalizeGroupModelProviderValue(provider)
+	if normalizedProvider == "" {
+		return []ProviderModelDetail{}, nil
+	}
+	rows := make([]ProviderModel, 0)
+	if err := db.
+		Where("provider = ? AND is_deleted = ?", normalizedProvider, false).
+		Order("model asc").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	result := make([]ProviderModelDetail, 0, len(rows))
+	for _, row := range rows {
+		modelName := strings.TrimSpace(row.Model)
+		if modelName == "" {
+			continue
+		}
+		tags := splitProviderModelTags(row.Tags)
+		modelType := ProviderModelTypeFromTags(tags)
+		if modelType == "" {
+			modelType = normalizeModelType("", modelName)
+		}
+		result = append(result, ProviderModelDetail{
+			Model:              modelName,
+			Type:               modelType,
+			Tags:               tags,
+			Status:             normalizeProviderModelStatus(row.Status),
+			Description:        strings.TrimSpace(row.Description),
+			IsDeleted:          row.IsDeleted,
+			SupportedEndpoints: splitProviderModelSupportedEndpoints(row.SupportedEndpoints),
+			InputPrice:         row.InputPrice,
+			OutputPrice:        row.OutputPrice,
+			PriceUnit:          row.PriceUnit,
+			Currency:           row.Currency,
+			Source:             row.Source,
+			UpdatedAt:          row.UpdatedAt,
+		})
+	}
+	return result, nil
+}

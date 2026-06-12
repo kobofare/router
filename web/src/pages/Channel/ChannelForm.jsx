@@ -229,9 +229,14 @@ const defaultChannelModelEndpoint = (type, protocol) => {
     case 'embedding':
       return '/v1/embeddings';
     default:
-      return normalizeChannelProtocol(protocol) === 'anthropic'
-        ? '/v1/messages'
-        : '/v1/responses';
+      switch (normalizeChannelProtocol(protocol)) {
+        case 'anthropic':
+          return '/v1/messages';
+        case 'zhipu':
+          return '/v1/chat/completions';
+        default:
+          return '/v1/responses';
+      }
   }
 };
 
@@ -1106,7 +1111,12 @@ const resolveProviderIdentifierFromModelName = (modelName) => {
   ) {
     return 'qwen';
   }
-  if (lower.startsWith('glm-') || lower.startsWith('cogview-')) return 'zhipu';
+  if (
+    lower.startsWith('glm-') ||
+    lower.startsWith('cogview-') ||
+    lower.startsWith('cogvideox-')
+  )
+    return 'zhipu';
   if (lower.startsWith('hunyuan-')) return 'hunyuan';
   if (lower.startsWith('doubao-') || lower.startsWith('ark-'))
     return 'volcengine';

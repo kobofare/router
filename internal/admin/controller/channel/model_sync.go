@@ -84,6 +84,10 @@ func normalizeChannelModelTypeHint(raw string) string {
 		strings.Contains(lower, "tts"),
 		strings.Contains(lower, "transcription"):
 		return model.ProviderModelTypeAudio
+	case strings.Contains(lower, "embedding"),
+		strings.Contains(lower, "embeddings"),
+		strings.Contains(lower, "embed"):
+		return model.ProviderModelTypeEmbedding
 	case strings.Contains(lower, "text"),
 		strings.Contains(lower, "chat"),
 		strings.Contains(lower, "completion"),
@@ -165,6 +169,9 @@ func inferUpstreamModelCardType(item openAIModelCard) string {
 
 func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) ([]model.ChannelModel, channelModelFetchTrace, error) {
 	trace := channelModelFetchTrace{}
+	if usesProviderOfficialModelsForSync(protocol) {
+		return fetchChannelModelsFromProviderOfficialData(protocol, providerFilter, trace)
+	}
 	trimmedKey := strings.TrimSpace(key)
 	if trimmedKey == "" {
 		return nil, trace, fmt.Errorf("请先填写 Key")
@@ -267,6 +274,60 @@ func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) (
 		return nil, trace, fmt.Errorf("未返回可用模型")
 	}
 	return modelRows, trace, nil
+}
+
+func usesProviderOfficialModelsForSync(protocol string) bool {
+	switch relaychannel.NormalizeProtocolName(protocol) {
+	case "doubao", "zhipu":
+		return true
+	default:
+		return false
+	}
+}
+
+func fetchChannelModelsFromProviderOfficialData(protocol string, providerFilter string, trace channelModelFetchTrace) ([]model.ChannelModel, channelModelFetchTrace, error) {
+	provider := commonutils.NormalizeProvider(providerFilter)
+	if provider == "" {
+		provider = commonutils.NormalizeProvider(relaychannel.NormalizeProtocolName(protocol))
+	}
+	if provider == "" {
+		return nil, trace, fmt.Errorf("未识别供应商")
+	}
+	details, err := model.ListActiveProviderModelDetailsWithDB(model.DB, provider)
+	if err != nil {
+		return nil, trace, fmt.Errorf("加载供应商模型信息失败: %w", err)
+	}
+	if len(details) == 0 {
+		return nil, trace, fmt.Errorf("未找到供应商官方模型，请先执行供应商模型迁移")
+	}
+	rows := make([]model.ChannelModel, 0, len(details))
+	seen := make(map[string]struct{}, len(details))
+	for _, detail := range details {
+		modelName := strings.TrimSpace(detail.Model)
+		if modelName == "" {
+			continue
+		}
+		if _, ok := seen[modelName]; ok {
+			continue
+		}
+		seen[modelName] = struct{}{}
+		rows = append(rows, model.ChannelModel{
+			Model:         modelName,
+			UpstreamModel: providerOfficialUpstreamModel(provider, modelName),
+			Provider:      provider,
+			Type:          detail.Type,
+			Selected:      false,
+		})
+	}
+	if len(rows) == 0 {
+		return nil, trace, fmt.Errorf("未找到供应商官方模型")
+	}
+	return rows, trace, nil
+}
+
+func providerOfficialUpstreamModel(provider string, modelName string) string {
+	normalizedModel := strings.TrimSpace(modelName)
+	return normalizedModel
 }
 
 func loadChannelSyncState(protocol string, key string, baseURL string, channelID string, configRaw json.RawMessage, selectedModels []string, channelModels []model.ChannelModel, testModel string) (*model.Channel, string, error) {

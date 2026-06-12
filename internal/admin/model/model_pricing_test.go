@@ -81,6 +81,59 @@ func TestResolveChannelModelPricingUsesProviderDefaultAndChannelOverride(t *test
 	}
 }
 
+func TestResolveChannelModelPricingUsesVolcengineOfficialModelID(t *testing.T) {
+	restore := setModelPricingIndexForTest(providerModelPricingIndex{
+		byProviderAndModel: map[string]providerModelPricingEntry{
+			"volcengine:doubao-seed-2-0-pro-260215": {
+				Provider: "volcengine",
+				Detail: ProviderModelDetail{
+					Model:       "doubao-seed-2-0-pro-260215",
+					Type:        ProviderModelTypeText,
+					InputPrice:  0.0032,
+					OutputPrice: 0.016,
+					PriceUnit:   ProviderPriceUnitPer1KTokens,
+					Currency:    "CNY",
+				},
+			},
+		},
+		byModel: map[string][]providerModelPricingEntry{
+			"doubao-seed-2-0-pro-260215": {
+				{
+					Provider: "volcengine",
+					Detail: ProviderModelDetail{
+						Model:       "doubao-seed-2-0-pro-260215",
+						Type:        ProviderModelTypeText,
+						InputPrice:  0.0032,
+						OutputPrice: 0.016,
+						PriceUnit:   ProviderPriceUnitPer1KTokens,
+						Currency:    "CNY",
+					},
+				},
+			},
+		},
+	})
+	defer restore()
+
+	pricing, err := ResolveChannelModelPricing(0, []ChannelModel{
+		{
+			Model:         "doubao-seed-2-0-pro-260215",
+			UpstreamModel: "doubao-seed-2-0-pro-260215",
+			Selected:      true,
+			PriceUnit:     ProviderPriceUnitPer1KTokens,
+			Currency:      "CNY",
+		},
+	}, "doubao-seed-2-0-pro-260215")
+	if err != nil {
+		t.Fatalf("ResolveChannelModelPricing returned error: %v", err)
+	}
+	if pricing.Provider != "volcengine" {
+		t.Fatalf("expected volcengine provider, got %q", pricing.Provider)
+	}
+	if pricing.InputPrice != 0.0032 || pricing.OutputPrice != 0.016 {
+		t.Fatalf("unexpected pricing input=%v output=%v", pricing.InputPrice, pricing.OutputPrice)
+	}
+}
+
 func TestResolveImageRequestPricingKeepsChannelOverrideAboveProviderComponent(t *testing.T) {
 	overrideInputPrice := 0.02
 	overrideOutputPrice := 0.05
