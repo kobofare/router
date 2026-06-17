@@ -437,3 +437,78 @@ func TestListRequestProcurementConsumptionsByBatchIDWithDB(t *testing.T) {
 		t.Fatalf("ProcurementBatchId=%q, want %q", rows[0].ProcurementBatchId, batch.Id)
 	}
 }
+
+func TestListProcurementReportWithDB(t *testing.T) {
+	db := newProcurementTestDB(t)
+	rows := []Log{
+		{
+			Id:                           "log-1",
+			Type:                         LogTypeConsume,
+			CreatedAt:                    100,
+			ChannelId:                    "channel-1",
+			ModelName:                    "gpt-5",
+			BillingSellAmountCNY:         10,
+			BillingProcurementCostCNY:    4,
+			BillingProcurementCostSource: ProcurementCostSourceActual,
+			BillingGrossProfitCNY:        6,
+		},
+		{
+			Id:                           "log-2",
+			Type:                         LogTypeConsume,
+			CreatedAt:                    120,
+			ChannelId:                    "channel-1",
+			ModelName:                    "gpt-5",
+			BillingSellAmountCNY:         8,
+			BillingProcurementCostSource: ProcurementCostSourceNone,
+		},
+		{
+			Id:                           "log-3",
+			Type:                         LogTypeConsume,
+			CreatedAt:                    130,
+			ChannelId:                    "channel-2",
+			ModelName:                    "gpt-5-mini",
+			BillingSellAmountCNY:         5,
+			BillingProcurementCostSource: ProcurementCostSourceZeroCost,
+			BillingGrossProfitCNY:        5,
+		},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatalf("seed logs: %v", err)
+	}
+
+	report, err := ListProcurementReportWithDB(db, ProcurementReportQuery{
+		StartAt: 90,
+		EndAt:   140,
+		GroupBy: ProcurementReportGroupByChannel,
+	})
+	if err != nil {
+		t.Fatalf("list report: %v", err)
+	}
+	if report.RequestCount != 3 {
+		t.Fatalf("RequestCount=%d, want 3", report.RequestCount)
+	}
+	if report.ConfiguredCostRequestCount != 2 {
+		t.Fatalf("ConfiguredCostRequestCount=%d, want 2", report.ConfiguredCostRequestCount)
+	}
+	if report.UnconfiguredCostRequestCount != 1 {
+		t.Fatalf("UnconfiguredCostRequestCount=%d, want 1", report.UnconfiguredCostRequestCount)
+	}
+	if report.SellAmountCNY != 23 {
+		t.Fatalf("SellAmountCNY=%v, want 23", report.SellAmountCNY)
+	}
+	if report.ConfiguredSellAmountCNY != 15 {
+		t.Fatalf("ConfiguredSellAmountCNY=%v, want 15", report.ConfiguredSellAmountCNY)
+	}
+	if report.UnconfiguredSellAmountCNY != 8 {
+		t.Fatalf("UnconfiguredSellAmountCNY=%v, want 8", report.UnconfiguredSellAmountCNY)
+	}
+	if report.ProcurementCostCNY != 4 {
+		t.Fatalf("ProcurementCostCNY=%v, want 4", report.ProcurementCostCNY)
+	}
+	if report.GrossProfitCNY != 11 {
+		t.Fatalf("GrossProfitCNY=%v, want 11", report.GrossProfitCNY)
+	}
+	if report.GrossMargin != 11.0/15.0 {
+		t.Fatalf("GrossMargin=%v, want %v", report.GrossMargin, 11.0/15.0)
+	}
+}
