@@ -1131,6 +1131,109 @@ func TestBuildProviderMigrationSeeds_ZhipuIncludesGLMImageSpecification(t *testi
 	t.Fatalf("expected zhipu provider to exist")
 }
 
+func TestBuildProviderMigrationSeeds_ImageSpecificationsFromOfficialProviders(t *testing.T) {
+	seeds := mustLoadProviderMigrationSeeds(t)
+	expected := map[string]func(detail ProviderModelDetail, t *testing.T){
+		"openai/dall-e-3": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if spec.Parameters["n"].Max == nil || *spec.Parameters["n"].Max != 1 {
+				t.Fatalf("dall-e-3 n max=%v, want 1", spec.Parameters["n"].Max)
+			}
+			if len(spec.Parameters["size"].AllowedValues) != 3 {
+				t.Fatalf("dall-e-3 size allowed_values=%#v, want 3", spec.Parameters["size"].AllowedValues)
+			}
+		},
+		"openai/gpt-image-1": func(detail ProviderModelDetail, t *testing.T) {
+			genSpec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			editSpec := detail.Specification.Endpoints[ChannelModelEndpointImageEdit]
+			if len(genSpec.Parameters["quality"].AllowedValues) != 3 {
+				t.Fatalf("gpt-image-1 quality allowed_values=%#v, want 3", genSpec.Parameters["quality"].AllowedValues)
+			}
+			if len(editSpec.InputModalities) != 2 {
+				t.Fatalf("gpt-image-1 edit input_modalities=%#v, want image+text", editSpec.InputModalities)
+			}
+		},
+		"google/gemini-2.5-flash-image-preview": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if len(spec.Parameters["size"].AllowedValues) != 10 {
+				t.Fatalf("gemini image preview size allowed_values=%#v, want 10", spec.Parameters["size"].AllowedValues)
+			}
+		},
+		"google/imagen-4.0-generate-preview-06-06": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if spec.Parameters["n"].Max == nil || *spec.Parameters["n"].Max != 4 {
+				t.Fatalf("imagen-4 n max=%v, want 4", spec.Parameters["n"].Max)
+			}
+		},
+		"hunyuan/Hunyuan-Image": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if len(spec.Parameters["size"].AllowedValues) != 5 {
+				t.Fatalf("Hunyuan-Image size allowed_values=%#v, want 5", spec.Parameters["size"].AllowedValues)
+			}
+		},
+		"minimax/image-01": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if spec.Constraints == nil || spec.Constraints.EdgeMultiple == nil || *spec.Constraints.EdgeMultiple != 8 {
+				t.Fatalf("image-01 edge_multiple=%v, want 8", spec.Constraints)
+			}
+			if spec.Parameters["width"].Min == nil || *spec.Parameters["width"].Min != 512 {
+				t.Fatalf("image-01 width min=%v, want 512", spec.Parameters["width"].Min)
+			}
+		},
+		"qwen/qwen-image-2.0": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if spec.Parameters["n"].Max == nil || *spec.Parameters["n"].Max != 6 {
+				t.Fatalf("qwen-image-2.0 n max=%v, want 6", spec.Parameters["n"].Max)
+			}
+			if spec.Constraints == nil || spec.Constraints.MaxPixels == nil || *spec.Constraints.MaxPixels != 4194304 {
+				t.Fatalf("qwen-image-2.0 max_pixels=%v, want 4194304", spec.Constraints)
+			}
+		},
+		"stepfun/step-1x-medium": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if len(spec.Parameters["size"].AllowedValues) != 6 {
+				t.Fatalf("step-1x-medium size allowed_values=%#v, want 6", spec.Parameters["size"].AllowedValues)
+			}
+		},
+		"volcengine/doubao-seedream-4-0-250828": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if spec.Constraints == nil || spec.Constraints.MinPixels == nil || *spec.Constraints.MinPixels != 921600 {
+				t.Fatalf("doubao-seedream-4-0 min_pixels=%v, want 921600", spec.Constraints)
+			}
+		},
+		"volcengine/doubao-seedream-5-0-lite-260128": func(detail ProviderModelDetail, t *testing.T) {
+			spec := detail.Specification.Endpoints[ChannelModelEndpointImages]
+			if len(spec.Parameters["size"].AllowedValues) < 20 {
+				t.Fatalf("doubao-seedream-5-0-lite size allowed_values=%#v, want >=20", spec.Parameters["size"].AllowedValues)
+			}
+			if spec.Constraints == nil || spec.Constraints.MinPixels == nil || *spec.Constraints.MinPixels != 3686400 {
+				t.Fatalf("doubao-seedream-5-0-lite min_pixels=%v, want 3686400", spec.Constraints)
+			}
+		},
+	}
+
+	found := make(map[string]bool, len(expected))
+	for _, seed := range seeds {
+		for _, detail := range seed.ModelDetails {
+			key := seed.Provider + "/" + detail.Model
+			check, ok := expected[key]
+			if !ok {
+				continue
+			}
+			if detail.Specification == nil {
+				t.Fatalf("%s specification should not be nil", key)
+			}
+			check(detail, t)
+			found[key] = true
+		}
+	}
+	for key := range expected {
+		if !found[key] {
+			t.Fatalf("expected provider migration seed to include specification for %s", key)
+		}
+	}
+}
+
 func TestBuildProviderMigrationSeeds_ZhipuEmbeddingModelsUseEmbeddingsEndpoint(t *testing.T) {
 	seeds := mustLoadProviderMigrationSeeds(t)
 	expectedModels := map[string]bool{

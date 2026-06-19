@@ -181,6 +181,7 @@ func TestBuildProviderModelStoreRows_RoundTripsSpecification(t *testing.T) {
 						},
 						Constraints: &ProviderModelConstraintSpecification{
 							MinPixels:           intPointer(3686400),
+							MaxPixels:           intPointer(16777216),
 							AllowedAspectRatios: []string{"1:1", "2:3", "3:2"},
 						},
 					},
@@ -211,6 +212,9 @@ func TestBuildProviderModelStoreRows_RoundTripsSpecification(t *testing.T) {
 	spec := details[0].Specification.Endpoints[ChannelModelEndpointImages]
 	if spec.Constraints == nil || spec.Constraints.MinPixels == nil || *spec.Constraints.MinPixels != 3686400 {
 		t.Fatalf("min_pixels=%v, want 3686400", spec.Constraints)
+	}
+	if spec.Constraints.MaxPixels == nil || *spec.Constraints.MaxPixels != 16777216 {
+		t.Fatalf("max_pixels=%v, want 16777216", spec.Constraints)
 	}
 	if len(spec.Parameters["size"].AllowedValues) != 3 {
 		t.Fatalf("size allowed_values=%#v, want 3 values", spec.Parameters["size"].AllowedValues)

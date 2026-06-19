@@ -1466,6 +1466,23 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
 			},
 		},
+		{
+			Version:     "202606191230_refresh_provider_image_model_specifications",
+			Description: "refresh official image model specifications for supported providers",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(
+					tx,
+					"openai",
+					"google",
+					"hunyuan",
+					"minimax",
+					"qwen",
+					"stepfun",
+					"volcengine",
+					"zhipu",
+				)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

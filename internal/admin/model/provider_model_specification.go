@@ -27,6 +27,10 @@ type ProviderModelParameterSpecification struct {
 
 type ProviderModelConstraintSpecification struct {
 	MinPixels           *int     `json:"min_pixels,omitempty"`
+	MaxPixels           *int     `json:"max_pixels,omitempty"`
+	MinEdge             *int     `json:"min_edge,omitempty"`
+	MaxEdge             *int     `json:"max_edge,omitempty"`
+	EdgeMultiple        *int     `json:"edge_multiple,omitempty"`
 	AllowedAspectRatios []string `json:"allowed_aspect_ratios,omitempty"`
 }
 
@@ -84,7 +88,28 @@ func NormalizeProviderModelSpecification(spec *ProviderModelSpecification) *Prov
 					value := *endpointSpec.Constraints.MinPixels
 					constraints.MinPixels = &value
 				}
-				if constraints.MinPixels != nil || len(constraints.AllowedAspectRatios) > 0 {
+				if endpointSpec.Constraints.MaxPixels != nil {
+					value := *endpointSpec.Constraints.MaxPixels
+					constraints.MaxPixels = &value
+				}
+				if endpointSpec.Constraints.MinEdge != nil {
+					value := *endpointSpec.Constraints.MinEdge
+					constraints.MinEdge = &value
+				}
+				if endpointSpec.Constraints.MaxEdge != nil {
+					value := *endpointSpec.Constraints.MaxEdge
+					constraints.MaxEdge = &value
+				}
+				if endpointSpec.Constraints.EdgeMultiple != nil {
+					value := *endpointSpec.Constraints.EdgeMultiple
+					constraints.EdgeMultiple = &value
+				}
+				if constraints.MinPixels != nil ||
+					constraints.MaxPixels != nil ||
+					constraints.MinEdge != nil ||
+					constraints.MaxEdge != nil ||
+					constraints.EdgeMultiple != nil ||
+					len(constraints.AllowedAspectRatios) > 0 {
 					normalizedEndpoint.Constraints = constraints
 				}
 			}
