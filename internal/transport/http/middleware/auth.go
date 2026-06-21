@@ -27,6 +27,7 @@ var (
 	resolveUcanAudienceFunc       = common.ResolveUcanAudience
 	verifyUcanInvocationAnyFunc   = common.VerifyUcanInvocationAny
 	validateAccessTokenFunc       = model.ValidateAccessToken
+	validateUserTokenFunc         = model.ValidateUserToken
 	getUserByIDFunc               = model.GetUserById
 	findOrCreateWalletUserFunc    = findOrCreateWalletUser
 )
@@ -246,145 +247,17 @@ func TokenAuth() func(c *gin.Context) {
 			auth = strings.TrimSpace(auth[7:])
 		}
 
-		// 1) 尝试钱包 JWT
-		if claims, err := verifyWalletJWTFunc(auth); err == nil {
-			user := model.User{Id: claims.UserID}
-			found := false
-			if strings.TrimSpace(claims.UserID) != "" {
-				if err := user.FillUserById(); err == nil {
-					found = true
-				} else {
-					logger.Loginf(ctx, "token auth wallet jwt FillUserById fail uid=%s err=%v", claims.UserID, err)
-				}
-			}
-			if !found && claims.WalletAddress != "" {
-				addr := strings.ToLower(claims.WalletAddress)
-				user = model.User{WalletAddress: &addr}
-				if err := user.FillUserByWalletAddress(); err == nil {
-					found = true
-					logger.Loginf(ctx, "token auth wallet jwt fallback by address success addr=%s uid=%s", claims.WalletAddress, user.Id)
-				} else {
-					logger.Loginf(ctx, "token auth wallet jwt fallback by address fail addr=%s err=%v", claims.WalletAddress, err)
-				}
-			}
-			if !found {
-				abortWithMessage(c, http.StatusUnauthorized, "token 对应的用户不存在")
-				return
-			}
-			if user.Status != model.UserStatusEnabled || blacklist.IsUserBanned(user.Id) {
-				logger.Loginf(ctx, "token auth wallet jwt banned/disabled uid=%s status=%d", user.Id, user.Status)
-				abortWithMessage(c, http.StatusForbidden, "用户已被封禁")
-				return
-			}
-			requestModel, err := getRequestModel(c)
-			if err != nil && shouldCheckModel(c) {
-				abortWithMessage(c, http.StatusBadRequest, err.Error())
-				return
-			}
-			requestModel, err = hydrateVideoTaskRelayContext(c, requestModel)
-			if err != nil && shouldCheckModel(c) {
-				abortWithMessage(c, http.StatusBadRequest, err.Error())
-				return
-			}
-			c.Set(ctxkey.RequestModel, requestModel)
-			c.Set(ctxkey.Id, user.Id)
-
-			// 自动选择该用户的第一个可用 sk 作为默认 key（便于 JWT 直连）
-			if token, terr := model.GetFirstAvailableToken(user.Id); terr == nil {
-				// subnet 检查
-				if token.Subnet != nil && *token.Subnet != "" {
-					if !network.IsIpInSubnets(ctx, c.ClientIP(), *token.Subnet) {
-						logger.Loginf(ctx, "token auth wallet jwt subnet deny user=%s ip=%s subnet=%s", token.UserId, c.ClientIP(), *token.Subnet)
-						abortWithMessage(c, http.StatusForbidden, fmt.Sprintf("该令牌只能在指定网段使用：%s，当前 ip：%s", *token.Subnet, c.ClientIP()))
-						return
-					}
-				}
-				if token.Models != nil && *token.Models != "" {
-					c.Set(ctxkey.AvailableModels, *token.Models)
-					if requestModel != "" && !isModelInList(requestModel, *token.Models) {
-						abortWithMessage(c, http.StatusForbidden, fmt.Sprintf("该令牌无权使用模型：%s", requestModel))
-						return
-					}
-				}
-				c.Set(ctxkey.TokenId, token.Id)
-				c.Set(ctxkey.TokenName, token.Name)
-				logger.Loginf(ctx, "token auth via wallet jwt success user=%s addr=%s use_token=%s", user.Id, claims.WalletAddress, token.Id)
-			} else {
-				c.Set(ctxkey.TokenId, "")
-				c.Set(ctxkey.TokenName, "wallet_jwt")
-				logger.Loginf(ctx, "token auth via wallet jwt success user=%s addr=%s no_token_found", user.Id, claims.WalletAddress)
-			}
-			c.Next()
-			return
-		}
-
-		// 2) UCAN
 		if isUcanTokenFunc(auth) {
-			requiredSets := resolveUcanCapabilitySetsFunc()
-			address, err := verifyUcanInvocationAnyFunc(auth, resolveUcanAudienceFunc(), requiredSets)
-			if err != nil {
-				logger.Loginf(ctx, "token auth ucan verify failed err=%v", err)
-				abortWithMessage(c, http.StatusUnauthorized, err.Error())
-				return
-			}
-			addr := strings.ToLower(address)
-			user, err := findOrCreateWalletUserFunc(addr, ctx)
-			if err != nil {
-				logger.Loginf(ctx, "token auth ucan resolve user failed addr=%s err=%v", addr, err)
-				abortWithMessage(c, http.StatusUnauthorized, err.Error())
-				return
-			}
-			if user.Status != model.UserStatusEnabled || blacklist.IsUserBanned(user.Id) {
-				logger.Loginf(ctx, "token auth ucan banned/disabled uid=%s status=%d", user.Id, user.Status)
-				abortWithMessage(c, http.StatusForbidden, "用户已被封禁")
-				return
-			}
-			requestModel, err := getRequestModel(c)
-			if err != nil && shouldCheckModel(c) {
-				abortWithMessage(c, http.StatusBadRequest, err.Error())
-				return
-			}
-			requestModel, err = hydrateVideoTaskRelayContext(c, requestModel)
-			if err != nil && shouldCheckModel(c) {
-				abortWithMessage(c, http.StatusBadRequest, err.Error())
-				return
-			}
-			c.Set(ctxkey.RequestModel, requestModel)
-			c.Set(ctxkey.Id, user.Id)
-
-			if token, terr := model.GetFirstAvailableToken(user.Id); terr == nil {
-				if token.Subnet != nil && *token.Subnet != "" {
-					if !network.IsIpInSubnets(ctx, c.ClientIP(), *token.Subnet) {
-						logger.Loginf(ctx, "token auth ucan subnet deny user=%s ip=%s subnet=%s", token.UserId, c.ClientIP(), *token.Subnet)
-						abortWithMessage(c, http.StatusForbidden, fmt.Sprintf("该令牌只能在指定网段使用：%s，当前 ip：%s", *token.Subnet, c.ClientIP()))
-						return
-					}
-				}
-				if token.Models != nil && *token.Models != "" {
-					c.Set(ctxkey.AvailableModels, *token.Models)
-					if requestModel != "" && !isModelInList(requestModel, *token.Models) {
-						abortWithMessage(c, http.StatusForbidden, fmt.Sprintf("该令牌无权使用模型：%s", requestModel))
-						return
-					}
-				}
-				c.Set(ctxkey.TokenId, token.Id)
-				c.Set(ctxkey.TokenName, token.Name)
-				logger.Loginf(ctx, "token auth via ucan success user=%s addr=%s use_token=%s", user.Id, addr, token.Id)
-			} else {
-				c.Set(ctxkey.TokenId, "")
-				c.Set(ctxkey.TokenName, "ucan")
-				logger.Loginf(ctx, "token auth via ucan success user=%s addr=%s no_token_found", user.Id, addr)
-			}
-			c.Next()
+			logger.Loginf(ctx, "token auth reject ucan")
+			abortWithMessage(c, http.StatusUnauthorized, "模型调用仅支持 API 令牌")
 			return
 		}
 
-		// 3) 回退到 sk- 令牌
 		key := auth
 		key = strings.TrimPrefix(key, "sk-")
 		parts := strings.Split(key, "-")
 		key = parts[0]
-		token, err := model.ValidateUserToken(key)
+		token, err := validateUserTokenFunc(key)
 		if token != nil {
 			c.Set(ctxkey.Id, token.UserId)
 			c.Set(ctxkey.TokenId, token.Id)

@@ -217,3 +217,44 @@ func TestUserAuthAcceptsUcan(t *testing.T) {
 		t.Fatalf("response code = %d, want %d", recorder.Code, http.StatusOK)
 	}
 }
+
+func TestTokenAuthRejectsUcan(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	prevIsUcanToken := isUcanTokenFunc
+	prevValidateUserToken := validateUserTokenFunc
+	defer func() {
+		isUcanTokenFunc = prevIsUcanToken
+		validateUserTokenFunc = prevValidateUserToken
+	}()
+
+	isUcanTokenFunc = func(token string) bool {
+		return token == "ucan-token"
+	}
+	validateUserTokenFunc = func(key string) (*model.Token, error) {
+		t.Fatalf("TokenAuth should reject UCAN before API token validation, got key %q", key)
+		return nil, errors.New("unexpected validation")
+	}
+
+	recorder := httptest.NewRecorder()
+	engine := gin.New()
+	engine.Use(TokenAuth())
+
+	called := false
+	engine.POST("/v1/chat/completions", func(ctx *gin.Context) {
+		called = true
+		ctx.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(`{"model":"gpt-5.4","messages":[]}`))
+	req.Header.Set("Authorization", "Bearer ucan-token")
+	req.Header.Set("Content-Type", "application/json")
+	engine.ServeHTTP(recorder, req)
+
+	if called {
+		t.Fatal("expected TokenAuth to abort UCAN request")
+	}
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("response code = %d, want %d", recorder.Code, http.StatusUnauthorized)
+	}
+}
