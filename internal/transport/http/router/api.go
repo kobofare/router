@@ -105,6 +105,11 @@ func SetApiRouter(engine *gin.Engine) {
 			}
 		}
 
+		publicTokenStatusRoute := publicRouter.Group("/token")
+		publicTokenStatusRoute.Use(middleware.TokenAuth())
+		{
+			publicTokenStatusRoute.GET("/status", token.GetTokenStatus)
+		}
 		publicTokenRoute := publicRouter.Group("/token")
 		publicTokenRoute.Use(middleware.UserAuth())
 		{

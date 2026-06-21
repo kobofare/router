@@ -102,6 +102,13 @@ func GetToken(c *gin.Context) {
 func GetTokenStatus(c *gin.Context) {
 	tokenId := c.GetString(ctxkey.TokenId)
 	userId := c.GetString(ctxkey.Id)
+	if tokenId == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "当前访问凭证未绑定具体令牌",
+		})
+		return
+	}
 	token, err := tokensvc.GetByIDs(tokenId, userId)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -114,12 +121,31 @@ func GetTokenStatus(c *gin.Context) {
 	if expiredAt == -1 {
 		expiredAt = 0
 	}
+	totalGranted := token.RemainQuota + token.UsedQuota
+	totalAvailable := token.RemainQuota
+	if token.UnlimitedQuota {
+		totalGranted = 0
+		totalAvailable = 0
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"object":          "credit_summary",
-		"total_granted":   token.RemainQuota,
-		"total_used":      0, // not supported currently
-		"total_available": token.RemainQuota,
-		"expires_at":      expiredAt * 1000,
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"object":           "token_credit_summary",
+			"token_id":         token.Id,
+			"token_name":       token.Name,
+			"status":           token.Status,
+			"unlimited_quota":  token.UnlimitedQuota,
+			"total_granted":    totalGranted,
+			"total_used":       token.UsedQuota,
+			"total_available":  totalAvailable,
+			"remaining_amount": token.RemainQuota,
+			"used_amount":      token.UsedQuota,
+			"created_at":       token.CreatedTime * 1000,
+			"updated_at":       token.UpdatedTime * 1000,
+			"accessed_at":      token.AccessedTime * 1000,
+			"expires_at":       expiredAt * 1000,
+		},
 	})
 }
 

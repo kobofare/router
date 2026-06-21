@@ -20,6 +20,17 @@ import (
 	"github.com/yeying-community/router/internal/admin/model"
 )
 
+var (
+	verifyWalletJWTFunc           = common.VerifyWalletJWT
+	isUcanTokenFunc               = common.IsUcanToken
+	resolveUcanCapabilitySetsFunc = common.ResolveUcanRequiredCapabilitySets
+	resolveUcanAudienceFunc       = common.ResolveUcanAudience
+	verifyUcanInvocationAnyFunc   = common.VerifyUcanInvocationAny
+	validateAccessTokenFunc       = model.ValidateAccessToken
+	getUserByIDFunc               = model.GetUserById
+	findOrCreateWalletUserFunc    = findOrCreateWalletUser
+)
+
 func computeEffectiveAuthRole(user *model.User) (int, bool) {
 	if user == nil {
 		return model.RoleGuestUser, false
@@ -78,7 +89,7 @@ func authHelper(c *gin.Context, minRole int) {
 
 		// Try wallet JWT first
 		if bearer != "" {
-			if claims, err := common.VerifyWalletJWT(bearer); err == nil {
+			if claims, err := verifyWalletJWTFunc(bearer); err == nil {
 				logger.Loginf(c.Request.Context(), "auth wallet jwt verified uid=%s addr=%s", claims.UserID, claims.WalletAddress)
 				user := model.User{Id: claims.UserID}
 				foundById := false
@@ -121,8 +132,29 @@ func authHelper(c *gin.Context, minRole int) {
 			}
 		}
 
+		if username == nil && isUcanTokenFunc(bearer) {
+			requiredSets := resolveUcanCapabilitySetsFunc()
+			address, err := verifyUcanInvocationAnyFunc(bearer, resolveUcanAudienceFunc(), requiredSets)
+			if err == nil {
+				addr := strings.ToLower(address)
+				user, findErr := findOrCreateWalletUserFunc(addr, c.Request.Context())
+				if findErr == nil && user != nil {
+					effectiveRole, _ := computeEffectiveAuthRole(user)
+					username = user.Username
+					role = effectiveRole
+					id = user.Id
+					status = user.Status
+					logger.Loginf(c.Request.Context(), "auth via ucan success user=%s addr=%s", user.Id, addr)
+				} else {
+					logger.Loginf(c.Request.Context(), "auth ucan resolve user failed addr=%s err=%v", addr, findErr)
+				}
+			} else {
+				logger.Loginf(c.Request.Context(), "auth ucan verify failed err=%v", err)
+			}
+		}
+
 		if username == nil {
-			user := model.ValidateAccessToken(bearer)
+			user := validateAccessTokenFunc(bearer)
 			if user != nil && user.Username != "" {
 				// Token is valid
 				effectiveRole, _ := computeEffectiveAuthRole(user)
@@ -144,7 +176,7 @@ func authHelper(c *gin.Context, minRole int) {
 	}
 	userID := normalizeSessionUserID(id)
 	if userID != "" {
-		if freshUser, err := model.GetUserById(userID, false); err == nil && freshUser != nil {
+		if freshUser, err := getUserByIDFunc(userID, false); err == nil && freshUser != nil {
 			effectiveRole, canManageUsers := computeEffectiveAuthRole(freshUser)
 			username = freshUser.Username
 			role = effectiveRole
@@ -215,7 +247,7 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		// 1) 尝试钱包 JWT
-		if claims, err := common.VerifyWalletJWT(auth); err == nil {
+		if claims, err := verifyWalletJWTFunc(auth); err == nil {
 			user := model.User{Id: claims.UserID}
 			found := false
 			if strings.TrimSpace(claims.UserID) != "" {
@@ -287,16 +319,16 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		// 2) UCAN
-		if common.IsUcanToken(auth) {
-			requiredSets := common.ResolveUcanRequiredCapabilitySets()
-			address, err := common.VerifyUcanInvocationAny(auth, common.ResolveUcanAudience(), requiredSets)
+		if isUcanTokenFunc(auth) {
+			requiredSets := resolveUcanCapabilitySetsFunc()
+			address, err := verifyUcanInvocationAnyFunc(auth, resolveUcanAudienceFunc(), requiredSets)
 			if err != nil {
 				logger.Loginf(ctx, "token auth ucan verify failed err=%v", err)
 				abortWithMessage(c, http.StatusUnauthorized, err.Error())
 				return
 			}
 			addr := strings.ToLower(address)
-			user, err := findOrCreateWalletUser(addr, ctx)
+			user, err := findOrCreateWalletUserFunc(addr, ctx)
 			if err != nil {
 				logger.Loginf(ctx, "token auth ucan resolve user failed addr=%s err=%v", addr, err)
 				abortWithMessage(c, http.StatusUnauthorized, err.Error())

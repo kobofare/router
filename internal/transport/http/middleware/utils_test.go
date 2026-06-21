@@ -2,11 +2,19 @@ package middleware
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/yeying-community/router/common"
+	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/internal/admin/model"
 )
 
 func TestGetRequestModel_VideosMultipart(t *testing.T) {
@@ -121,5 +129,91 @@ func TestGetRequestModel_RealtimeNestedSessionModel(t *testing.T) {
 	}
 	if modelName != "gpt-realtime-1.5" {
 		t.Fatalf("getRequestModel returned %q, want %q", modelName, "gpt-realtime-1.5")
+	}
+}
+
+func TestUserAuthAcceptsUcan(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	prevVerifyWalletJWT := verifyWalletJWTFunc
+	prevIsUcanToken := isUcanTokenFunc
+	prevResolveCapabilitySets := resolveUcanCapabilitySetsFunc
+	prevResolveAudience := resolveUcanAudienceFunc
+	prevVerifyUcanInvocationAny := verifyUcanInvocationAnyFunc
+	prevValidateAccessToken := validateAccessTokenFunc
+	prevGetUserByID := getUserByIDFunc
+	prevFindOrCreateWalletUser := findOrCreateWalletUserFunc
+	defer func() {
+		verifyWalletJWTFunc = prevVerifyWalletJWT
+		isUcanTokenFunc = prevIsUcanToken
+		resolveUcanCapabilitySetsFunc = prevResolveCapabilitySets
+		resolveUcanAudienceFunc = prevResolveAudience
+		verifyUcanInvocationAnyFunc = prevVerifyUcanInvocationAny
+		validateAccessTokenFunc = prevValidateAccessToken
+		getUserByIDFunc = prevGetUserByID
+		findOrCreateWalletUserFunc = prevFindOrCreateWalletUser
+	}()
+
+	verifyWalletJWTFunc = func(token string) (*common.WalletClaims, error) {
+		return nil, errors.New("not jwt")
+	}
+	isUcanTokenFunc = func(token string) bool {
+		return token == "ucan-token"
+	}
+	resolveUcanCapabilitySetsFunc = func() [][]common.UcanCapability {
+		return [][]common.UcanCapability{{{Resource: "app:*", Action: "invoke"}}}
+	}
+	resolveUcanAudienceFunc = func() string {
+		return "did:web:localhost:3011"
+	}
+	verifyUcanInvocationAnyFunc = func(token string, audience string, requiredSets [][]common.UcanCapability) (string, error) {
+		if token != "ucan-token" {
+			return "", errors.New("unexpected token")
+		}
+		return "0x1234567890abcdef1234567890abcdef12345678", nil
+	}
+	validateAccessTokenFunc = func(token string) *model.User {
+		return nil
+	}
+	getUserByIDFunc = func(id string, selectAll bool) (*model.User, error) {
+		return &model.User{
+			Id:       id,
+			Username: "wallet_user",
+			Role:     model.RoleCommonUser,
+			Status:   model.UserStatusEnabled,
+		}, nil
+	}
+	findOrCreateWalletUserFunc = func(addr string, ctx context.Context) (*model.User, error) {
+		return &model.User{
+			Id:       "user-ucan-1",
+			Username: "wallet_user",
+			Role:     model.RoleCommonUser,
+			Status:   model.UserStatusEnabled,
+		}, nil
+	}
+
+	recorder := httptest.NewRecorder()
+	engine := gin.New()
+	engine.Use(sessions.Sessions("session", cookie.NewStore([]byte("test-secret"))))
+	engine.Use(UserAuth())
+
+	called := false
+	engine.GET("/api/v1/public/token/", func(ctx *gin.Context) {
+		called = true
+		if got := ctx.GetString(ctxkey.Id); got != "user-ucan-1" {
+			t.Fatalf("ctx user id = %q, want %q", got, "user-ucan-1")
+		}
+		ctx.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/token/?page=1", nil)
+	req.Header.Set("Authorization", "Bearer ucan-token")
+	engine.ServeHTTP(recorder, req)
+
+	if !called {
+		t.Fatal("expected next handler to be called")
+	}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("response code = %d, want %d", recorder.Code, http.StatusOK)
 	}
 }

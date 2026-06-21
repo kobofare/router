@@ -159,3 +159,86 @@ func TestAddTokenReturnsRawKey(t *testing.T) {
 		t.Fatalf("create response key=%q, should remain raw", key)
 	}
 }
+
+func TestGetTokenStatusReturnsUsageSummary(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newTokenControllerTestDB(t)
+	seedUserTokenForTest(t, db, model.Token{
+		Id:             "token-1",
+		UserId:         "user-1",
+		Key:            "sk-secretTokenValue1234",
+		Status:         model.TokenStatusEnabled,
+		Name:           "alpha",
+		CreatedTime:    100,
+		UpdatedTime:    120,
+		AccessedTime:   130,
+		ExpiredTime:    150,
+		RemainQuota:    900,
+		UsedQuota:      100,
+		UnlimitedQuota: false,
+	})
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(ctxkey.Id, "user-1")
+	c.Set(ctxkey.TokenId, "token-1")
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/public/token/status", nil)
+
+	GetTokenStatus(c)
+
+	payload := decodeTokenResponseBody(t, recorder.Body.Bytes())
+	if success, _ := payload["success"].(bool); !success {
+		t.Fatalf("expected success response, got %v", payload)
+	}
+	data, ok := payload["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data=%T %#v, want object", payload["data"], payload["data"])
+	}
+	if got, _ := data["object"].(string); got != "token_credit_summary" {
+		t.Fatalf("object=%q, want token_credit_summary", got)
+	}
+	if got, _ := data["token_id"].(string); got != "token-1" {
+		t.Fatalf("token_id=%q, want token-1", got)
+	}
+	if got, _ := data["token_name"].(string); got != "alpha" {
+		t.Fatalf("token_name=%q, want alpha", got)
+	}
+	if got, _ := data["total_granted"].(float64); got != 1000 {
+		t.Fatalf("total_granted=%v, want 1000", got)
+	}
+	if got, _ := data["total_used"].(float64); got != 100 {
+		t.Fatalf("total_used=%v, want 100", got)
+	}
+	if got, _ := data["total_available"].(float64); got != 900 {
+		t.Fatalf("total_available=%v, want 900", got)
+	}
+	if got, _ := data["remaining_amount"].(float64); got != 900 {
+		t.Fatalf("remaining_amount=%v, want 900", got)
+	}
+	if got, _ := data["used_amount"].(float64); got != 100 {
+		t.Fatalf("used_amount=%v, want 100", got)
+	}
+	if got, _ := data["expires_at"].(float64); got != 150000 {
+		t.Fatalf("expires_at=%v, want 150000", got)
+	}
+}
+
+func TestGetTokenStatusRejectsWhenNoConcreteTokenBound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	_ = newTokenControllerTestDB(t)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(ctxkey.Id, "user-1")
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/public/token/status", nil)
+
+	GetTokenStatus(c)
+
+	payload := decodeTokenResponseBody(t, recorder.Body.Bytes())
+	if success, _ := payload["success"].(bool); success {
+		t.Fatalf("expected failure response, got %v", payload)
+	}
+	if got, _ := payload["message"].(string); got != "当前访问凭证未绑定具体令牌" {
+		t.Fatalf("message=%q, want 当前访问凭证未绑定具体令牌", got)
+	}
+}
