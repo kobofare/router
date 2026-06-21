@@ -2826,6 +2826,20 @@
           "last_run": "Last run time",
           "interval_invalid": "Refresh interval must be greater than or equal to 60 seconds"
         },
+        "pricing_policy": {
+          "title": "Pricing Policy",
+          "description_title": "Pricing policy",
+          "description": "The pricing layer calculates the official amount from provider prices first, then uses procurement cost, target margin, and risk buffer to decide the final charged amount.",
+          "official_markup": "Official price markup",
+          "official_markup_hint": "Multiplier over provider official price. 1 means no markup, 1.2 means 20% markup.",
+          "target_margin": "Target margin",
+          "target_margin_hint": "Use decimals. 0.2 means 20% target margin; must be lower than 0.95.",
+          "risk_buffer": "Procurement risk buffer",
+          "risk_buffer_hint": "Covers procurement cost fluctuation. 0.1 means applying a 10% cost buffer before calculating the cost floor.",
+          "official_markup_invalid": "Official price markup must be greater than 0",
+          "target_margin_invalid": "Target margin must be greater than or equal to 0 and lower than 0.95",
+          "risk_buffer_invalid": "Procurement risk buffer must be greater than or equal to 0"
+        },
         "buttons": {
           "save": "Save General Settings"
         }
