@@ -83,6 +83,18 @@ const EMPTY_SUMMARY = {
   task_failed_total: 0,
 };
 
+const EMPTY_CHANNEL_HEALTH_SUMMARY = {
+  with_tests: 0,
+  without_tests: 0,
+  avg_pass_rate: 0,
+  avg_coverage_rate: 0,
+  avg_latency_ms: 0,
+  needs_retest: 0,
+  risk_count: 0,
+  active_circuit_breaker_count: 0,
+  high_latency_count: 0,
+};
+
 const EMPTY_DASHBOARD = {
   period: 'last_7_days',
   granularity: 'day',
@@ -118,6 +130,7 @@ const EMPTY_DASHBOARD = {
     avg_pass_rate: 0,
     avg_latency_ms: 0,
   },
+  channel_health_summary: EMPTY_CHANNEL_HEALTH_SUMMARY,
   top_models: [],
   generated_at: 0,
 };
@@ -155,6 +168,7 @@ const normalizeAdminDashboardPayload = (payload) => {
   const usageTotals = payload?.usage_totals || {};
   const usageRank = Array.isArray(payload?.usage_rank) ? payload.usage_rank : [];
   const modelSummary = payload?.model_summary || {};
+  const channelHealthSummary = payload?.channel_health_summary || {};
   const topModels = Array.isArray(payload?.top_models) ? payload.top_models : [];
   return {
     ...EMPTY_DASHBOARD,
@@ -184,6 +198,19 @@ const normalizeAdminDashboardPayload = (payload) => {
           }))
         : [],
     })),
+    channel_health_summary: {
+      with_tests: Number(channelHealthSummary?.with_tests || 0),
+      without_tests: Number(channelHealthSummary?.without_tests || 0),
+      avg_pass_rate: Number(channelHealthSummary?.avg_pass_rate || 0),
+      avg_coverage_rate: Number(channelHealthSummary?.avg_coverage_rate || 0),
+      avg_latency_ms: Number(channelHealthSummary?.avg_latency_ms || 0),
+      needs_retest: Number(channelHealthSummary?.needs_retest || 0),
+      risk_count: Number(channelHealthSummary?.risk_count || 0),
+      active_circuit_breaker_count: Number(
+        channelHealthSummary?.active_circuit_breaker_count || 0,
+      ),
+      high_latency_count: Number(channelHealthSummary?.high_latency_count || 0),
+    },
     usage_summary: {
       user_count: Number(usageSummary?.user_count || 0),
       request_count: Number(usageSummary?.request_count || 0),
@@ -428,60 +455,13 @@ const AdminDashboard = () => {
     [dashboard.top_channels, renderCapabilities],
   );
 
-  const channelHealthSummary = useMemo(() => {
-    const rows = channelHealthData;
-    if (rows.length === 0) {
-      return {
-        with_tests: 0,
-        without_tests: 0,
-        avg_pass_rate: 0,
-        avg_coverage_rate: 0,
-        avg_latency_ms: 0,
-        needs_retest: 0,
-      };
-    }
-    const withTestsRows = rows.filter((item) => item.has_test_data);
-    const withoutTests = rows.length - withTestsRows.length;
-    const avgPassRate =
-      withTestsRows.length > 0
-        ? withTestsRows.reduce(
-            (sum, item) => sum + item.pass_rate_percent,
-            0,
-          ) / withTestsRows.length
-        : 0;
-    const selectedTotal = rows.reduce(
-      (sum, item) => sum + item.selected_model_count,
-      0,
-    );
-    const testedTotal = rows.reduce(
-      (sum, item) => sum + item.tested_model_count,
-      0,
-    );
-    const avgCoverageRate = selectedTotal > 0 ? (testedTotal / selectedTotal) * 100 : 0;
-    const latencyRows = rows.filter((item) => item.avg_latency_ms > 0);
-    const avgLatencyMs =
-      latencyRows.length > 0
-        ? Math.round(
-            latencyRows.reduce((sum, item) => sum + item.avg_latency_ms, 0) /
-              latencyRows.length,
-          )
-        : 0;
-    const needsRetest = rows.filter(
-      (item) =>
-        item.selected_model_count > 0 &&
-        (!item.has_test_data ||
-          item.coverage_rate_percent < 100 ||
-          item.pass_rate_percent < 100),
-    ).length;
-    return {
-      with_tests: withTestsRows.length,
-      without_tests: withoutTests,
-      avg_pass_rate: avgPassRate,
-      avg_coverage_rate: avgCoverageRate,
-      avg_latency_ms: avgLatencyMs,
-      needs_retest: needsRetest,
-    };
-  }, [channelHealthData]);
+  const channelHealthSummary = useMemo(
+    () => ({
+      ...EMPTY_CHANNEL_HEALTH_SUMMARY,
+      ...(dashboard.channel_health_summary || {}),
+    }),
+    [dashboard.channel_health_summary],
+  );
 
   const trendLineColor = useMemo(() => {
     switch (trendMetric) {
@@ -756,57 +736,37 @@ const AdminDashboard = () => {
   }, [formatCount, formatUsd, modelSort, sortedModels, t]);
 
   const channelInsightData = useMemo(() => {
-    const rows = Array.isArray(channelHealthData) ? channelHealthData : [];
-    const retestCount = rows.filter(
-      (item) =>
-        item.selected_model_count > 0 &&
-        (!item.has_test_data ||
-          item.coverage_rate_percent < 100 ||
-          item.pass_rate_percent < 100),
-    ).length;
-    const riskyCount = rows.filter(
-      (item) =>
-        item.health_level === 'critical' ||
-        isActiveCircuitBreaker(item.circuit_breaker) ||
-        (item.has_test_data && item.pass_rate_percent < 80),
-    ).length;
-    const latencyCount = rows.filter(
-      (item) => Number(item.avg_latency_ms || 0) >= 8000,
-    ).length;
-    const circuitCount = rows.filter((item) =>
-      isActiveCircuitBreaker(item.circuit_breaker),
-    ).length;
     return [
       {
         key: 'retest',
         label: t('dashboard.admin.channels.insights.retest'),
         hint: t('dashboard.admin.channels.insights.retest_hint'),
-        count: retestCount,
+        count: Number(channelHealthSummary.needs_retest || 0),
         color: '#2563eb',
       },
       {
         key: 'risk',
         label: t('dashboard.admin.channels.insights.risk'),
         hint: t('dashboard.admin.channels.insights.risk_hint'),
-        count: riskyCount,
+        count: Number(channelHealthSummary.risk_count || 0),
         color: '#dc2626',
       },
       {
         key: 'circuit',
         label: t('dashboard.admin.channels.insights.circuit'),
         hint: t('dashboard.admin.channels.insights.circuit_hint'),
-        count: circuitCount,
+        count: Number(channelHealthSummary.active_circuit_breaker_count || 0),
         color: '#7c3aed',
       },
       {
         key: 'latency',
         label: t('dashboard.admin.channels.insights.latency'),
         hint: t('dashboard.admin.channels.insights.latency_hint'),
-        count: latencyCount,
+        count: Number(channelHealthSummary.high_latency_count || 0),
         color: '#f59e0b',
       },
     ];
-  }, [channelHealthData, t]);
+  }, [channelHealthSummary, t]);
 
   const spendingInsightData = useMemo(() => {
     const trendRows = Array.isArray(dashboard.trend) ? dashboard.trend : [];
@@ -1192,6 +1152,24 @@ const AdminDashboard = () => {
                 </div>
                 <div className='admin-dashboard-kpi-value'>
                   {formatPercent(channelHealthSummary.avg_pass_rate)}
+                </div>
+              </div>
+              <div className='admin-dashboard-kpi-item'>
+                <div className='admin-dashboard-kpi-label'>
+                  {t('dashboard.admin.health.summary.avg_coverage_rate')}
+                </div>
+                <div className='admin-dashboard-kpi-value'>
+                  {formatPercent(channelHealthSummary.avg_coverage_rate)}
+                </div>
+              </div>
+              <div className='admin-dashboard-kpi-item'>
+                <div className='admin-dashboard-kpi-label'>
+                  {t('dashboard.admin.health.summary.avg_latency')}
+                </div>
+                <div className='admin-dashboard-kpi-value'>
+                  {channelHealthSummary.avg_latency_ms > 0
+                    ? `${formatCount(channelHealthSummary.avg_latency_ms)} ms`
+                    : '-'}
                 </div>
               </div>
             </div>

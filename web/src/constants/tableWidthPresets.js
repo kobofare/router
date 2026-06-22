@@ -83,7 +83,6 @@ export const CHANNEL_LIST_COLUMN_WIDTHS = {
   createdAt: 148,
   updatedAt: 148,
   capabilities: 160,
-  circuitBreaker: 152,
   priority: 92,
   actions: 72,
 };
@@ -96,7 +95,6 @@ export const CHANNEL_LIST_TABLE_MIN_WIDTH =
   CHANNEL_LIST_COLUMN_WIDTHS.createdAt +
   CHANNEL_LIST_COLUMN_WIDTHS.updatedAt +
   CHANNEL_LIST_COLUMN_WIDTHS.capabilities +
-  CHANNEL_LIST_COLUMN_WIDTHS.circuitBreaker +
   CHANNEL_LIST_COLUMN_WIDTHS.priority +
   CHANNEL_LIST_COLUMN_WIDTHS.actions;
 

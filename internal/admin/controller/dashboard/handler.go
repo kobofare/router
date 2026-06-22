@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	channelTopLimit           = 8
+	channelDashboardListLimit = 12
 	channelHealthHistoryLimit = 60
 	taskRecentLimit           = 8
 	modelTopLimit             = 12
@@ -100,6 +100,18 @@ type channelHealthItem struct {
 	HealthPoints       []channelHealthPoint                `json:"health_points"`
 }
 
+type channelHealthSummaryData struct {
+	WithTests                 int64   `json:"with_tests"`
+	WithoutTests              int64   `json:"without_tests"`
+	AvgPassRate               float64 `json:"avg_pass_rate"`
+	AvgCoverageRate           float64 `json:"avg_coverage_rate"`
+	AvgLatencyMs              int64   `json:"avg_latency_ms"`
+	NeedsRetest               int64   `json:"needs_retest"`
+	RiskCount                 int64   `json:"risk_count"`
+	ActiveCircuitBreakerCount int64   `json:"active_circuit_breaker_count"`
+	HighLatencyCount          int64   `json:"high_latency_count"`
+}
+
 type channelCircuitBreakerDashboardItem struct {
 	State        string  `json:"state"`
 	Reason       string  `json:"reason"`
@@ -179,21 +191,22 @@ type modelSummaryData struct {
 }
 
 type dashboardPayload struct {
-	Section      string              `json:"section"`
-	Period       string              `json:"period"`
-	Granularity  string              `json:"granularity"`
-	StartAt      int64               `json:"start_timestamp"`
-	EndAt        int64               `json:"end_timestamp"`
-	Summary      summaryData         `json:"summary"`
-	Trend        []trendPoint        `json:"trend"`
-	TopChannels  []channelHealthItem `json:"top_channels"`
-	UsageSummary usageRankSummary    `json:"usage_summary"`
-	UsageTotals  usageTotalSummary   `json:"usage_totals"`
-	UsageRank    []usageRankingItem  `json:"usage_rank"`
-	ModelSummary modelSummaryData    `json:"model_summary"`
-	TopModels    []modelHealthItem   `json:"top_models"`
-	RecentTasks  []model.AsyncTask   `json:"recent_tasks"`
-	GeneratedAt  int64               `json:"generated_at"`
+	Section              string                   `json:"section"`
+	Period               string                   `json:"period"`
+	Granularity          string                   `json:"granularity"`
+	StartAt              int64                    `json:"start_timestamp"`
+	EndAt                int64                    `json:"end_timestamp"`
+	Summary              summaryData              `json:"summary"`
+	Trend                []trendPoint             `json:"trend"`
+	TopChannels          []channelHealthItem      `json:"top_channels"`
+	ChannelHealthSummary channelHealthSummaryData `json:"channel_health_summary"`
+	UsageSummary         usageRankSummary         `json:"usage_summary"`
+	UsageTotals          usageTotalSummary        `json:"usage_totals"`
+	UsageRank            []usageRankingItem       `json:"usage_rank"`
+	ModelSummary         modelSummaryData         `json:"model_summary"`
+	TopModels            []modelHealthItem        `json:"top_models"`
+	RecentTasks          []model.AsyncTask        `json:"recent_tasks"`
+	GeneratedAt          int64                    `json:"generated_at"`
 }
 
 type usageRankingRow struct {
@@ -526,25 +539,106 @@ func buildChannelHealthPoints(history []bool) []channelHealthPoint {
 	return result
 }
 
-func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
-	total, enabled, disabled, err := countChannelSummary()
-	if err != nil {
-		return nil, 0, 0, 0, err
+func isActiveDashboardCircuitBreaker(circuitBreaker *channelCircuitBreakerDashboardItem) bool {
+	if circuitBreaker == nil {
+		return false
 	}
-	rows := make([]*model.Channel, 0, channelTopLimit)
-	err = model.DB.Model(&model.Channel{}).
+	switch strings.TrimSpace(strings.ToLower(circuitBreaker.State)) {
+	case model.ChannelCircuitBreakerStateOpen, model.ChannelCircuitBreakerStateHalfOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+func dashboardChannelNeedsRetest(item channelHealthItem) bool {
+	return item.SelectedModelCount > 0 &&
+		(!item.HasTestData || item.CoverageRate < 1 || item.PassRate < 1)
+}
+
+func dashboardChannelRisky(item channelHealthItem) bool {
+	return item.HealthLevel == channelHealthLevelCritical ||
+		isActiveDashboardCircuitBreaker(item.CircuitBreaker) ||
+		(item.HasTestData && item.PassRate < 0.8)
+}
+
+func summarizeChannelHealthItems(items []channelHealthItem) channelHealthSummaryData {
+	summary := channelHealthSummaryData{}
+	if len(items) == 0 {
+		return summary
+	}
+	passRateTotal := 0.0
+	selectedModelTotal := int64(0)
+	testedModelTotal := int64(0)
+	latencyTotal := int64(0)
+	latencyCount := int64(0)
+	for _, item := range items {
+		selectedModelTotal += int64(item.SelectedModelCount)
+		testedModelTotal += int64(item.TestedModelCount)
+		if item.HasTestData {
+			summary.WithTests++
+			passRateTotal += item.PassRate
+		} else {
+			summary.WithoutTests++
+		}
+		if item.AvgLatencyMs > 0 {
+			latencyTotal += item.AvgLatencyMs
+			latencyCount++
+		}
+		if dashboardChannelNeedsRetest(item) {
+			summary.NeedsRetest++
+		}
+		if dashboardChannelRisky(item) {
+			summary.RiskCount++
+		}
+		if isActiveDashboardCircuitBreaker(item.CircuitBreaker) {
+			summary.ActiveCircuitBreakerCount++
+		}
+		if item.AvgLatencyMs >= 8000 {
+			summary.HighLatencyCount++
+		}
+	}
+	if summary.WithTests > 0 {
+		summary.AvgPassRate = passRateTotal / float64(summary.WithTests)
+	}
+	if selectedModelTotal > 0 {
+		summary.AvgCoverageRate = clamp01(float64(testedModelTotal) / float64(selectedModelTotal))
+	}
+	if latencyCount > 0 {
+		summary.AvgLatencyMs = latencyTotal / latencyCount
+	}
+	return summary
+}
+
+func channelHealthLevelSortRank(level string) int {
+	switch strings.TrimSpace(strings.ToLower(level)) {
+	case channelHealthLevelCritical:
+		return 0
+	case channelHealthLevelWarning:
+		return 1
+	case channelHealthLevelUnknown:
+		return 2
+	case channelHealthLevelHealthy:
+		return 3
+	default:
+		return 4
+	}
+}
+
+func listDashboardChannels() ([]channelHealthItem, channelHealthSummaryData, error) {
+	rows := make([]*model.Channel, 0)
+	err := model.DB.Model(&model.Channel{}).
 		Order("used_quota desc, created_time desc").
-		Limit(channelTopLimit).
 		Omit("key").
 		Find(&rows).Error
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	if err := model.HydrateChannelsWithModels(model.DB, rows); err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	if err := model.HydrateChannelsWithTests(model.DB, rows); err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	channelIDs := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -557,7 +651,7 @@ func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
 	}
 	circuitRows, err := model.ListChannelCircuitBreakerStatesByChannelIDsWithDB(model.DB, channelIDs)
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	circuitByChannelID := make(map[string]model.ChannelCircuitBreakerState, len(circuitRows))
 	for _, row := range circuitRows {
@@ -602,7 +696,38 @@ func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
 			HealthPoints:       buildChannelHealthPoints(metricHistoryByChannelID[channelID]),
 		})
 	}
-	return items, total, enabled, disabled, nil
+	healthSummary := summarizeChannelHealthItems(items)
+	sort.Slice(items, func(i, j int) bool {
+		leftCircuit := isActiveDashboardCircuitBreaker(items[i].CircuitBreaker)
+		rightCircuit := isActiveDashboardCircuitBreaker(items[j].CircuitBreaker)
+		if leftCircuit != rightCircuit {
+			return leftCircuit
+		}
+		leftRiskRank := channelHealthLevelSortRank(items[i].HealthLevel)
+		rightRiskRank := channelHealthLevelSortRank(items[j].HealthLevel)
+		if leftRiskRank != rightRiskRank {
+			return leftRiskRank < rightRiskRank
+		}
+		leftNeedsRetest := dashboardChannelNeedsRetest(items[i])
+		rightNeedsRetest := dashboardChannelNeedsRetest(items[j])
+		if leftNeedsRetest != rightNeedsRetest {
+			return leftNeedsRetest
+		}
+		if items[i].AvgLatencyMs != items[j].AvgLatencyMs {
+			return items[i].AvgLatencyMs > items[j].AvgLatencyMs
+		}
+		if items[i].UsedAmount != items[j].UsedAmount {
+			return items[i].UsedAmount > items[j].UsedAmount
+		}
+		if items[i].HealthScore != items[j].HealthScore {
+			return items[i].HealthScore < items[j].HealthScore
+		}
+		return items[i].Name < items[j].Name
+	})
+	if channelDashboardListLimit > 0 && len(items) > channelDashboardListLimit {
+		items = items[:channelDashboardListLimit]
+	}
+	return items, healthSummary, nil
 }
 
 func countChannelSummary() (int64, int64, int64, error) {
@@ -1409,12 +1534,13 @@ func GetDashboard(c *gin.Context) {
 	}
 
 	if section == sectionAll || section == sectionChannels {
-		topChannels, _, _, _, err := listTopChannels()
+		topChannels, channelHealthSummary, err := listDashboardChannels()
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 			return
 		}
 		payload.TopChannels = topChannels
+		payload.ChannelHealthSummary = channelHealthSummary
 	}
 
 	if section == sectionAll || section == sectionModels {
