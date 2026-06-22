@@ -76,10 +76,11 @@ type NodeConfig struct {
 }
 
 type CacheConfig struct {
-	MemoryCacheEnabled         bool `yaml:"memory_cache_enabled"`
-	SyncFrequencySeconds       int  `yaml:"sync_frequency_seconds"`
-	BatchUpdateEnabled         bool `yaml:"batch_update_enabled"`
-	BatchUpdateIntervalSeconds int  `yaml:"batch_update_interval_seconds"`
+	Type                       string `yaml:"type"`
+	MemoryCacheEnabled         bool   `yaml:"memory_cache_enabled"`
+	SyncFrequencySeconds       int    `yaml:"sync_frequency_seconds"`
+	BatchUpdateEnabled         bool   `yaml:"batch_update_enabled"`
+	BatchUpdateIntervalSeconds int    `yaml:"batch_update_interval_seconds"`
 }
 
 type AuthConfig struct {
@@ -201,6 +202,7 @@ func defaultAppConfig() AppConfig {
 			PollingIntervalSeconds: 0,
 		},
 		Cache: CacheConfig{
+			Type:                       "",
 			MemoryCacheEnabled:         false,
 			SyncFrequencySeconds:       10 * 60,
 			BatchUpdateEnabled:         false,
@@ -413,6 +415,14 @@ func ApplyAppConfig(cfg *AppConfig, portFlagSet bool, logDirFlagSet bool) error 
 
 	config.DebugEnabled = cfg.Feature.Debug
 	config.DebugSQLEnabled = cfg.Feature.DebugSQL
+	cacheType, err := normalizeCacheType(cfg.Cache.Type, RedisConnString)
+	if err != nil {
+		return err
+	}
+	if cacheType == config.CacheTypeRedis && RedisConnString == "" {
+		return errors.New("cache.type=redis requires redis.conn_string")
+	}
+	config.CacheType = cacheType
 	config.MemoryCacheEnabled = cfg.Cache.MemoryCacheEnabled
 	config.BatchUpdateEnabled = cfg.Cache.BatchUpdateEnabled
 	if cfg.Cache.BatchUpdateIntervalSeconds > 0 {
@@ -576,6 +586,23 @@ func normalizeGinMode(mode string) string {
 	}
 }
 
+func normalizeCacheType(raw string, redisConnString string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(raw))
+	switch normalized {
+	case "":
+		if strings.TrimSpace(redisConnString) != "" {
+			return config.CacheTypeRedis, nil
+		}
+		return config.CacheTypeLocal, nil
+	case config.CacheTypeLocal:
+		return config.CacheTypeLocal, nil
+	case config.CacheTypeRedis:
+		return config.CacheTypeRedis, nil
+	default:
+		return "", fmt.Errorf("unsupported cache.type %q; supported values are local or redis", strings.TrimSpace(raw))
+	}
+}
+
 func normalizeStringSlice(values []string) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {
@@ -639,6 +666,7 @@ func setCompatibilityEnvs() {
 		_ = os.Setenv("NODE_TYPE", "slave")
 	}
 	_ = os.Setenv("POLLING_INTERVAL", strconv.Itoa(int(config.RequestInterval.Seconds())))
+	_ = os.Setenv("CACHE_TYPE", config.CacheType)
 	_ = os.Setenv("SYNC_FREQUENCY", strconv.Itoa(config.SyncFrequency))
 	_ = os.Setenv("MEMORY_CACHE_ENABLED", strconv.FormatBool(config.MemoryCacheEnabled))
 	_ = os.Setenv("BATCH_UPDATE_ENABLED", strconv.FormatBool(config.BatchUpdateEnabled))

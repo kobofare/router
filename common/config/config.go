@@ -71,6 +71,13 @@ var DebugEnabled = false
 var DebugSQLEnabled = false
 var MemoryCacheEnabled = false
 
+const (
+	CacheTypeLocal = "local"
+	CacheTypeRedis = "redis"
+)
+
+var CacheType = CacheTypeLocal
+
 var LogConsumeEnabled = true
 
 var SMTPServer = ""

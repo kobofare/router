@@ -85,6 +85,7 @@ cp config.yaml.template config.yaml
 - `auth.cookie_secret`：必须替换模板示例值。
 - `auth.jwt_secret`：如需钱包登录与 refresh token，必须配置。
 - `server.address`：如需密码重置链接、支付回调或跳转链接，必须配置为对外可访问地址。
+- `cache.type`：缓存后端类型，只支持 `local` 或 `redis`；使用 Redis 时必须同时配置 `redis.conn_string`。
 - `ucan.aud`：公网部署或域名/端口非默认值时，建议显式配置。
 - `bootstrap.root_wallet_address`：按需配置系统级用户管理钱包地址。
 

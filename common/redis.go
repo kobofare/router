@@ -26,15 +26,18 @@ func ensureRedisClient() error {
 
 // InitRedisClient This function is called after init()
 func InitRedisClient() (err error) {
-	if RedisConnString == "" {
+	cacheType := strings.ToLower(strings.TrimSpace(config.CacheType))
+	if cacheType == "" {
+		cacheType = config.CacheTypeLocal
+	}
+	if cacheType != config.CacheTypeRedis {
 		RedisEnabled = false
-		logger.SysLog("redis.conn_string not set, Redis is not enabled")
+		logger.SysLog("cache.type=" + cacheType + ", Redis is not enabled")
 		return nil
 	}
-	if config.SyncFrequency <= 0 {
+	if RedisConnString == "" {
 		RedisEnabled = false
-		logger.SysLog("cache.sync_frequency_seconds not set or invalid, Redis is disabled")
-		return nil
+		return errors.New("cache.type=redis requires redis.conn_string")
 	}
 	redisConnString := RedisConnString
 	if RedisMasterName == "" {
@@ -60,6 +63,7 @@ func InitRedisClient() (err error) {
 	if err != nil {
 		logger.FatalLog("Redis ping test failed: " + err.Error())
 	}
+	RedisEnabled = true
 	return err
 }
 
