@@ -1432,7 +1432,7 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Version:     "202606171030_procurement_cost_tables",
 			Description: "add procurement cost batch and request consumption tables",
 			Up: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&ChannelProcurementBatch{}, &RequestProcurementConsumption{})
+				return ensureProcurementCostTablesWithDB(tx)
 			},
 		},
 		{
@@ -1552,8 +1552,19 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				}).FirstOrCreate(&item).Error
 			},
 		},
+		{
+			Version:     "202606241850_procurement_cost_table_schema_repair",
+			Description: "ensure procurement cost unit columns exist for previously migrated databases",
+			Up: func(tx *gorm.DB) error {
+				return ensureProcurementCostTablesWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func ensureProcurementCostTablesWithDB(db *gorm.DB) error {
+	return db.AutoMigrate(&ChannelProcurementBatch{}, &RequestProcurementConsumption{})
 }
 
 func volcengineOldModelNameToOfficialModelMap() map[string]string {
