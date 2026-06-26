@@ -6,7 +6,6 @@ import { renderDisplayAmount, YYC_SYMBOL } from '../../helpers/render';
 import {
   AppDetailSection,
   AppFilterHeader,
-  AppIcon,
   AppTag,
 } from '../../router-ui';
 
@@ -144,23 +143,6 @@ function renderRelayError(log) {
   return parts.length > 0 ? parts.join(' / ') : '-';
 }
 
-function renderFallbackAttempts(attempts, t) {
-  if (!Array.isArray(attempts) || attempts.length === 0) {
-    return '-';
-  }
-  return attempts
-    .map((attempt) =>
-      t('log.detail.route.fallback_attempt_line', {
-        attempt: Number(attempt?.attempt || 0),
-        channel: renderText(attempt?.channel_name || attempt?.channel_id),
-        status: attempt?.status || '-',
-        code: renderText(attempt?.error_code),
-        message: renderText(attempt?.error),
-      }),
-    )
-    .join('\n');
-}
-
 function formatNumber(value, maximumFractionDigits = 6) {
   if (
     typeof value !== 'number' ||
@@ -221,6 +203,72 @@ function normalizeLogDetail(data) {
     billingImageToolAmount: Number(data?.billing_image_tool_amount ?? 0),
     billingImageToolChargeAmount: Number(data?.billing_image_tool_charge_amount ?? 0),
   };
+}
+
+function renderRouteOutcomeTags(log, fallbackAttempts, t) {
+  const failed = Number(log?.type) === 6;
+  const fallbackCount = Math.max(
+    Number(log?.fallback_count || 0),
+    Array.isArray(fallbackAttempts) ? fallbackAttempts.length : 0,
+  );
+  return (
+    <div className='router-route-explain-tags'>
+      <AppTag color={failed ? 'red' : 'green'} className='router-tag'>
+        {failed
+          ? t('log.detail.route.outcome.failed')
+          : t('log.detail.route.outcome.succeeded')}
+      </AppTag>
+      <AppTag color={fallbackCount > 0 ? 'orange' : 'blue'} className='router-tag'>
+        {fallbackCount > 0
+          ? t('log.detail.route.outcome.fallback', { count: fallbackCount })
+          : t('log.detail.route.outcome.direct')}
+      </AppTag>
+    </div>
+  );
+}
+
+function renderFallbackAttemptCards(attempts, t) {
+  if (!Array.isArray(attempts) || attempts.length === 0) {
+    return <div className='router-route-attempt-empty'>-</div>;
+  }
+  return (
+    <div className='router-route-attempt-list'>
+      {attempts.map((attempt, index) => {
+        const attemptNo = Number(attempt?.attempt || 0) || index + 1;
+        return (
+          <div
+            className='router-route-attempt-card'
+            key={`${attemptNo}-${attempt?.channel_id || index}`}
+          >
+            <div className='router-route-attempt-head'>
+              <span>
+                {t('log.detail.route.attempt_title', {
+                  attempt: attemptNo,
+                })}
+              </span>
+              <AppTag color='red' className='router-tag'>
+                HTTP {attempt?.status || '-'}
+              </AppTag>
+            </div>
+            <div className='router-route-attempt-grid'>
+              <span>{t('log.detail.route.attempt_fields.channel')}</span>
+              <strong>{renderText(attempt?.channel_name || attempt?.channel_id)}</strong>
+              <span>{t('log.detail.route.attempt_fields.model')}</span>
+              <strong>{renderText(attempt?.model)}</strong>
+              <span>{t('log.detail.route.attempt_fields.endpoint')}</span>
+              <strong>{renderText(attempt?.endpoint)}</strong>
+              <span>{t('log.detail.route.attempt_fields.protocol')}</span>
+              <strong>{renderText(attempt?.protocol)}</strong>
+              <span>{t('log.detail.route.attempt_fields.error_code')}</span>
+              <strong>{renderText(attempt?.error_code)}</strong>
+              <span>{t('log.detail.route.attempt_fields.error')}</span>
+              <strong>{renderText(attempt?.error)}</strong>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const LogDetail = () => {
@@ -335,7 +383,7 @@ const LogDetail = () => {
       {
         key: 'fallback_attempts',
         label: t('log.detail.route.fields.fallback_attempts'),
-        value: renderFallbackAttempts(fallbackAttempts, t),
+        value: renderFallbackAttemptCards(fallbackAttempts, t),
         span: true,
       },
     ],
@@ -576,8 +624,11 @@ const LogDetail = () => {
             <AppDetailSection title={t('log.detail.sections.route')} titleTag='div'>
                   <div className='router-detail-grid'>
                     <div className='router-detail-item router-detail-item-span-2'>
-                      <div className='router-detail-label'>
-                        {t('log.detail.route.summary_title')}
+                      <div className='router-route-explain-header'>
+                        <div className='router-detail-label'>
+                          {t('log.detail.route.summary_title')}
+                        </div>
+                        {renderRouteOutcomeTags(log, fallbackAttempts, t)}
                       </div>
                       <pre className='router-detail-value'>
                         {renderRouteExplanationSummary(log, t)}

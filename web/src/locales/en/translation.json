@@ -1724,7 +1724,21 @@
         "summary_title": "Route Summary",
         "summary": "This request finally hit channel {{channel}}, final model {{model}}, after {{fallbackCount}} fallback(s), using estimate source {{source}} and settlement mode {{settlement}}.",
         "failure_summary": "This request ultimately failed. The last attempted channel was {{channel}}, requested model {{model}}, after {{fallbackCount}} fallback(s).",
-        "fallback_attempt_line": "#{{attempt}} {{channel}} / HTTP {{status}} / {{code}} / {{message}}",
+        "attempt_title": "Attempt {{attempt}}",
+        "outcome": {
+          "succeeded": "Succeeded",
+          "failed": "Failed",
+          "direct": "No Fallback",
+          "fallback": "{{count}} fallback(s)"
+        },
+        "attempt_fields": {
+          "channel": "Channel",
+          "model": "Model",
+          "endpoint": "Endpoint",
+          "protocol": "Protocol",
+          "error_code": "Error Code",
+          "error": "Error"
+        },
         "fields": {
           "channel_target": "Matched Channel",
           "request_model": "Requested Model",

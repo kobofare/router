@@ -1724,7 +1724,21 @@
         "summary_title": "本次路由摘要",
         "summary": "本次请求最终命中渠道 {{channel}}，最终模型为 {{model}}，经历 {{fallbackCount}} 次 fallback，估算来源为 {{source}}，结算模式为 {{settlement}}。",
         "failure_summary": "本次请求最终失败，最后尝试渠道为 {{channel}}，请求模型为 {{model}}，经历 {{fallbackCount}} 次 fallback。",
-        "fallback_attempt_line": "#{{attempt}} {{channel}} / HTTP {{status}} / {{code}} / {{message}}",
+        "attempt_title": "第 {{attempt}} 次尝试",
+        "outcome": {
+          "succeeded": "成功",
+          "failed": "失败",
+          "direct": "未 fallback",
+          "fallback": "{{count}} 次 fallback"
+        },
+        "attempt_fields": {
+          "channel": "渠道",
+          "model": "模型",
+          "endpoint": "端点",
+          "protocol": "协议",
+          "error_code": "错误码",
+          "error": "错误"
+        },
         "fields": {
           "channel_target": "命中渠道",
           "request_model": "请求模型",

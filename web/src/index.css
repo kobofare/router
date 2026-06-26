@@ -1713,6 +1713,76 @@ body,
     overflow-x: auto;
 }
 
+.router-route-explain-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.router-route-explain-header .router-detail-label {
+    margin-bottom: 0;
+}
+
+.router-route-explain-tags {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.router-route-attempt-empty {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.router-route-attempt-list {
+    display: grid;
+    gap: 8px;
+}
+
+.router-route-attempt-card {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid rgba(239, 68, 68, 0.16);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.router-route-attempt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #111827;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.router-route-attempt-grid {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.32fr) minmax(0, 1fr);
+    gap: 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-route-attempt-grid > span {
+    color: rgba(0, 0, 0, 0.52);
+}
+
+.router-route-attempt-grid > strong {
+    min-width: 0;
+    color: #1f2937;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
 .router-provider-detail-page,
 .router-entity-detail-page {
     display: flex;
