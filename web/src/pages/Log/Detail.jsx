@@ -94,15 +94,61 @@ function renderEstimatePrecision(value, t) {
 function renderRouteExplanationSummary(log, t) {
   if (!log) return '-';
   const channel = renderText(log.channel_name || log.channel);
-  const model = renderText(log.model_name);
+  const model = renderText(log.actual_model_name || log.model_name);
   const source = renderText(log.billing_estimate_source);
   const settlement = renderText(log.billing_settlement_mode);
+  const fallbackCount = Number(log.fallback_count || 0);
   return t('log.detail.route.summary', {
     channel,
     model,
     source,
     settlement,
+    fallbackCount,
   });
+}
+
+function parseFallbackAttempts(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  const raw = (value || '').toString().trim();
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderRelayError(log) {
+  const parts = [
+    log?.relay_error_type,
+    log?.relay_error_code,
+    log?.relay_error_message,
+  ]
+    .map((item) => (item || '').toString().trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(' / ') : '-';
+}
+
+function renderFallbackAttempts(attempts, t) {
+  if (!Array.isArray(attempts) || attempts.length === 0) {
+    return '-';
+  }
+  return attempts
+    .map((attempt) =>
+      t('log.detail.route.fallback_attempt_line', {
+        attempt: Number(attempt?.attempt || 0),
+        channel: renderText(attempt?.channel_name || attempt?.channel_id),
+        status: attempt?.status || '-',
+        code: renderText(attempt?.error_code),
+        message: renderText(attempt?.error),
+      }),
+    )
+    .join('\n');
 }
 
 function formatNumber(value, maximumFractionDigits = 6) {
@@ -183,6 +229,11 @@ const LogDetail = () => {
     [isAdminPage, location.search],
   );
 
+  const fallbackAttempts = useMemo(
+    () => parseFallbackAttempts(log?.fallback_attempts),
+    [log?.fallback_attempts],
+  );
+
   const routeExplanationItems = useMemo(
     () => [
       {
@@ -208,7 +259,22 @@ const LogDetail = () => {
       {
         key: 'model',
         label: t('log.detail.route.fields.request_model'),
-        value: renderText(log?.model_name),
+        value: renderText(log?.request_model_name || log?.model_name),
+      },
+      {
+        key: 'actual_model',
+        label: t('log.detail.route.fields.actual_model'),
+        value: renderText(log?.actual_model_name || log?.model_name),
+      },
+      {
+        key: 'upstream_endpoint',
+        label: t('log.detail.route.fields.upstream_endpoint'),
+        value: renderText(log?.upstream_endpoint),
+      },
+      {
+        key: 'upstream_protocol',
+        label: t('log.detail.route.fields.upstream_protocol'),
+        value: renderText(log?.upstream_protocol),
       },
       {
         key: 'stream',
@@ -245,8 +311,25 @@ const LogDetail = () => {
         label: t('log.detail.route.fields.trace_id'),
         value: renderText(log?.trace_id),
       },
+      {
+        key: 'fallback_count',
+        label: t('log.detail.route.fields.fallback_count'),
+        value: Number(log?.fallback_count || 0),
+      },
+      {
+        key: 'relay_error',
+        label: t('log.detail.route.fields.relay_error'),
+        value: renderRelayError(log),
+        span: true,
+      },
+      {
+        key: 'fallback_attempts',
+        label: t('log.detail.route.fields.fallback_attempts'),
+        value: renderFallbackAttempts(fallbackAttempts, t),
+        span: true,
+      },
     ],
-    [currentPagePath, isAdminPage, log, t],
+    [currentPagePath, fallbackAttempts, isAdminPage, log, t],
   );
 
   const loadDetail = useCallback(async () => {
@@ -491,7 +574,10 @@ const LogDetail = () => {
                       </pre>
                     </div>
                     {routeExplanationItems.map((item) => (
-                      <div key={item.key} className='router-detail-item'>
+                      <div
+                        key={item.key}
+                        className={`router-detail-item${item.span ? ' router-detail-item-span-2' : ''}`}
+                      >
                         <div className='router-detail-label'>{item.label}</div>
                         <div className='router-detail-value'>{item.value}</div>
                       </div>

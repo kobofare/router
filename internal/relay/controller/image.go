@@ -916,6 +916,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 			UserEmergencyQuota: userEmergencyQuota,
 			Content:            billing.FormatPricingLog(pricing, groupRatio),
 		}
+		applyRouteObservabilityToLog(entry, meta, imageRequest.Model)
 		billingSnapshot.ApplyToLog(entry)
 		billing.ApplyProcurementCostObservation(entry)
 		model.RecordConsumeLog(ctx, entry)

@@ -56,6 +56,15 @@ type Log struct {
 	CompletionTokens                 int     `json:"completion_tokens" gorm:"default:0"`
 	ChannelId                        string  `json:"channel" gorm:"type:varchar(64);index"`
 	ChannelName                      string  `json:"channel_name,omitempty" gorm:"-"`
+	RequestModelName                 string  `json:"request_model_name" gorm:"type:varchar(191);index;default:''"`
+	ActualModelName                  string  `json:"actual_model_name" gorm:"type:varchar(191);index;default:''"`
+	UpstreamEndpoint                 string  `json:"upstream_endpoint" gorm:"type:varchar(191);index;default:''"`
+	UpstreamProtocol                 string  `json:"upstream_protocol" gorm:"type:varchar(64);index;default:''"`
+	FallbackCount                    int     `json:"fallback_count" gorm:"default:0"`
+	FallbackAttempts                 string  `json:"fallback_attempts" gorm:"type:text"`
+	RelayErrorType                   string  `json:"relay_error_type" gorm:"type:varchar(64);default:''"`
+	RelayErrorCode                   string  `json:"relay_error_code" gorm:"type:varchar(128);default:''"`
+	RelayErrorMessage                string  `json:"relay_error_message" gorm:"type:text"`
 	TraceID                          string  `json:"trace_id" gorm:"column:trace_id;default:''"`
 	ElapsedTime                      int64   `json:"elapsed_time" gorm:"default:0"`
 	IsStream                         bool    `json:"is_stream" gorm:"default:false"`

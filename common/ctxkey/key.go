@@ -27,6 +27,7 @@ const (
 	UpstreamURL                 = "upstream_url"
 	UpstreamStatus              = "upstream_status"
 	RelayRetryCount             = "relay_retry_count"
+	RelayFallbackAttempts       = "relay_fallback_attempts"
 	RelayError                  = "relay_error"
 	RelayErrorType              = "relay_error_type"
 	RelayErrorCode              = "relay_error_code"

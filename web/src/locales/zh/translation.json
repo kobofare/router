@@ -1721,17 +1721,24 @@
       },
       "route": {
         "summary_title": "本次路由摘要",
-        "summary": "本次请求命中渠道 {{channel}}，请求模型为 {{model}}，估算来源为 {{source}}，结算模式为 {{settlement}}。",
+        "summary": "本次请求最终命中渠道 {{channel}}，最终模型为 {{model}}，经历 {{fallbackCount}} 次 fallback，估算来源为 {{source}}，结算模式为 {{settlement}}。",
+        "fallback_attempt_line": "#{{attempt}} {{channel}} / HTTP {{status}} / {{code}} / {{message}}",
         "fields": {
           "channel_target": "命中渠道",
           "request_model": "请求模型",
+          "actual_model": "最终模型",
+          "upstream_endpoint": "上游端点",
+          "upstream_protocol": "上游协议",
           "stream_mode": "流式模式",
           "elapsed_time": "请求耗时",
           "estimate_source": "估算来源",
           "estimate_estimator": "估算器",
           "estimate_precision": "估算精度",
           "settlement_mode": "结算模式",
-          "trace_id": "Trace ID"
+          "trace_id": "Trace ID",
+          "fallback_count": "Fallback 次数",
+          "relay_error": "最终错误",
+          "fallback_attempts": "Fallback 尝试"
         },
         "precision": {
           "high": "高",

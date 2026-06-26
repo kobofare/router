@@ -18,10 +18,12 @@ import (
 	adminchannel "github.com/yeying-community/router/internal/admin/controller/channel"
 	dbmodel "github.com/yeying-community/router/internal/admin/model"
 	"github.com/yeying-community/router/internal/admin/monitor"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/controller"
 	relaylogging "github.com/yeying-community/router/internal/relay/logging"
 	"github.com/yeying-community/router/internal/relay/model"
 	"github.com/yeying-community/router/internal/relay/relaymode"
+	"github.com/yeying-community/router/internal/relay/routeobs"
 	"github.com/yeying-community/router/internal/transport/http/middleware"
 )
 
@@ -57,6 +59,7 @@ func Relay(c *gin.Context) {
 	c.Set(ctxkey.RelayErrorType, "")
 	c.Set(ctxkey.RelayErrorCode, "")
 	c.Set(ctxkey.RelayTermination, "")
+	routeobs.Reset(c)
 	relayMode := getEffectiveRelayMode(c)
 	if config.DebugEnabled {
 		requestBody, _ := common.GetRequestBody(c)
@@ -86,6 +89,7 @@ func Relay(c *gin.Context) {
 	if trimmedChannelID := strings.TrimSpace(channelId); trimmedChannelID != "" {
 		failedChannelIDs[trimmedChannelID] = struct{}{}
 	}
+	appendFallbackFailureAttempt(c, 1, bizErr)
 	go processChannelRelayError(ctx, userId, group, channelId, channelName, originalModel, requestPath, *bizErr)
 	traceID := c.GetString(helper.TraceIDKey)
 	retryAllRemainingCandidates := config.RetryTimes > 0
@@ -171,6 +175,7 @@ func Relay(c *gin.Context) {
 		if trimmedChannelID := strings.TrimSpace(channelId); trimmedChannelID != "" {
 			failedChannelIDs[trimmedChannelID] = struct{}{}
 		}
+		appendFallbackFailureAttempt(c, retryCount+1, bizErr)
 		go processChannelRelayError(ctx, userId, group, channelId, channelName, originalModel, requestPath, *bizErr)
 	}
 	if bizErr != nil {
@@ -187,6 +192,35 @@ func Relay(c *gin.Context) {
 			"error": bizErr.Error,
 		})
 	}
+}
+
+func appendFallbackFailureAttempt(c *gin.Context, attempt int, bizErr *model.ErrorWithStatusCode) {
+	if c == nil || bizErr == nil {
+		return
+	}
+	routeobs.AppendFallbackAttempt(c, routeobs.FallbackAttempt{
+		Attempt:     attempt,
+		ChannelID:   c.GetString(ctxkey.ChannelId),
+		ChannelName: c.GetString(ctxkey.ChannelName),
+		Model:       c.GetString(ctxkey.OriginalModel),
+		Endpoint:    c.Request.URL.Path,
+		Protocol:    relayProtocolName(c),
+		Status:      bizErr.StatusCode,
+		ErrorType:   bizErr.Error.Type,
+		ErrorCode:   errorCodeString(bizErr.Error.Code),
+		Error:       bizErr.Error.Message,
+	})
+}
+
+func relayProtocolName(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	protocol := c.GetInt(ctxkey.Channel)
+	if protocol == 0 {
+		return ""
+	}
+	return relaychannel.ProtocolByType(protocol)
 }
 
 func getEffectiveRelayMode(c *gin.Context) int {

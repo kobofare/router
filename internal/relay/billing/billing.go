@@ -38,7 +38,9 @@ func ReturnPreConsumedQuota(ctx context.Context, preConsumedQuota int64, tokenId
 	}(ctx)
 }
 
-func PostConsumeQuota(ctx context.Context, tokenId string, quotaDelta int64, totalQuota int64, userId string, groupID string, channelId string, pricing model.ResolvedModelPricing, groupRatio float64, modelName string, tokenName string, chargeUserBalance bool, packageReservation model.PackageQuotaReservation, snapshot BillingSnapshot) {
+type LogRouteObserver func(entry *model.Log)
+
+func PostConsumeQuota(ctx context.Context, tokenId string, quotaDelta int64, totalQuota int64, userId string, groupID string, channelId string, pricing model.ResolvedModelPricing, groupRatio float64, modelName string, tokenName string, chargeUserBalance bool, packageReservation model.PackageQuotaReservation, snapshot BillingSnapshot, routeObservers ...LogRouteObserver) {
 	// quotaDelta is remaining quota to be consumed
 	var err error
 	if strings.TrimSpace(tokenId) != "" {
@@ -101,6 +103,11 @@ func PostConsumeQuota(ctx context.Context, tokenId string, quotaDelta int64, tot
 			UserDailyQuota:     userDailyQuota,
 			UserEmergencyQuota: userEmergencyQuota,
 			Content:            FormatPricingLog(pricing, groupRatio),
+		}
+		for _, observer := range routeObservers {
+			if observer != nil {
+				observer(entry)
+			}
 		}
 		snapshot.ApplyToLog(entry)
 		ApplyProcurementCostObservation(entry)

@@ -1721,17 +1721,24 @@
       },
       "route": {
         "summary_title": "Route Summary",
-        "summary": "This request hit channel {{channel}}, requested model {{model}}, used estimate source {{source}}, and settled with mode {{settlement}}.",
+        "summary": "This request finally hit channel {{channel}}, final model {{model}}, after {{fallbackCount}} fallback(s), using estimate source {{source}} and settlement mode {{settlement}}.",
+        "fallback_attempt_line": "#{{attempt}} {{channel}} / HTTP {{status}} / {{code}} / {{message}}",
         "fields": {
           "channel_target": "Matched Channel",
           "request_model": "Requested Model",
+          "actual_model": "Final Model",
+          "upstream_endpoint": "Upstream Endpoint",
+          "upstream_protocol": "Upstream Protocol",
           "stream_mode": "Stream Mode",
           "elapsed_time": "Request Latency",
           "estimate_source": "Estimate Source",
           "estimate_estimator": "Estimator",
           "estimate_precision": "Estimate Precision",
           "settlement_mode": "Settlement Mode",
-          "trace_id": "Trace ID"
+          "trace_id": "Trace ID",
+          "fallback_count": "Fallback Count",
+          "relay_error": "Final Error",
+          "fallback_attempts": "Fallback Attempts"
         },
         "precision": {
           "high": "High",
