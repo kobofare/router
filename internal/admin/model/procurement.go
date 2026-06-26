@@ -307,6 +307,11 @@ func CreateProcurementBatchesFromBillingSnapshotItemsWithDB(db *gorm.DB, snapsho
 	if len(items) == 0 {
 		return []ChannelProcurementBatch{}, nil
 	}
+	if !db.Migrator().HasTable(&ChannelProcurementBatch{}) {
+		if err := ensureProcurementCostTablesWithDB(db); err != nil {
+			return nil, err
+		}
+	}
 	rows := make([]ChannelProcurementBatch, 0, len(items))
 	now := helper.GetTimestamp()
 	for _, item := range items {
@@ -477,6 +482,11 @@ func ListChannelProcurementBatchesBySourceSnapshotIDWithDB(db *gorm.DB, snapshot
 	if normalizedSnapshotID == "" {
 		return []ChannelProcurementBatch{}, nil
 	}
+	if !db.Migrator().HasTable(&ChannelProcurementBatch{}) {
+		if err := ensureProcurementCostTablesWithDB(db); err != nil {
+			return nil, err
+		}
+	}
 	rows := make([]ChannelProcurementBatch, 0)
 	if err := db.Where("source_snapshot_id = ?", normalizedSnapshotID).
 		Order("created_at asc, id asc").
@@ -493,6 +503,11 @@ func GetChannelProcurementBatchByIDWithDB(db *gorm.DB, id string) (ChannelProcur
 	normalizedID := strings.TrimSpace(id)
 	if normalizedID == "" {
 		return ChannelProcurementBatch{}, gorm.ErrRecordNotFound
+	}
+	if !db.Migrator().HasTable(&ChannelProcurementBatch{}) {
+		if err := ensureProcurementCostTablesWithDB(db); err != nil {
+			return ChannelProcurementBatch{}, err
+		}
 	}
 	row := ChannelProcurementBatch{}
 	err := db.Where("id = ?", normalizedID).Take(&row).Error
@@ -517,6 +532,14 @@ func CountRequestProcurementConsumptionsByBatchIDsWithDB(db *gorm.DB, batchIDs [
 }
 
 func CountRequestProcurementConsumptionsBySourceSnapshotIDWithDB(db *gorm.DB, snapshotID string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database handle is nil")
+	}
+	if !db.Migrator().HasTable(&RequestProcurementConsumption{}) || !db.Migrator().HasTable(&ChannelProcurementBatch{}) {
+		if err := ensureProcurementCostTablesWithDB(db); err != nil {
+			return 0, err
+		}
+	}
 	rows, err := ListChannelProcurementBatchesBySourceSnapshotIDWithDB(db, snapshotID)
 	if err != nil {
 		return 0, err
