@@ -1676,6 +1676,10 @@ body,
     padding: 10px 12px;
 }
 
+.router-detail-item-span-2 {
+    grid-column: span 2;
+}
+
 .router-detail-label {
     font-size: 12px;
     font-weight: 600;
@@ -1695,12 +1699,88 @@ body,
     color: #1f2937;
 }
 
+@media (max-width: 768px) {
+    .router-detail-item-span-2 {
+        grid-column: span 1;
+    }
+}
+
 .router-detail-pre {
     border: 1px solid rgba(34, 36, 38, 0.08);
     border-radius: 10px;
     background: #f7f9fb;
     padding: 12px;
     overflow-x: auto;
+}
+
+.router-route-explain-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.router-route-explain-header .router-detail-label {
+    margin-bottom: 0;
+}
+
+.router-route-explain-tags {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.router-route-attempt-empty {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.router-route-attempt-list {
+    display: grid;
+    gap: 8px;
+}
+
+.router-route-attempt-card {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid rgba(239, 68, 68, 0.16);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.router-route-attempt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #111827;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.router-route-attempt-grid {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.32fr) minmax(0, 1fr);
+    gap: 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-route-attempt-grid > span {
+    color: rgba(0, 0, 0, 0.52);
+}
+
+.router-route-attempt-grid > strong {
+    min-width: 0;
+    color: #1f2937;
+    font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 .router-provider-detail-page,
@@ -2049,6 +2129,30 @@ body,
 
 .router-user-redemption-summary .router-ui-table .ant-table {
     margin-top: 0;
+}
+
+.router-balance-lot-summary {
+    margin: -2px 0 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #6b7280;
+}
+
+.router-balance-lot-source-cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.router-balance-lot-source-type {
+    font-size: 12px;
+    line-height: 1.3;
+    color: #6b7280;
+}
+
+.router-balance-lot-source-id-link {
+    max-width: 100%;
 }
 
 .router-inline-stat-card {
@@ -2650,6 +2754,23 @@ body,
     color: #2185d0;
 }
 
+.router-link-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    line-height: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.router-link-button:hover,
+.router-link-button:focus-visible {
+    color: #1677ff;
+    text-decoration: underline;
+}
+
 .router-copy-relaxed {
     line-height: 1.7;
 }
@@ -3205,6 +3326,77 @@ body,
 .router-list-toolbar-query-compact {
     width: auto;
     max-width: 100%;
+}
+
+.router-user-focus-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.router-user-focus-summary-main {
+    min-width: 0;
+}
+
+.router-user-focus-summary-title {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.router-user-focus-summary-text {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-batch-action-result {
+    display: grid;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.router-batch-action-result-summary {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.router-batch-action-failed-list {
+    display: grid;
+    gap: 6px;
+}
+
+.router-batch-action-failed-title {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.router-batch-action-failed-item {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.4fr) minmax(0, 1fr);
+    gap: 8px;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-batch-action-failed-item > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .router-ui-form-row {
@@ -3766,6 +3958,78 @@ body,
 .router-ui-table.router-channel-create-review-table .ant-table-tbody > tr > td .router-cell-truncate {
     display: block;
     min-width: 0;
+}
+
+.router-endpoint-state-summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.router-endpoint-state-card {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.router-endpoint-state-card-available {
+    border-color: rgba(34, 197, 94, 0.26);
+}
+
+.router-endpoint-state-card-paused {
+    border-color: rgba(239, 68, 68, 0.26);
+}
+
+.router-endpoint-state-card-blocked,
+.router-endpoint-state-card-untested {
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.router-endpoint-state-card-value {
+    color: #111827;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+.router-endpoint-state-card-label {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.router-endpoint-filter-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.router-endpoint-runtime-status {
+    display: grid;
+    gap: 6px;
+}
+
+.router-endpoint-runtime-lines {
+    display: grid;
+    gap: 3px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-endpoint-runtime-lines > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .router-endpoint-state-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .router-create-model-provider-list .router-ui-tag.router-tag {
@@ -4558,6 +4822,11 @@ body,
   .router-search-form-xs,
   .router-dropdown-min-170 {
     width: 100%;
+  }
+
+  .router-user-focus-summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .router-settings-menu-column {

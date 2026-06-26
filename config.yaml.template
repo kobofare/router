@@ -33,7 +33,7 @@ database:
   max_lifetime_seconds: 60
 
 redis:
-  # Redis 连接串；留空表示不启用 Redis。
+  # Redis 连接串；cache.type=redis 时必填。
   # 单机示例：redis://:password@127.0.0.1:6379/0
   # 哨兵示例：redis://10.0.0.1:26379,10.0.0.2:26379,10.0.0.3:26379/0
   conn_string: ""
@@ -51,6 +51,9 @@ node:
   polling_interval_seconds: 0
 
 cache:
+  # 缓存类型：local / redis。
+  # 留空表示兼容旧配置：redis.conn_string 非空时使用 redis，否则使用 local。
+  type: local
   # 是否启用内存缓存（生产建议按压测决定）。
   memory_cache_enabled: false
   # 缓存同步周期（秒）。

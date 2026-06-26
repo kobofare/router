@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -27,6 +28,7 @@ import (
 	relayadaptor "github.com/yeying-community/router/internal/relay/adaptor"
 	aliadaptor "github.com/yeying-community/router/internal/relay/adaptor/ali"
 	openaiadaptor "github.com/yeying-community/router/internal/relay/adaptor/openai"
+	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
@@ -118,7 +120,11 @@ func persistChannelModelTests(channelID string, taskID string, results []model.C
 	targetModels = model.NormalizeChannelModelIDsPreserveOrder(targetModels)
 	restoredModels := make([]string, 0)
 	restoredEndpoints := make([]channelModelEndpointRestore, 0)
-	err := model.DB.Transaction(func(tx *gorm.DB) error {
+	shouldRestoreChannel, err := shouldRestoreInsufficientBalanceChannelAfterSuccessfulTests(normalizedChannelID, results)
+	if err != nil {
+		return err
+	}
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
 		if _, err := model.AppendChannelTestsForModelsWithDB(tx, normalizedChannelID, targetModels, results); err != nil {
 			return err
 		}
@@ -142,7 +148,47 @@ func persistChannelModelTests(channelID string, taskID string, results []model.C
 	if len(restoredModels) > 0 || len(restoredEndpoints) > 0 {
 		notifyAutoRestoredCapabilities(normalizedChannelID, restoredModels, restoredEndpoints)
 	}
+	if shouldRestoreChannel {
+		return monitor.EnableChannel(normalizedChannelID, normalizedChannelID)
+	}
 	return nil
+}
+
+func shouldRestoreInsufficientBalanceChannelAfterSuccessfulTests(channelID string, results []model.ChannelTest) (bool, error) {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return false, nil
+	}
+	if !hasSuccessfulChannelModelTest(results) {
+		return false, nil
+	}
+	channelRow, err := channelsvc.GetByID(normalizedChannelID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	if channelRow.Status != model.ChannelStatusAutoDisabled {
+		return false, nil
+	}
+	state, err := model.GetChannelCircuitBreakerState(normalizedChannelID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return model.IsInsufficientBalanceCircuitBreakerState(state), nil
+}
+
+func hasSuccessfulChannelModelTest(results []model.ChannelTest) bool {
+	for _, result := range model.NormalizeChannelTestRows(results) {
+		if result.Supported && model.NormalizeChannelTestStatus(result.Status) == model.ChannelTestStatusSupported {
+			return true
+		}
+	}
+	return false
 }
 
 type channelModelEndpointRestore struct {
@@ -1773,6 +1819,100 @@ func waitRealtimeTestCompletion(conn *websocket.Conn) (string, error) {
 	}
 }
 
+func waitRealtimeSessionUpdated(conn *websocket.Conn) error {
+	if conn == nil {
+		return fmt.Errorf("realtime connection is nil")
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	_ = conn.SetReadDeadline(deadline)
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		event := map[string]any{}
+		if err := json.Unmarshal(message, &event); err != nil {
+			continue
+		}
+		eventType := strings.TrimSpace(fmt.Sprintf("%v", event["type"]))
+		switch eventType {
+		case "session.updated":
+			return nil
+		case "error":
+			realtimeErr := realtimeServerEventError{}
+			if err := json.Unmarshal(message, &realtimeErr); err == nil {
+				msg := strings.TrimSpace(realtimeErr.Error.Message)
+				if msg == "" {
+					msg = strings.TrimSpace(string(message))
+				}
+				return fmt.Errorf("realtime server error: %s", msg)
+			}
+			return fmt.Errorf("realtime server error: %s", strings.TrimSpace(string(message)))
+		}
+	}
+}
+
+func waitRealtimeSessionCreated(conn *websocket.Conn) error {
+	if conn == nil {
+		return fmt.Errorf("realtime connection is nil")
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	_ = conn.SetReadDeadline(deadline)
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		event := map[string]any{}
+		if err := json.Unmarshal(message, &event); err != nil {
+			continue
+		}
+		eventType := strings.TrimSpace(fmt.Sprintf("%v", event["type"]))
+		switch eventType {
+		case "session.created":
+			return nil
+		case "error":
+			realtimeErr := realtimeServerEventError{}
+			if err := json.Unmarshal(message, &realtimeErr); err == nil {
+				msg := strings.TrimSpace(realtimeErr.Error.Message)
+				if msg == "" {
+					msg = strings.TrimSpace(string(message))
+				}
+				return fmt.Errorf("realtime server error: %s", msg)
+			}
+			return fmt.Errorf("realtime server error: %s", strings.TrimSpace(string(message)))
+		}
+	}
+}
+
+func isQwenLiveTranslateRealtimeModel(modelName string) bool {
+	normalized := strings.TrimSpace(strings.ToLower(modelName))
+	return strings.Contains(normalized, "livetranslate") && strings.HasSuffix(normalized, "-realtime")
+}
+
+func buildZhipuRealtimeSessionUpdate(modelName string) map[string]any {
+	return map[string]any{
+		"event_id":         fmt.Sprintf("router-test-%d", time.Now().UnixMilli()),
+		"client_timestamp": time.Now().UnixMilli(),
+		"type":             "session.update",
+		"session": map[string]any{
+			"model":                       strings.TrimSpace(modelName),
+			"modalities":                  []string{"audio", "text"},
+			"instructions":                "请简短回答。",
+			"voice":                       "tongtong",
+			"input_audio_format":          "wav",
+			"output_audio_format":         "pcm",
+			"input_audio_noise_reduction": map[string]any{"type": "far_field"},
+			"temperature":                 0.7,
+			"max_response_output_tokens":  "inf",
+			"beta_fields": map[string]any{
+				"chat_mode":  "audio",
+				"tts_source": "e2e",
+			},
+		},
+	}
+}
+
 func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel, modelName string) channelModelTestExecution {
 	execution := channelModelTestExecution{}
 	actualModelName := resolveChannelUpstreamModelName(channel, modelName)
@@ -1799,6 +1939,9 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 
 	baseURL := channel.ResolveAPIBaseURLForModel(model.ChannelModelEndpointRealtime, modelName, actualModelName)
 	requestURL := resolveChannelEndpointURL(baseURL, model.ChannelModelEndpointRealtime)
+	if resolvedRequestURL, urlErr := adaptor.GetRequestURL(relayMeta); urlErr == nil && strings.TrimSpace(resolvedRequestURL) != "" {
+		requestURL = resolvedRequestURL
+	}
 	execution.BaseURL = baseURL
 	execution.RequestURL = requestURL
 	if requestURL == "" {
@@ -1812,9 +1955,11 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
 		return execution
 	}
-	query := parsedURL.Query()
-	query.Set("model", actualModelName)
-	parsedURL.RawQuery = query.Encode()
+	if relayMeta.ChannelProtocol != relaychannel.VolcengineRealtime {
+		query := parsedURL.Query()
+		query.Set("model", actualModelName)
+		parsedURL.RawQuery = query.Encode()
+	}
 
 	upstreamURL, err := normalizeChannelTestRealtimeWebSocketURL(parsedURL.String())
 	if err != nil {
@@ -1824,17 +1969,30 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 	}
 
 	requestHeader := http.Header{}
-	requestHeader.Set("OpenAI-Beta", "realtime=v1")
 	switch relayMeta.ChannelProtocol {
 	case relaychannel.Azure:
+		requestHeader.Set("OpenAI-Beta", "realtime=v1")
 		requestHeader.Set("api-key", strings.TrimSpace(channel.Key))
+	case relaychannel.VolcengineRealtime:
+		volcenginerealtime.ApplyRealtimeHeaders(
+			requestHeader,
+			relayMeta.Config.AppID,
+			strings.TrimSpace(channel.Key),
+			relayMeta.Config.ResourceID,
+		)
+	case relaychannel.Zhipu:
+		requestHeader.Set("Authorization", "Bearer "+strings.TrimSpace(channel.Key))
 	default:
+		requestHeader.Set("OpenAI-Beta", "realtime=v1")
 		requestHeader.Set("Authorization", "Bearer "+strings.TrimSpace(channel.Key))
 	}
 	execution.InputPayload = buildHTTPRequestPayloadForLog(http.MethodGet, parsedURL.String(), requestHeader, nil)
 
 	dialer := websocket.Dialer{
 		Subprotocols: []string{"realtime"},
+	}
+	if relayMeta.ChannelProtocol == relaychannel.Zhipu {
+		dialer.Subprotocols = nil
 	}
 	startedAt := time.Now()
 	conn, resp, err := dialer.DialContext(ctx, upstreamURL, requestHeader)
@@ -1862,6 +2020,79 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		_ = resp.Body.Close()
 	}
 	subprotocol := strings.TrimSpace(conn.Subprotocol())
+	if relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime {
+		execution.Message = "WebSocket 握手成功，Volcengine Realtime 未执行 OpenAI 风格会话测试"
+		outputMessage := execution.Message
+		if subprotocol != "" {
+			outputMessage = fmt.Sprintf("%s（subprotocol=%s）", execution.Message, subprotocol)
+		}
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(outputMessage))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "channel test complete"), time.Now().Add(2*time.Second))
+		_ = conn.Close()
+		return execution
+	}
+	if relayMeta.ChannelProtocol == relaychannel.Zhipu {
+		if err := waitRealtimeSessionCreated(conn); err != nil {
+			execution.Err = wrapRealtimeSessionError(err)
+			execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(execution.Err.Error()))
+			_ = conn.Close()
+			return execution
+		}
+		if err := writeRealtimeTestEvent(conn, buildZhipuRealtimeSessionUpdate(actualModelName)); err != nil {
+			execution.Err = err
+			execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+			_ = conn.Close()
+			return execution
+		}
+		if err := waitRealtimeSessionUpdated(conn); err != nil {
+			execution.Err = wrapRealtimeSessionError(err)
+			execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(execution.Err.Error()))
+			_ = conn.Close()
+			return execution
+		}
+		execution.Message = "WebSocket 会话成功，Zhipu Realtime 会话参数校验通过"
+		outputMessage := execution.Message
+		if subprotocol != "" {
+			outputMessage = fmt.Sprintf("%s（subprotocol=%s）", execution.Message, subprotocol)
+		}
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(outputMessage))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "channel test complete"), time.Now().Add(2*time.Second))
+		_ = conn.Close()
+		return execution
+	}
+	if isQwenLiveTranslateRealtimeModel(actualModelName) {
+		if err := writeRealtimeTestEvent(conn, map[string]any{
+			"type": "session.update",
+			"session": map[string]any{
+				"modalities":         []string{"text"},
+				"input_audio_format": "pcm",
+				"sample_rate":        16000,
+				"translation": map[string]any{
+					"language": "en",
+				},
+			},
+		}); err != nil {
+			execution.Err = err
+			execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+			_ = conn.Close()
+			return execution
+		}
+		if err := waitRealtimeSessionUpdated(conn); err != nil {
+			execution.Err = wrapRealtimeSessionError(err)
+			execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(execution.Err.Error()))
+			_ = conn.Close()
+			return execution
+		}
+		execution.Message = "WebSocket 会话成功，实时翻译模型会话参数校验通过"
+		outputMessage := execution.Message
+		if subprotocol != "" {
+			outputMessage = fmt.Sprintf("%s（subprotocol=%s）", execution.Message, subprotocol)
+		}
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(outputMessage))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "channel test complete"), time.Now().Add(2*time.Second))
+		_ = conn.Close()
+		return execution
+	}
 	if err := writeRealtimeTestEvent(conn, map[string]any{
 		"type": "session.update",
 		"session": map[string]any{

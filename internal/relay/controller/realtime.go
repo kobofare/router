@@ -14,6 +14,7 @@ import (
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/internal/relay"
 	"github.com/yeying-community/router/internal/relay/adaptor/openai"
+	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
@@ -22,6 +23,11 @@ import (
 var realtimeUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
+
+const (
+	realtimeBrowserAPIKeySubprotocolPrefix = "openai-insecure-api-key."
+	realtimeOpenAIBetaSubprotocol          = "openai-beta.realtime-v1"
+)
 
 func RelayRealtimeHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	if c == nil || c.Request == nil {
@@ -46,11 +52,16 @@ func RelayRealtimeHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	if err != nil {
 		return openai.ErrorWrapper(err, "invalid_realtime_upstream_url", http.StatusInternalServerError)
 	}
+	upstreamURL, err = mergeRealtimeUpstreamQuery(upstreamURL, c.Request.URL, meta)
+	if err != nil {
+		return openai.ErrorWrapper(err, "invalid_realtime_upstream_url", http.StatusInternalServerError)
+	}
 	c.Set(ctxkey.UpstreamURL, upstreamURL)
 
 	clientHeader := cloneRealtimeRequestHeaders(c.Request.Header, meta)
+	upstreamSubprotocols := realtimeUpstreamSubprotocols(c.Request.Header, meta)
 	dialer := websocket.Dialer{
-		Subprotocols: websocket.Subprotocols(c.Request),
+		Subprotocols: upstreamSubprotocols,
 	}
 	upstreamConn, resp, err := dialer.DialContext(c.Request.Context(), upstreamURL, clientHeader)
 	if err != nil {
@@ -62,7 +73,7 @@ func RelayRealtimeHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		}
 	}()
 
-	clientConn, err := realtimeUpgrader.Upgrade(c.Writer, c.Request, realtimeUpgradeHeaders(upstreamConn))
+	clientConn, err := realtimeUpgrader.Upgrade(c.Writer, c.Request, realtimeUpgradeHeaders(upstreamConn, c.Request.Header))
 	if err != nil {
 		_ = upstreamConn.Close()
 		return openai.ErrorWrapper(err, "upgrade_client_websocket_failed", http.StatusBadRequest)
@@ -89,12 +100,44 @@ func normalizeRealtimeWebSocketURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
+func mergeRealtimeUpstreamQuery(upstreamURL string, requestURL *url.URL, relayMeta *meta.Meta) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(upstreamURL))
+	if err != nil {
+		return "", err
+	}
+	if relayMeta != nil && relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime {
+		return parsed.String(), nil
+	}
+	query := parsed.Query()
+	if requestURL != nil {
+		for key, values := range requestURL.Query() {
+			if key == "" || key == "model" || query.Has(key) {
+				continue
+			}
+			for _, value := range values {
+				query.Add(key, value)
+			}
+		}
+	}
+	if relayMeta != nil {
+		modelName := strings.TrimSpace(relayMeta.ActualModelName)
+		if modelName == "" {
+			modelName = strings.TrimSpace(relayMeta.OriginModelName)
+		}
+		if modelName != "" {
+			query.Set("model", modelName)
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
 func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.Header {
 	cloned := make(http.Header, len(header))
 	for key, values := range header {
 		lower := strings.ToLower(strings.TrimSpace(key))
 		switch lower {
-		case "host", "connection", "upgrade", "sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions", "authorization", "api-key":
+		case "host", "connection", "upgrade", "sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions", "sec-websocket-protocol", "authorization", "api-key":
 			continue
 		}
 		for _, value := range values {
@@ -105,6 +148,13 @@ func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.
 		switch relayMeta.ChannelProtocol {
 		case relaychannel.Azure:
 			cloned.Set("api-key", relayMeta.APIKey)
+		case relaychannel.VolcengineRealtime:
+			volcenginerealtime.ApplyRealtimeHeaders(
+				cloned,
+				relayMeta.Config.AppID,
+				relayMeta.APIKey,
+				relayMeta.Config.ResourceID,
+			)
 		default:
 			if strings.TrimSpace(relayMeta.APIKey) != "" {
 				cloned.Set("Authorization", "Bearer "+relayMeta.APIKey)
@@ -114,12 +164,72 @@ func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.
 	return cloned
 }
 
-func realtimeUpgradeHeaders(upstreamConn *websocket.Conn) http.Header {
-	header := http.Header{}
-	if upstreamConn == nil {
-		return header
+func realtimeUpstreamSubprotocols(header http.Header, relayMeta *meta.Meta) []string {
+	if relayMeta != nil && (relayMeta.ChannelProtocol == relaychannel.Ali || relayMeta.ChannelProtocol == relaychannel.Zhipu) {
+		return nil
 	}
-	if subprotocol := strings.TrimSpace(upstreamConn.Subprotocol()); subprotocol != "" {
+	protocols := make([]string, 0, 4)
+	seen := map[string]struct{}{}
+	for key, values := range header {
+		if !strings.EqualFold(strings.TrimSpace(key), "Sec-WebSocket-Protocol") {
+			continue
+		}
+		for _, rawProtocolHeader := range values {
+			for _, rawProtocol := range strings.Split(rawProtocolHeader, ",") {
+				protocol := strings.TrimSpace(rawProtocol)
+				if protocol == "" {
+					continue
+				}
+				if strings.HasPrefix(protocol, realtimeBrowserAPIKeySubprotocolPrefix) {
+					continue
+				}
+				if relayMeta != nil && relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime && protocol == realtimeOpenAIBetaSubprotocol {
+					continue
+				}
+				if _, ok := seen[protocol]; ok {
+					continue
+				}
+				seen[protocol] = struct{}{}
+				protocols = append(protocols, protocol)
+			}
+		}
+	}
+	return protocols
+}
+
+func realtimeDownstreamSubprotocol(header http.Header) string {
+	fallback := ""
+	for key, values := range header {
+		if !strings.EqualFold(strings.TrimSpace(key), "Sec-WebSocket-Protocol") {
+			continue
+		}
+		for _, rawProtocolHeader := range values {
+			for _, rawProtocol := range strings.Split(rawProtocolHeader, ",") {
+				protocol := strings.TrimSpace(rawProtocol)
+				if protocol == "" || strings.HasPrefix(protocol, realtimeBrowserAPIKeySubprotocolPrefix) {
+					continue
+				}
+				if protocol == "realtime" {
+					return protocol
+				}
+				if fallback == "" {
+					fallback = protocol
+				}
+			}
+		}
+	}
+	return fallback
+}
+
+func realtimeUpgradeHeaders(upstreamConn *websocket.Conn, requestHeader http.Header) http.Header {
+	header := http.Header{}
+	if upstreamConn != nil {
+		if subprotocol := strings.TrimSpace(upstreamConn.Subprotocol()); subprotocol != "" {
+			header.Set("Sec-WebSocket-Protocol", subprotocol)
+			return header
+		}
+	}
+	if subprotocol := realtimeDownstreamSubprotocol(requestHeader); subprotocol != "" {
 		header.Set("Sec-WebSocket-Protocol", subprotocol)
 	}
 	return header

@@ -48,18 +48,6 @@ function renderTimestamp(timestamp) {
   return <>{timestamp2string(timestamp)}</>;
 }
 
-function renderCircuitTimestamp(timestamp) {
-  return timestamp ? timestamp2string(timestamp) : '-';
-}
-
-function formatSuccessRate(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return '-';
-  }
-  return `${(numeric * 100).toFixed(2)}%`;
-}
-
 function buildProtocolMap(options, t) {
   const protocolMap = {};
   if (Array.isArray(options)) {
@@ -148,20 +136,6 @@ const ChannelsTable = () => {
     next.protocol = (next.protocol || '').toString().trim().toLowerCase();
     next.created_time = Number(next.created_time || 0);
     next.updated_at = Number(next.updated_at || 0);
-    const circuitBreaker = next.circuit_breaker || null;
-    if (circuitBreaker && typeof circuitBreaker === 'object') {
-      next.circuit_breaker = {
-        state: (circuitBreaker.state || '').toString().trim(),
-        reason: (circuitBreaker.reason || '').toString().trim(),
-        success_rate: Number(circuitBreaker.success_rate || 0),
-        disabled_at: Number(circuitBreaker.disabled_at || 0),
-        recover_after: Number(circuitBreaker.recover_after || 0),
-        recovered_at: Number(circuitBreaker.recovered_at || 0),
-        updated_at: Number(circuitBreaker.updated_at || 0),
-      };
-    } else {
-      next.circuit_breaker = null;
-    }
     if (next.protocol === '') {
       next.protocol = 'openai';
     }
@@ -338,49 +312,6 @@ const ChannelsTable = () => {
           />
         </AppTooltip>
       </div>
-    );
-  };
-
-  const renderCircuitBreaker = (state, channel, t) => {
-    const circuitBreaker = channel?.circuit_breaker;
-    const normalizedState = (state || circuitBreaker?.state || '').toString().trim();
-    if (normalizedState === '') {
-      return <span className='router-text-muted'>-</span>;
-    }
-    const stateConfig = {
-      open: {
-        label: t('channel.table.circuit_state_open'),
-        className: 'router-text-warning',
-      },
-      half_open: {
-        label: t('channel.table.circuit_state_half_open'),
-        className: 'router-text-info',
-      },
-      recovered: {
-        label: t('channel.table.circuit_state_recovered'),
-        className: 'router-text-success',
-      },
-      canceled: {
-        label: t('channel.table.circuit_state_canceled'),
-        className: 'router-text-muted',
-      },
-    };
-    const config =
-      stateConfig[normalizedState] || {
-        label: normalizedState,
-        className: 'router-text-muted',
-      };
-    const tooltip = [
-      `${t('channel.table.circuit_reason')}: ${circuitBreaker?.reason || '-'}`,
-      `${t('channel.table.circuit_success_rate')}: ${formatSuccessRate(circuitBreaker?.success_rate)}`,
-      `${t('channel.table.circuit_disabled_at')}: ${renderCircuitTimestamp(circuitBreaker?.disabled_at)}`,
-      `${t('channel.table.circuit_recover_after')}: ${renderCircuitTimestamp(circuitBreaker?.recover_after)}`,
-      `${t('channel.table.circuit_recovered_at')}: ${renderCircuitTimestamp(circuitBreaker?.recovered_at)}`,
-    ].join('\n');
-    return (
-      <AppTooltip title={<span style={{ whiteSpace: 'pre-line' }}>{tooltip}</span>}>
-        <span className={config.className}>{config.label}</span>
-      </AppTooltip>
     );
   };
 
@@ -771,21 +702,6 @@ const ChannelsTable = () => {
             sortOrder:
               tableSorter.columnKey === 'capabilities' ? tableSorter.order : null,
             render: (value) => renderCapabilities(value, t),
-          },
-          {
-            title: t('channel.table.circuit_breaker'),
-            dataIndex: ['circuit_breaker', 'state'],
-            key: 'circuit_breaker',
-            className: 'router-table-col-status-compact',
-            width: CHANNEL_LIST_COLUMN_WIDTHS.circuitBreaker,
-            sorter: (a, b) =>
-              compareTextValue(a.circuit_breaker?.state, b.circuit_breaker?.state),
-            sortDirections: ['ascend', 'descend'],
-            sortOrder:
-              tableSorter.columnKey === 'circuit_breaker'
-                ? tableSorter.order
-                : null,
-            render: (value, channel) => renderCircuitBreaker(value, channel, t),
           },
           {
             title: t('channel.table.priority'),

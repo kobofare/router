@@ -31,6 +31,9 @@ var FXAutoSyncLastError = ""
 var ChannelBillingAutoRefreshEnabled = true
 var ChannelBillingAutoRefreshIntervalSeconds = 30 * 60
 var ChannelBillingAutoRefreshLastRunAt int64 = 0
+var BillingOfficialMarkup = 1.0
+var BillingTargetMargin = 0.0
+var BillingRiskBuffer = 0.0
 
 // Any options with "Secret", "Token" in its key won't be return by GetOptions
 
@@ -67,6 +70,13 @@ var EmailDomainWhitelist = []string{
 var DebugEnabled = false
 var DebugSQLEnabled = false
 var MemoryCacheEnabled = false
+
+const (
+	CacheTypeLocal = "local"
+	CacheTypeRedis = "redis"
+)
+
+var CacheType = CacheTypeLocal
 
 var LogConsumeEnabled = true
 

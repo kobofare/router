@@ -71,17 +71,15 @@ func getPreConsumedQuota(textRequest *relaymodel.GeneralOpenAIRequest, promptTok
 	return int64(float64(preConsumedTokens) * ratio)
 }
 
-func preConsumeQuota(ctx context.Context, textRequest *relaymodel.GeneralOpenAIRequest, promptTokens int, pricing model.ResolvedModelPricing, groupRatio float64, meta *meta.Meta, chargeUserBalance bool) (int64, *relaymodel.ErrorWithStatusCode) {
-	preConsumedQuota, err := billing.ComputeTextPreConsumedQuota(promptTokens, textRequest.MaxTokens, pricing, groupRatio)
-	if err != nil {
-		return 0, openai.ErrorWrapper(err, "calculate_text_quota_failed", http.StatusInternalServerError)
-	}
+func preConsumeQuota(ctx context.Context, preConsumedQuota int64, meta *meta.Meta, chargeUserBalance bool) (int64, *relaymodel.ErrorWithStatusCode) {
+	var err error
 	if !chargeUserBalance {
 		if strings.TrimSpace(meta.TokenId) == "" {
 			return 0, nil
 		}
 		err = model.PreConsumeTokenRemainQuota(meta.TokenId, preConsumedQuota)
 		if err != nil {
+			logTokenPreConsumeFailure(ctx, meta, preConsumedQuota, chargeUserBalance, err)
 			return preConsumedQuota, openai.ErrorWrapper(err, "pre_consume_token_quota_failed", http.StatusForbidden)
 		}
 		return preConsumedQuota, nil
@@ -111,6 +109,7 @@ func preConsumeQuota(ctx context.Context, textRequest *relaymodel.GeneralOpenAIR
 		if strings.TrimSpace(meta.TokenId) != "" {
 			err := model.PreConsumeTokenQuota(meta.TokenId, preConsumedQuota)
 			if err != nil {
+				logTokenPreConsumeFailure(ctx, meta, preConsumedQuota, chargeUserBalance, err)
 				return preConsumedQuota, openai.ErrorWrapper(err, "pre_consume_token_quota_failed", http.StatusForbidden)
 			}
 		} else {
@@ -123,6 +122,60 @@ func preConsumeQuota(ctx context.Context, textRequest *relaymodel.GeneralOpenAIR
 	return preConsumedQuota, nil
 }
 
+func logTokenPreConsumeFailure(ctx context.Context, meta *meta.Meta, quota int64, chargeUserBalance bool, cause error) {
+	if meta == nil {
+		logger.Warnf(ctx, "token pre-consume failed quota=%d charge_user_balance=%t error=%v", quota, chargeUserBalance, cause)
+		return
+	}
+	tokenID := strings.TrimSpace(meta.TokenId)
+	if tokenID == "" {
+		logger.Warnf(
+			ctx,
+			"token pre-consume failed token_id= user_id=%s group=%s model=%s channel_id=%s quota=%d charge_user_balance=%t error=%v",
+			strings.TrimSpace(meta.UserId),
+			strings.TrimSpace(meta.Group),
+			strings.TrimSpace(meta.OriginModelName),
+			strings.TrimSpace(meta.ChannelId),
+			quota,
+			chargeUserBalance,
+			cause,
+		)
+		return
+	}
+	token, err := model.GetTokenById(tokenID)
+	if err != nil {
+		logger.Warnf(
+			ctx,
+			"token pre-consume failed token_id=%s user_id=%s group=%s model=%s channel_id=%s quota=%d charge_user_balance=%t token_lookup_error=%v error=%v",
+			tokenID,
+			strings.TrimSpace(meta.UserId),
+			strings.TrimSpace(meta.Group),
+			strings.TrimSpace(meta.OriginModelName),
+			strings.TrimSpace(meta.ChannelId),
+			quota,
+			chargeUserBalance,
+			err,
+			cause,
+		)
+		return
+	}
+	logger.Warnf(
+		ctx,
+		"token pre-consume failed token_id=%s token_name=%s user_id=%s group=%s model=%s channel_id=%s quota=%d token_remain_quota=%d token_unlimited=%t charge_user_balance=%t error=%v",
+		tokenID,
+		strings.TrimSpace(token.Name),
+		strings.TrimSpace(meta.UserId),
+		strings.TrimSpace(meta.Group),
+		strings.TrimSpace(meta.OriginModelName),
+		strings.TrimSpace(meta.ChannelId),
+		quota,
+		token.RemainQuota,
+		token.UnlimitedQuota,
+		chargeUserBalance,
+		cause,
+	)
+}
+
 func postConsumeQuota(ctx context.Context, usage *relaymodel.Usage, meta *meta.Meta, textRequest *relaymodel.GeneralOpenAIRequest, pricing model.ResolvedModelPricing, preConsumedQuota int64, groupRatio float64, estimateResult tokenestimate.EstimateResult, responsesImageTools []responsesImageToolSpec, systemPromptReset bool, chargeUserBalance bool, packageReservation model.PackageQuotaReservation) {
 	if usage == nil {
 		logger.Error(ctx, "usage is nil, which is unexpected")
@@ -131,23 +184,22 @@ func postConsumeQuota(ctx context.Context, usage *relaymodel.Usage, meta *meta.M
 	}
 	promptTokens := usage.PromptTokens
 	completionTokens := usage.CompletionTokens
-	quota, err := billing.ComputeTextQuota(promptTokens, completionTokens, pricing, groupRatio)
+	quota := preConsumedQuota
 	billingSnapshot, snapshotErr := billing.ComputeTextBillingSnapshot(promptTokens, completionTokens, pricing, groupRatio)
 	if snapshotErr != nil {
 		logger.Error(ctx, "calculate text billing snapshot failed: "+snapshotErr.Error())
 	}
 	annotateTextBillingSnapshot(&billingSnapshot, pricing.Source, resolveTextEstimateSourceLabel(estimateResult), meta.UpstreamRequestPath, textRequest)
 	imageFeeNote := ""
-	imageFeeDetail, imageFeeNote, imageFeeErr := maybeApplyResponsesImageToolBilling(&billingSnapshot, usage, meta.ChannelProtocol, meta.ChannelModelConfigs, groupRatio, responsesImageTools)
+	_, imageFeeNote, imageFeeErr := maybeApplyResponsesImageToolBilling(&billingSnapshot, usage, meta.ChannelProtocol, meta.ChannelModelConfigs, groupRatio, responsesImageTools)
 	if imageFeeErr != nil {
 		logger.Error(ctx, "calculate responses image tool billing failed: "+imageFeeErr.Error())
 	}
-	if err != nil {
-		logger.Error(ctx, "calculate text quota failed: "+err.Error())
-		quota = preConsumedQuota
-	}
-	if imageFeeDetail.Applied {
-		quota = billingSnapshot.YYCAmount
+	if snapshotErr == nil {
+		if err := billing.ApplyEstimatedProcurementCostFloor(&billingSnapshot, meta.ChannelId, meta.ActualModelName); err != nil {
+			logger.Error(ctx, "estimate procurement cost for text settlement failed: "+err.Error())
+		}
+		quota = billingSnapshot.ChargeAmount
 	}
 	totalTokens := promptTokens + completionTokens
 	if totalTokens == 0 {
@@ -155,6 +207,7 @@ func postConsumeQuota(ctx context.Context, usage *relaymodel.Usage, meta *meta.M
 		// we cannot just return, because we may have to return the pre-consumed quota
 		quota = 0
 	}
+	var err error
 	quotaDelta := quota - preConsumedQuota
 	if strings.TrimSpace(meta.TokenId) != "" {
 		if chargeUserBalance {
@@ -196,7 +249,7 @@ func postConsumeQuota(ctx context.Context, usage *relaymodel.Usage, meta *meta.M
 		userDailyQuota = int(dailyConsumed)
 		userEmergencyQuota = int(emergencyConsumed)
 	}
-	billingSnapshot.YYCAmount = quota
+	billingSnapshot.ChargeAmount = quota
 	entry := &model.Log{
 		UserId:             meta.UserId,
 		GroupId:            meta.Group,
@@ -213,6 +266,7 @@ func postConsumeQuota(ctx context.Context, usage *relaymodel.Usage, meta *meta.M
 		IsStream:           meta.IsStream,
 		ElapsedTime:        helper.CalcElapsedTime(meta.StartTime),
 	}
+	applyRouteObservabilityToLog(entry, meta, textRequest.Model)
 	billingSnapshot.ApplyToLog(entry)
 	annotateTextEstimateLogFields(entry, estimateResult)
 	billing.ApplyProcurementCostObservation(entry)

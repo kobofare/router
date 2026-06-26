@@ -140,7 +140,7 @@
       "package_preview_effective_at": "Effective At",
       "package_preview_expires_at": "New Expiry",
       "package_preview_payable": "Payable Amount",
-      "package_preview_payable_yyc": "YYC Equivalent",
+      "package_preview_payable_charge_amount": "YYC Equivalent",
       "package_confirm_button": "Proceed to Pay",
       "package_operation": {
         "purchase": "New Purchase",
@@ -666,7 +666,7 @@
         "manual_purchase_currency": "Purchase Currency",
         "manual_purchase_amount": "Paid Amount",
         "manual_purchase_fx_rate": "FX Rate",
-        "manual_purchase_cost_cny": "Purchase Cost CNY",
+        "manual_purchase_cost_amount": "Purchase Cost CNY",
         "manual_purchase_hint": "Fill in the purchase payment details first, then record what entitlements were bought.",
         "manual_snapshot_invalid": "Please provide at least one valid entitlement item",
         "manual_snapshot_success": "Purchase record saved",
@@ -764,7 +764,7 @@
           "purchase_currency": "Purchase Currency",
           "purchase_amount": "Purchase Amount",
           "purchase_fx_rate": "FX Rate",
-          "purchase_cost_cny": "Purchase Cost CNY",
+          "purchase_cost_amount": "Purchase Cost CNY",
           "cost_unconfigured": "Cost unconfigured"
         },
         "procurement_consumption_table": {
@@ -845,7 +845,7 @@
           "created_at": "Time",
           "purchase_at": "Purchase Time",
           "purchase_amount": "Paid Amount",
-          "purchase_cost_cny": "Purchase Cost CNY",
+          "purchase_cost_amount": "Purchase Cost CNY",
           "source_type": "Source",
           "quota_items": "Quota Items",
           "message": "Message",
@@ -889,8 +889,36 @@
         "disable_success": "Endpoint capability disabled",
         "update_failed": "Failed to update endpoint capability",
         "filters": {
+          "runtime_state": "Runtime State",
+          "all_runtime_state": "All Runtime States",
           "test_status": "Test Status",
           "all_test_status": "All Test Statuses"
+        },
+        "summary_cards": {
+          "total": "Total Endpoints",
+          "available": "Available",
+          "paused": "Paused",
+          "blocked": "Blocked",
+          "untested": "Needs Test"
+        },
+        "runtime_state": {
+          "available": "Available",
+          "paused": "Paused",
+          "blocked": "Blocked",
+          "untested": "Needs Test",
+          "disabled": "Disabled"
+        },
+        "status_detail": {
+          "recovery_state_available": "Recovery state: participates in live routing",
+          "recovery_state_paused": "Recovery state: waiting for manual enable or auto recovery",
+          "recovery_state_blocked": "Recovery state: resolve enable blocker first",
+          "recovery_state_untested": "Recovery state: run endpoint test first",
+          "recovery_state_disabled": "Recovery state: currently disabled",
+          "pause_reason": "Pause reason: {{value}}",
+          "paused_at": "Paused at: {{value}}",
+          "paused_by": "Latest auto-pause source: {{value}}",
+          "block_reason": "Enable blocker: {{value}}",
+          "last_tested_at": "Last tested: {{value}}"
         },
         "table": {
           "model": "Model",
@@ -900,6 +928,7 @@
           "enabled": "Enabled",
           "latest_test": "Latest Test",
           "test_status": "Test Status",
+          "runtime_status": "Status Detail",
           "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
         }
@@ -1526,7 +1555,7 @@
       },
       "messages": {
         "update_success": "Token updated successfully!",
-        "create_success": "Token created successfully, please copy it from the list page!",
+        "create_success": "Token created successfully, please copy and save the full token now!",
         "name_required": "Please enter a token name.",
         "id_required": "Token id is empty. Please refresh the page and try again.",
         "expire_time_invalid": "Invalid expiry time format!",
@@ -1543,7 +1572,7 @@
     },
     "messages": {
       "copy_success": "Copied to clipboard!",
-      "copy_failed": "Unable to copy to clipboard, please copy manually. Token has been filled in the search box.",
+      "copy_failed": "Unable to copy to clipboard, please copy manually.",
       "operation_success": "Operation completed successfully!"
     }
   },
@@ -1567,6 +1596,8 @@
     "unlimited": "Unlimited",
     "day": "Day",
     "never": "Never",
+    "created_at": "Created At",
+    "updated_at": "Updated At",
     "quota": {
       "display": "Equivalent: ${{amount}}",
       "display_short": "${{amount}}",
@@ -1673,7 +1704,8 @@
       "usage": "Usage",
       "admin": "Admin",
       "system": "System",
-      "test": "Test"
+      "test": "Test",
+      "relay_failure": "Call Failed"
     },
     "table": {
       "time": "Time",
@@ -1713,8 +1745,51 @@
       },
       "sections": {
         "basic": "Basic Info",
+        "route": "Route Explanation",
         "billing": "Billing Snapshot",
         "content": "Detail Content"
+      },
+      "route": {
+        "summary_title": "Route Summary",
+        "summary": "This request finally hit channel {{channel}}, final model {{model}}, after {{fallbackCount}} fallback(s), using estimate source {{source}} and settlement mode {{settlement}}.",
+        "failure_summary": "This request ultimately failed. The last attempted channel was {{channel}}, requested model {{model}}, after {{fallbackCount}} fallback(s).",
+        "attempt_title": "Attempt {{attempt}}",
+        "outcome": {
+          "succeeded": "Succeeded",
+          "failed": "Failed",
+          "direct": "No Fallback",
+          "fallback": "{{count}} fallback(s)"
+        },
+        "attempt_fields": {
+          "channel": "Channel",
+          "model": "Model",
+          "endpoint": "Endpoint",
+          "protocol": "Protocol",
+          "error_code": "Error Code",
+          "error": "Error"
+        },
+        "fields": {
+          "channel_target": "Matched Channel",
+          "request_model": "Requested Model",
+          "actual_model": "Final Model",
+          "upstream_endpoint": "Upstream Endpoint",
+          "upstream_protocol": "Upstream Protocol",
+          "stream_mode": "Stream Mode",
+          "elapsed_time": "Request Latency",
+          "estimate_source": "Estimate Source",
+          "estimate_estimator": "Estimator",
+          "estimate_precision": "Estimate Precision",
+          "settlement_mode": "Settlement Mode",
+          "trace_id": "Trace ID",
+          "fallback_count": "Fallback Count",
+          "relay_error": "Final Error",
+          "fallback_attempts": "Fallback Attempts"
+        },
+        "precision": {
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low"
+        }
       },
       "fields": {
         "id": "Log ID",
@@ -1742,17 +1817,17 @@
         "estimated_prompt_tokens": "Estimated Prompt Tokens",
         "billing_settlement_mode": "Settlement Mode",
         "billing_group_ratio": "Applied Business Ratio",
-        "billing_yyc_rate": "Conversion Rate",
+        "billing_charge_rate": "Conversion Rate",
         "billing_input_quantity": "Input Quantity",
         "billing_output_quantity": "Output Quantity",
         "billing_input_amount": "Input Amount",
         "billing_output_amount": "Output Amount",
         "billing_amount": "Billing Amount",
-        "billing_yyc_amount": "Converted Amount",
+        "billing_charge_amount": "Converted Amount",
         "billing_image_tool_calls": "Image Tool Calls",
         "billing_image_tool_output_tokens": "Image Tool Output Tokens",
         "billing_image_tool_amount": "Image Tool Amount",
-        "billing_image_tool_yyc_amount": "Image Tool Converted Amount",
+        "billing_image_tool_charge_amount": "Image Tool Converted Amount",
         "elapsed_time": "Elapsed Time",
         "is_stream": "Stream Output",
         "system_prompt_reset": "System Prompt Reset"
@@ -1904,6 +1979,7 @@
       "balance_lots": {
         "title": "Balance Lots",
         "empty": "No balance lots match current filters",
+        "summary": "{{page_count}} on this page / {{total_count}} total",
         "columns": {
           "source": "Source",
           "source_id": "Source ID",
@@ -1917,7 +1993,7 @@
           "all_source": "All Sources",
           "all_status": "All Statuses",
           "positive_only_yes": "Remaining Only",
-          "positive_only_no": "Include Zeroed"
+          "positive_only_no": "Include History"
         }
       },
       "package_none": "No active package",
@@ -1991,6 +2067,20 @@
       "active_package_load_failed": "Failed to load active package",
       "wallet_copy_success": "Wallet address copied",
       "wallet_copy_failed": "Copy failed, please copy manually"
+    },
+    "focus": {
+      "title": "Filtered Users",
+      "summary": "This list shows {{count}} users from {{total}} matched users. You can export the current result directly.",
+      "clear": "Clear Filter"
+    },
+    "batch": {
+      "grant_topup": "Batch Grant Balance",
+      "confirm_grant": "Confirm Grant",
+      "topup_select_required": "Please select at least one user",
+      "topup_confirm_hint": "The selected top-up plan will be granted to {{count}} selected users. This creates top-up orders and balance ledger entries.",
+      "topup_done": "Batch grant finished: {{success}} succeeded, {{failed}} failed.",
+      "topup_result_summary": "{{total}} users total, {{success}} succeeded, {{failed}} failed.",
+      "failed_users": "Failed Users"
     },
     "search": "Search users or wallet ID...",
     "table": {
@@ -2292,8 +2382,46 @@
           "retest_hint": "Channels whose selected models are not fully covered by tests, or whose pass rate or coverage has not reached 100%.",
           "risk": "Risky Channels",
           "risk_hint": "Channels already in critical health, or whose current test pass rate is below 80%.",
+          "circuit": "Circuit Open",
+          "circuit_hint": "Channels currently in open or half-open recovery state.",
           "latency": "High-Latency Channels",
           "latency_hint": "Channels whose current average latency is 8 seconds or higher."
+        },
+        "history": {
+          "title": "Recent Call Health",
+          "hint": "Prioritizes circuit, risky, retest-needed, and high-usage channels. Each cell is one recent model call result; gray means there is no monitoring sample in the current process.",
+          "no_data": "No call sample",
+          "state": {
+            "success": "Success",
+            "failure": "Failure",
+            "unknown": "No Data"
+          }
+        },
+        "events": {
+          "title": "Recent Circuit Breaker Events",
+          "hint": "Shows recent open, half-open, recovered, and canceled events across channels so operators can jump into channel detail directly.",
+          "empty": "No circuit breaker events yet",
+          "columns": {
+            "time": "Occurred At",
+            "channel": "Channel",
+            "state": "State",
+            "reason": "Reason",
+            "success_rate": "Trigger Success Rate",
+            "recover_after": "Expected Recovery"
+          }
+        },
+        "circuit": {
+          "reason": "Reason",
+          "success_rate": "Success Rate",
+          "disabled_at": "Disabled At",
+          "recover_after": "Expected Recovery",
+          "state": {
+            "open": "Open",
+            "half_open": "Half Open",
+            "recovered": "Recovered",
+            "canceled": "Canceled",
+            "unknown": "Unknown"
+          }
         }
       },
       "alerts": {
@@ -2403,6 +2531,36 @@
         }
       },
       "users": {
+        "growth": {
+          "title": "User Growth",
+          "description": "Periodic movement of new, active, and top-up users.",
+          "trend_title": "Growth Trend",
+          "current_period": "Current period: {{range}}",
+          "no_baseline": "No baseline",
+          "previous_period": "Previous period: {{range}}",
+          "period_labels": {
+            "current_week": "This week",
+            "previous_week": "Last week",
+            "compare_previous_week": "vs last week",
+            "current_month": "This month",
+            "previous_month": "Last month",
+            "compare_previous_month": "vs last month"
+          },
+          "granularity": {
+            "week": "Weekly",
+            "month": "Monthly"
+          },
+          "metrics": {
+            "new_users": "New Users",
+            "active_users": "Active Users",
+            "topup_users": "Top-up Users"
+          },
+          "lines": {
+            "new_user_count": "New Users",
+            "active_user_count": "Active Users",
+            "topup_user_count": "Top-up Users"
+          }
+        },
         "summary": {
           "user_count": "Matched Users",
           "request_count": "Matched Requests",
@@ -2430,6 +2588,10 @@
           "active_hint": "Users whose request count is above the current rank average.",
           "long_tail": "Long-Tail Users",
           "long_tail_hint": "Users whose spend share is below 3% and token usage does not exceed the current average.",
+          "balance_risk": "Balance-Risk Users",
+          "balance_risk_hint": "Active users whose current-period spend has reached or exceeded remaining balance.",
+          "view_users": "View Users",
+          "focus_limit": "The user list receives at most the first {{count}} users.",
           "footnote": "These segments are derived only from the matched ranking sample under the current filters, not the full-site user population."
         },
         "share_chart": {
@@ -2826,6 +2988,20 @@
           "last_run": "Last run time",
           "interval_invalid": "Refresh interval must be greater than or equal to 60 seconds"
         },
+        "pricing_policy": {
+          "title": "Pricing Policy",
+          "description_title": "Pricing policy",
+          "description": "The pricing layer calculates the official amount from provider prices first, then uses procurement cost, target margin, and risk buffer to decide the final charged amount.",
+          "official_markup": "Official price markup",
+          "official_markup_hint": "Multiplier over provider official price. 1 means no markup, 1.2 means 20% markup.",
+          "target_margin": "Target margin",
+          "target_margin_hint": "Use decimals. 0.2 means 20% target margin; must be lower than 0.95.",
+          "risk_buffer": "Procurement risk buffer",
+          "risk_buffer_hint": "Covers procurement cost fluctuation. 0.1 means applying a 10% cost buffer before calculating the cost floor.",
+          "official_markup_invalid": "Official price markup must be greater than 0",
+          "target_margin_invalid": "Target margin must be greater than or equal to 0 and lower than 0.95",
+          "risk_buffer_invalid": "Procurement risk buffer must be greater than or equal to 0"
+        },
         "buttons": {
           "save": "Save General Settings"
         }
@@ -2839,7 +3015,7 @@
           "name": "Name",
           "symbol": "Symbol",
           "minor_unit": "Minor Unit",
-          "yyc_per_unit": "YYC per Unit",
+          "charge_rate": "Charge rate",
           "status": "Status",
           "source": "Source",
           "updated_at": "Updated At",
@@ -2851,7 +3027,7 @@
         },
         "placeholders": {
           "name": "e.g. US Dollar",
-          "yyc_per_unit": "e.g. 500000"
+          "charge_rate": "e.g. 500000"
         },
         "auto_sync": {
           "enabled": "Enable auto FX sync",
@@ -2878,7 +3054,7 @@
           "code_required": "Currency code is required",
           "name_required": "Currency name is required",
           "minor_unit_invalid": "Minor unit must be greater than or equal to 0",
-          "yyc_per_unit_invalid": "YYC rate must be greater than 0"
+          "charge_rate_invalid": "charge rate must be greater than 0"
         }
       }
     },
@@ -2919,7 +3095,7 @@
           "code_required": "Currency code is required",
           "name_required": "Currency name is required",
           "minor_unit_invalid": "Minor unit must be greater than or equal to 0",
-          "enabled_rate_required": "Configure a positive YYC rate in exchange settings before enabling this currency"
+          "enabled_rate_required": "Configure a positive charge rate in exchange settings before enabling this currency"
         }
       }
     },
@@ -2978,7 +3154,7 @@
     },
     "exchange": {
       "title": "Exchange Management",
-      "subtitle": "Show both manually maintained */YYC rates and synced fiat currency-pair rates.",
+      "subtitle": "Show both manually maintained */charge rates and synced fiat currency-pair rates.",
       "empty": "No rates",
       "columns": {
         "pair": "Pair",
@@ -3017,6 +3193,21 @@
       "nav": "Procurement Cost",
       "title": "Procurement Cost Report",
       "empty": "No procurement cost data",
+      "health": {
+        "status": {
+          "ok": "Billing healthy",
+          "warning": "Billing has risks",
+          "critical": "Billing needs action"
+        },
+        "level": {
+          "critical": "Critical",
+          "warning": "Warning"
+        },
+        "summary": "{{critical}} critical, {{warning}} warning",
+        "no_issue": "No billing configuration risk detected",
+        "load_failed": "Failed to load billing health",
+        "load_failed_hint": "Unable to load billing health check. Refresh later."
+      },
       "group_by": {
         "channel": "By channel",
         "model": "By model"
@@ -3024,6 +3215,9 @@
       "cost_scope": {
         "all": "All requests",
         "unconfigured": "Unconfigured cost only"
+      },
+      "filters": {
+        "group": "Filter group"
       },
       "summary": {
         "request_count": "Requests",
@@ -3044,10 +3238,15 @@
         "request_count": "Requests",
         "configured_count": "Configured cost",
         "unconfigured_count": "Unconfigured cost",
+        "related_channels": "Related channels",
+        "more_channels": "+{{count}} more",
         "sell_amount": "Sell CNY",
         "procurement_cost": "Cost CNY",
         "gross_profit": "Profit CNY",
         "gross_margin": "Margin"
+      },
+      "actions": {
+        "configure_cost": "Open channel billing page to configure procurement cost"
       },
       "messages": {
         "invalid_time": "Select a valid time range",

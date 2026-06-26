@@ -83,7 +83,6 @@ export const CHANNEL_LIST_COLUMN_WIDTHS = {
   createdAt: 148,
   updatedAt: 148,
   capabilities: 160,
-  circuitBreaker: 152,
   priority: 92,
   actions: 72,
 };
@@ -96,7 +95,6 @@ export const CHANNEL_LIST_TABLE_MIN_WIDTH =
   CHANNEL_LIST_COLUMN_WIDTHS.createdAt +
   CHANNEL_LIST_COLUMN_WIDTHS.updatedAt +
   CHANNEL_LIST_COLUMN_WIDTHS.capabilities +
-  CHANNEL_LIST_COLUMN_WIDTHS.circuitBreaker +
   CHANNEL_LIST_COLUMN_WIDTHS.priority +
   CHANNEL_LIST_COLUMN_WIDTHS.actions;
 
@@ -123,20 +121,24 @@ export const GROUP_LIST_TABLE_MIN_WIDTH =
 
 export const TOKEN_LIST_COLUMN_WIDTHS = {
   name: 160,
+  token: 188,
   status: 92,
   usedAmount: 120,
   remainingAmount: 120,
   createdTime: 148,
+  updatedTime: 148,
   expiredTime: 148,
   actions: 56,
 };
 
 export const TOKEN_LIST_TABLE_MIN_WIDTH =
   TOKEN_LIST_COLUMN_WIDTHS.name +
+  TOKEN_LIST_COLUMN_WIDTHS.token +
   TOKEN_LIST_COLUMN_WIDTHS.status +
   TOKEN_LIST_COLUMN_WIDTHS.usedAmount +
   TOKEN_LIST_COLUMN_WIDTHS.remainingAmount +
   TOKEN_LIST_COLUMN_WIDTHS.createdTime +
+  TOKEN_LIST_COLUMN_WIDTHS.updatedTime +
   TOKEN_LIST_COLUMN_WIDTHS.expiredTime +
   TOKEN_LIST_COLUMN_WIDTHS.actions;
 

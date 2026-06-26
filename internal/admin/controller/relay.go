@@ -18,10 +18,12 @@ import (
 	adminchannel "github.com/yeying-community/router/internal/admin/controller/channel"
 	dbmodel "github.com/yeying-community/router/internal/admin/model"
 	"github.com/yeying-community/router/internal/admin/monitor"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/controller"
 	relaylogging "github.com/yeying-community/router/internal/relay/logging"
 	"github.com/yeying-community/router/internal/relay/model"
 	"github.com/yeying-community/router/internal/relay/relaymode"
+	"github.com/yeying-community/router/internal/relay/routeobs"
 	"github.com/yeying-community/router/internal/transport/http/middleware"
 )
 
@@ -57,6 +59,7 @@ func Relay(c *gin.Context) {
 	c.Set(ctxkey.RelayErrorType, "")
 	c.Set(ctxkey.RelayErrorCode, "")
 	c.Set(ctxkey.RelayTermination, "")
+	routeobs.Reset(c)
 	relayMode := getEffectiveRelayMode(c)
 	if config.DebugEnabled {
 		requestBody, _ := common.GetRequestBody(c)
@@ -86,12 +89,17 @@ func Relay(c *gin.Context) {
 	if trimmedChannelID := strings.TrimSpace(channelId); trimmedChannelID != "" {
 		failedChannelIDs[trimmedChannelID] = struct{}{}
 	}
+	appendFallbackFailureAttempt(c, 1, bizErr)
 	go processChannelRelayError(ctx, userId, group, channelId, channelName, originalModel, requestPath, *bizErr)
 	traceID := c.GetString(helper.TraceIDKey)
 	retryAllRemainingCandidates := config.RetryTimes > 0
 	retryCount := 0
 	retryable := shouldRetry(c, bizErr)
 	if !retryable {
+		skipReason := "status_not_retryable"
+		if isStatefulResponsesRequest(c) {
+			skipReason = "stateful_responses_request"
+		}
 		logger.RelayWarnf(ctx, relaylogging.NewFields("RETRY").
 			String("decision", "skip").
 			Int("status", bizErr.StatusCode).
@@ -101,7 +109,7 @@ func Relay(c *gin.Context) {
 			String("group", group).
 			String("model", originalModel).
 			String("endpoint", requestPath).
-			String("reason", "status_not_retryable").
+			String("reason", skipReason).
 			Build())
 		retryAllRemainingCandidates = false
 	}
@@ -167,6 +175,7 @@ func Relay(c *gin.Context) {
 		if trimmedChannelID := strings.TrimSpace(channelId); trimmedChannelID != "" {
 			failedChannelIDs[trimmedChannelID] = struct{}{}
 		}
+		appendFallbackFailureAttempt(c, retryCount+1, bizErr)
 		go processChannelRelayError(ctx, userId, group, channelId, channelName, originalModel, requestPath, *bizErr)
 	}
 	if bizErr != nil {
@@ -176,6 +185,7 @@ func Relay(c *gin.Context) {
 		c.Set(ctxkey.RelayErrorCode, errorCodeString(bizErr.Error.Code))
 		c.Set(ctxkey.ChannelId, lastFailedChannelId)
 		c.Set(ctxkey.ChannelName, channelName)
+		recordRelayFailureLog(c, bizErr, retryCount)
 
 		// BUG: bizErr is in race condition
 		bizErr.Error.Message = helper.MessageWithTraceID(bizErr.Error.Message, traceID)
@@ -185,8 +195,85 @@ func Relay(c *gin.Context) {
 	}
 }
 
+func recordRelayFailureLog(c *gin.Context, bizErr *model.ErrorWithStatusCode, retryCount int) {
+	entry := buildRelayFailureLog(c, bizErr, retryCount)
+	if entry == nil {
+		return
+	}
+	dbmodel.RecordRelayFailureLog(c.Request.Context(), entry)
+}
+
+func buildRelayFailureLog(c *gin.Context, bizErr *model.ErrorWithStatusCode, retryCount int) *dbmodel.Log {
+	if c == nil || bizErr == nil {
+		return nil
+	}
+	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
+	if userID == "" {
+		return nil
+	}
+	requestModel := strings.TrimSpace(c.GetString(ctxkey.OriginalModel))
+	if requestModel == "" {
+		requestModel = strings.TrimSpace(c.GetString(ctxkey.RequestModel))
+	}
+	channelID := strings.TrimSpace(c.GetString(ctxkey.ChannelId))
+	return &dbmodel.Log{
+		UserId:            userID,
+		GroupId:           strings.TrimSpace(c.GetString(ctxkey.Group)),
+		ChannelId:         channelID,
+		ModelName:         requestModel,
+		TokenName:         strings.TrimSpace(c.GetString(ctxkey.TokenName)),
+		Quota:             0,
+		BillingSource:     "",
+		Content:           "relay request failed before settlement",
+		RequestModelName:  requestModel,
+		ActualModelName:   requestModel,
+		UpstreamEndpoint:  c.Request.URL.Path,
+		UpstreamProtocol:  relayProtocolName(c),
+		FallbackCount:     retryCount,
+		FallbackAttempts:  strings.TrimSpace(c.GetString(ctxkey.RelayFallbackAttempts)),
+		RelayErrorType:    strings.TrimSpace(bizErr.Error.Type),
+		RelayErrorCode:    errorCodeString(bizErr.Error.Code),
+		RelayErrorMessage: strings.TrimSpace(bizErr.Error.Message),
+		ElapsedTime:       0,
+		IsStream:          false,
+	}
+}
+
+func appendFallbackFailureAttempt(c *gin.Context, attempt int, bizErr *model.ErrorWithStatusCode) {
+	if c == nil || bizErr == nil {
+		return
+	}
+	routeobs.AppendFallbackAttempt(c, routeobs.FallbackAttempt{
+		Attempt:     attempt,
+		ChannelID:   c.GetString(ctxkey.ChannelId),
+		ChannelName: c.GetString(ctxkey.ChannelName),
+		Model:       c.GetString(ctxkey.OriginalModel),
+		Endpoint:    c.Request.URL.Path,
+		Protocol:    relayProtocolName(c),
+		Status:      bizErr.StatusCode,
+		ErrorType:   bizErr.Error.Type,
+		ErrorCode:   errorCodeString(bizErr.Error.Code),
+		Error:       bizErr.Error.Message,
+	})
+}
+
+func relayProtocolName(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	protocol := c.GetInt(ctxkey.Channel)
+	if protocol == 0 {
+		return ""
+	}
+	return relaychannel.ProtocolByType(protocol)
+}
+
 func getEffectiveRelayMode(c *gin.Context) int {
 	return relaymode.GetByPath(c.Request.URL.Path)
+}
+
+func isStatefulResponsesRequest(c *gin.Context) bool {
+	return getEffectiveRelayMode(c) == relaymode.Responses && c.GetBool(ctxkey.ResponsesStatefulRequest)
 }
 
 func shouldRetry(c *gin.Context, bizErr *model.ErrorWithStatusCode) bool {
@@ -195,6 +282,9 @@ func shouldRetry(c *gin.Context, bizErr *model.ErrorWithStatusCode) bool {
 	}
 	switch getEffectiveRelayMode(c) {
 	case relaymode.ImagesGenerations, relaymode.ImagesEdits:
+		return false
+	}
+	if isStatefulResponsesRequest(c) {
 		return false
 	}
 	if _, ok := c.Get(ctxkey.SpecificChannelId); ok {
@@ -288,7 +378,15 @@ func isLocalQuotaRelayError(err *model.ErrorWithStatusCode) bool {
 		return false
 	}
 	code := strings.ToLower(errorCodeString(err.Code))
-	return code == "group_daily_quota_exceeded" || code == "user_quota_limit_exceeded"
+	switch code {
+	case "group_daily_quota_exceeded",
+		"user_quota_limit_exceeded",
+		"insufficient_user_quota",
+		"pre_consume_token_quota_failed":
+		return true
+	default:
+		return false
+	}
 }
 
 func isUpstreamQuotaRelayError(err *model.ErrorWithStatusCode) bool {
@@ -411,6 +509,12 @@ func processChannelRelayError(ctx context.Context, userId string, groupID string
 		return
 	}
 	if monitor.ShouldDisableChannel(&err.Error, err.StatusCode) {
+		if monitor.IsInsufficientBalanceError(&err.Error, err.StatusCode) {
+			if disableErr := monitor.DisableChannelForInsufficientBalance(channelId, channelName, 0); disableErr != nil {
+				monitor.Emit(channelId, false)
+			}
+			return
+		}
 		monitor.DisableChannel(channelId, channelName, err.Message)
 	} else {
 		monitor.Emit(channelId, false)

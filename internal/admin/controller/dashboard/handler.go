@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"sort"
@@ -10,43 +11,51 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/internal/admin/model"
+	"github.com/yeying-community/router/internal/admin/monitor"
+	"gorm.io/gorm"
 )
 
 const (
-	channelTopLimit    = 8
-	taskRecentLimit    = 8
-	modelTopLimit      = 12
-	sectionAll         = "all"
-	sectionSpending    = "spending"
-	sectionChannels    = "channels"
-	sectionUsers       = "users"
-	sectionModels      = "models"
-	periodToday        = "today"
-	periodLast7Days    = "last_7_days"
-	periodLast30Days   = "last_30_days"
-	periodThisMonth    = "this_month"
-	periodLastMonth    = "last_month"
-	periodThisYear     = "this_year"
-	periodLastYear     = "last_year"
-	periodLast12Months = "last_12_months"
-	periodAllTime      = "all_time"
-	granularityHour    = "hour"
-	granularityDay     = "day"
-	granularityMonth   = "month"
+	channelDashboardListLimit = 12
+	channelHealthHistoryLimit = 60
+	taskRecentLimit           = 8
+	modelTopLimit             = 12
+	sectionAll                = "all"
+	sectionSpending           = "spending"
+	sectionChannels           = "channels"
+	sectionUsers              = "users"
+	sectionModels             = "models"
+	periodToday               = "today"
+	periodLast7Days           = "last_7_days"
+	periodLast30Days          = "last_30_days"
+	periodThisMonth           = "this_month"
+	periodLastMonth           = "last_month"
+	periodThisYear            = "this_year"
+	periodLastYear            = "last_year"
+	periodLast12Months        = "last_12_months"
+	periodAllTime             = "all_time"
+	granularityHour           = "hour"
+	granularityDay            = "day"
+	granularityMonth          = "month"
+	userGrowthGranularityWeek = "week"
+	userGrowthTrendWeeks      = 8
+	userGrowthTrendMonths     = 12
 
 	channelHealthLevelHealthy  = "healthy"
 	channelHealthLevelWarning  = "warning"
 	channelHealthLevelCritical = "critical"
 	channelHealthLevelUnknown  = "unknown"
+	channelHealthPointSuccess  = "success"
+	channelHealthPointFailure  = "failure"
 )
 
 type summaryData struct {
 	ConsumeQuota    int64 `json:"consume_quota"`
-	ConsumeYYC      int64 `json:"consume_yyc"`
+	ConsumeAmount   int64 `json:"consume_amount"`
 	TopupQuota      int64 `json:"topup_quota"`
-	TopupYYC        int64 `json:"topup_yyc"`
+	TopupAmount     int64 `json:"topup_amount"`
 	NetQuota        int64 `json:"net_quota"`
-	NetYYC          int64 `json:"net_yyc"`
+	NetAmount       int64 `json:"net_amount"`
 	RequestCount    int64 `json:"request_count"`
 	ActiveUserCount int64 `json:"active_user_count"`
 
@@ -64,45 +73,74 @@ type summaryData struct {
 type trendPoint struct {
 	Bucket          string `json:"bucket"`
 	ConsumeQuota    int64  `json:"consume_quota"`
-	ConsumeYYC      int64  `json:"consume_yyc"`
+	ConsumeAmount   int64  `json:"consume_amount"`
 	TopupQuota      int64  `json:"topup_quota"`
-	TopupYYC        int64  `json:"topup_yyc"`
+	TopupAmount     int64  `json:"topup_amount"`
 	RequestCount    int64  `json:"request_count"`
 	ActiveUserCount int64  `json:"active_user_count"`
 }
 
 type channelHealthItem struct {
-	ID                 string   `json:"id"`
-	Name               string   `json:"name"`
-	Protocol           string   `json:"protocol"`
-	Status             int      `json:"status"`
-	Capabilities       []string `json:"capabilities"`
-	UsedQuota          int64    `json:"used_quota"`
-	YYCUsed            int64    `json:"yyc_used"`
-	Priority           int64    `json:"priority"`
-	SelectedModelCount int      `json:"selected_model_count"`
-	TestedModelCount   int      `json:"tested_model_count"`
-	TestedEndpointCnt  int      `json:"tested_endpoint_count"`
-	SupportedCount     int      `json:"supported_count"`
-	UnsupportedCount   int      `json:"unsupported_count"`
-	PassRate           float64  `json:"pass_rate"`
-	CoverageRate       float64  `json:"coverage_rate"`
-	AvgLatencyMs       int64    `json:"avg_latency_ms"`
-	LastTestedAt       int64    `json:"last_tested_at"`
-	HasTestData        bool     `json:"has_test_data"`
-	HealthScore        int      `json:"health_score"`
-	HealthLevel        string   `json:"health_level"`
+	ID                 string                              `json:"id"`
+	Name               string                              `json:"name"`
+	Protocol           string                              `json:"protocol"`
+	Status             int                                 `json:"status"`
+	Capabilities       []string                            `json:"capabilities"`
+	UsedQuota          int64                               `json:"used_quota"`
+	UsedAmount         int64                               `json:"used_amount"`
+	Priority           int64                               `json:"priority"`
+	SelectedModelCount int                                 `json:"selected_model_count"`
+	TestedModelCount   int                                 `json:"tested_model_count"`
+	TestedEndpointCnt  int                                 `json:"tested_endpoint_count"`
+	SupportedCount     int                                 `json:"supported_count"`
+	UnsupportedCount   int                                 `json:"unsupported_count"`
+	PassRate           float64                             `json:"pass_rate"`
+	CoverageRate       float64                             `json:"coverage_rate"`
+	AvgLatencyMs       int64                               `json:"avg_latency_ms"`
+	LastTestedAt       int64                               `json:"last_tested_at"`
+	HasTestData        bool                                `json:"has_test_data"`
+	HealthScore        int                                 `json:"health_score"`
+	HealthLevel        string                              `json:"health_level"`
+	CircuitBreaker     *channelCircuitBreakerDashboardItem `json:"circuit_breaker,omitempty"`
+	HealthPoints       []channelHealthPoint                `json:"health_points"`
+}
+
+type channelHealthSummaryData struct {
+	WithTests                 int64   `json:"with_tests"`
+	WithoutTests              int64   `json:"without_tests"`
+	AvgPassRate               float64 `json:"avg_pass_rate"`
+	AvgCoverageRate           float64 `json:"avg_coverage_rate"`
+	AvgLatencyMs              int64   `json:"avg_latency_ms"`
+	NeedsRetest               int64   `json:"needs_retest"`
+	RiskCount                 int64   `json:"risk_count"`
+	ActiveCircuitBreakerCount int64   `json:"active_circuit_breaker_count"`
+	HighLatencyCount          int64   `json:"high_latency_count"`
+}
+
+type channelCircuitBreakerDashboardItem struct {
+	State        string  `json:"state"`
+	Reason       string  `json:"reason"`
+	SuccessRate  float64 `json:"success_rate"`
+	DisabledAt   int64   `json:"disabled_at"`
+	RecoverAfter int64   `json:"recover_after"`
+	RecoveredAt  int64   `json:"recovered_at"`
+	UpdatedAt    int64   `json:"updated_at"`
+}
+
+type channelHealthPoint struct {
+	State string `json:"state"`
 }
 
 type usageRankingItem struct {
-	UserID       string  `json:"user_id"`
-	Username     string  `json:"username"`
-	RequestCount int64   `json:"request_count"`
-	TotalTokens  int64   `json:"total_tokens"`
-	SpendQuota   int64   `json:"spend_quota"`
-	SpendYYC     int64   `json:"spend_yyc"`
-	ShareRate    float64 `json:"share_rate"`
-	LastUsedAt   int64   `json:"last_used_at"`
+	UserID        string  `json:"user_id"`
+	Username      string  `json:"username"`
+	RequestCount  int64   `json:"request_count"`
+	TotalTokens   int64   `json:"total_tokens"`
+	SpendQuota    int64   `json:"spend_quota"`
+	SpendAmount   int64   `json:"spend_amount"`
+	BalanceAmount int64   `json:"balance_amount"`
+	ShareRate     float64 `json:"share_rate"`
+	LastUsedAt    int64   `json:"last_used_at"`
 }
 
 type usageRankSummary struct {
@@ -110,7 +148,7 @@ type usageRankSummary struct {
 	RequestCount int64   `json:"request_count"`
 	TotalTokens  int64   `json:"total_tokens"`
 	SpendQuota   int64   `json:"spend_quota"`
-	SpendYYC     int64   `json:"spend_yyc"`
+	SpendAmount  int64   `json:"spend_amount"`
 	TopUsername  string  `json:"top_username"`
 	TopUserShare float64 `json:"top_user_share"`
 }
@@ -120,7 +158,34 @@ type usageTotalSummary struct {
 	RequestCount int64 `json:"request_count"`
 	TotalTokens  int64 `json:"total_tokens"`
 	SpendQuota   int64 `json:"spend_quota"`
-	SpendYYC     int64 `json:"spend_yyc"`
+	SpendAmount  int64 `json:"spend_amount"`
+}
+
+type userGrowthPeriodSummary struct {
+	Bucket          string `json:"bucket"`
+	StartAt         int64  `json:"start_timestamp"`
+	EndAt           int64  `json:"end_timestamp"`
+	NewUserCount    int64  `json:"new_user_count"`
+	ActiveUserCount int64  `json:"active_user_count"`
+	TopupUserCount  int64  `json:"topup_user_count"`
+	RequestCount    int64  `json:"request_count"`
+}
+
+type userGrowthComparison struct {
+	Current     int64   `json:"current"`
+	Previous    int64   `json:"previous"`
+	Delta       int64   `json:"delta"`
+	GrowthRate  float64 `json:"growth_rate"`
+	HasBaseline bool    `json:"has_baseline"`
+}
+
+type userGrowthSummaryData struct {
+	Granularity string                  `json:"granularity"`
+	Current     userGrowthPeriodSummary `json:"current"`
+	Previous    userGrowthPeriodSummary `json:"previous"`
+	NewUsers    userGrowthComparison    `json:"new_users"`
+	ActiveUsers userGrowthComparison    `json:"active_users"`
+	TopupUsers  userGrowthComparison    `json:"topup_users"`
 }
 
 type modelHealthItem struct {
@@ -130,7 +195,7 @@ type modelHealthItem struct {
 	RequestCount         int64    `json:"request_count"`
 	TotalTokens          int64    `json:"total_tokens"`
 	SpendQuota           int64    `json:"spend_quota"`
-	SpendYYC             int64    `json:"spend_yyc"`
+	SpendAmount          int64    `json:"spend_amount"`
 	ChannelCount         int      `json:"channel_count"`
 	TestedChannelCount   int      `json:"tested_channel_count"`
 	TestedEndpointCount  int      `json:"tested_endpoint_count"`
@@ -153,27 +218,30 @@ type modelSummaryData struct {
 	RequestCount       int64   `json:"request_count"`
 	TotalTokens        int64   `json:"total_tokens"`
 	SpendQuota         int64   `json:"spend_quota"`
-	SpendYYC           int64   `json:"spend_yyc"`
+	SpendAmount        int64   `json:"spend_amount"`
 	AvgPassRate        float64 `json:"avg_pass_rate"`
 	AvgLatencyMs       int64   `json:"avg_latency_ms"`
 }
 
 type dashboardPayload struct {
-	Section      string              `json:"section"`
-	Period       string              `json:"period"`
-	Granularity  string              `json:"granularity"`
-	StartAt      int64               `json:"start_timestamp"`
-	EndAt        int64               `json:"end_timestamp"`
-	Summary      summaryData         `json:"summary"`
-	Trend        []trendPoint        `json:"trend"`
-	TopChannels  []channelHealthItem `json:"top_channels"`
-	UsageSummary usageRankSummary    `json:"usage_summary"`
-	UsageTotals  usageTotalSummary   `json:"usage_totals"`
-	UsageRank    []usageRankingItem  `json:"usage_rank"`
-	ModelSummary modelSummaryData    `json:"model_summary"`
-	TopModels    []modelHealthItem   `json:"top_models"`
-	RecentTasks  []model.AsyncTask   `json:"recent_tasks"`
-	GeneratedAt  int64               `json:"generated_at"`
+	Section              string                    `json:"section"`
+	Period               string                    `json:"period"`
+	Granularity          string                    `json:"granularity"`
+	StartAt              int64                     `json:"start_timestamp"`
+	EndAt                int64                     `json:"end_timestamp"`
+	Summary              summaryData               `json:"summary"`
+	Trend                []trendPoint              `json:"trend"`
+	TopChannels          []channelHealthItem       `json:"top_channels"`
+	ChannelHealthSummary channelHealthSummaryData  `json:"channel_health_summary"`
+	UsageSummary         usageRankSummary          `json:"usage_summary"`
+	UsageTotals          usageTotalSummary         `json:"usage_totals"`
+	UsageRank            []usageRankingItem        `json:"usage_rank"`
+	UserGrowthSummary    userGrowthSummaryData     `json:"user_growth_summary"`
+	UserGrowthTrend      []userGrowthPeriodSummary `json:"user_growth_trend"`
+	ModelSummary         modelSummaryData          `json:"model_summary"`
+	TopModels            []modelHealthItem         `json:"top_models"`
+	RecentTasks          []model.AsyncTask         `json:"recent_tasks"`
+	GeneratedAt          int64                     `json:"generated_at"`
 }
 
 type usageRankingRow struct {
@@ -256,6 +324,208 @@ func periodGranularity(period string) string {
 	default:
 		return granularityMonth
 	}
+}
+
+func normalizeUserGrowthGranularity(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case granularityMonth, "monthly":
+		return granularityMonth
+	case userGrowthGranularityWeek, "weekly":
+		return userGrowthGranularityWeek
+	default:
+		return userGrowthGranularityWeek
+	}
+}
+
+func dashboardStartOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+func dashboardStartOfWeek(t time.Time) time.Time {
+	day := dashboardStartOfDay(t)
+	offset := (int(day.Weekday()) + 6) % 7
+	return day.AddDate(0, 0, -offset)
+}
+
+func dashboardStartOfMonth(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+}
+
+func nextUserGrowthBucketStart(start time.Time, granularity string) time.Time {
+	if normalizeUserGrowthGranularity(granularity) == granularityMonth {
+		return start.AddDate(0, 1, 0)
+	}
+	return start.AddDate(0, 0, 7)
+}
+
+func userGrowthBucketLabel(start time.Time, granularity string) string {
+	if normalizeUserGrowthGranularity(granularity) == granularityMonth {
+		return start.Format("2006-01")
+	}
+	return start.Format("2006-01-02")
+}
+
+func userGrowthBucketRange(start time.Time, granularity string, now time.Time) (time.Time, time.Time) {
+	next := nextUserGrowthBucketStart(start, granularity)
+	end := next.Add(-time.Second)
+	if now.Before(end) {
+		end = now
+	}
+	if end.Before(start) {
+		end = start
+	}
+	return start, end
+}
+
+func userGrowthTrendStart(granularity string, now time.Time) (time.Time, int) {
+	if normalizeUserGrowthGranularity(granularity) == granularityMonth {
+		return dashboardStartOfMonth(now).AddDate(0, -(userGrowthTrendMonths - 1), 0), userGrowthTrendMonths
+	}
+	return dashboardStartOfWeek(now).AddDate(0, 0, -7*(userGrowthTrendWeeks-1)), userGrowthTrendWeeks
+}
+
+func previousUserGrowthPeriod(currentStart time.Time, currentEnd time.Time, granularity string) (time.Time, time.Time) {
+	normalized := normalizeUserGrowthGranularity(granularity)
+	previousStart := currentStart.AddDate(0, 0, -7)
+	if normalized == granularityMonth {
+		previousStart = currentStart.AddDate(0, -1, 0)
+	}
+	elapsed := currentEnd.Sub(currentStart)
+	previousEnd := previousStart.Add(elapsed)
+	previousLimit := currentStart.Add(-time.Second)
+	if previousEnd.After(previousLimit) {
+		previousEnd = previousLimit
+	}
+	if previousEnd.Before(previousStart) {
+		previousEnd = previousStart
+	}
+	return previousStart, previousEnd
+}
+
+func compareUserGrowth(current int64, previous int64) userGrowthComparison {
+	comparison := userGrowthComparison{
+		Current:  current,
+		Previous: previous,
+		Delta:    current - previous,
+	}
+	if previous > 0 {
+		comparison.HasBaseline = true
+		comparison.GrowthRate = float64(comparison.Delta) / float64(previous)
+	}
+	return comparison
+}
+
+func countNewUsersWithDB(db *gorm.DB, startAt int64, endAt int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database handle is nil")
+	}
+	count := int64(0)
+	err := db.Model(&model.User{}).
+		Where("created_at BETWEEN ? AND ? AND status != ?", startAt, endAt, model.UserStatusDeleted).
+		Count(&count).Error
+	return count, err
+}
+
+func countDistinctLogUsersWithDB(db *gorm.DB, logType int, startAt int64, endAt int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("log database handle is nil")
+	}
+	count := int64(0)
+	err := db.Table(model.EventLogsTableName).
+		Select("COUNT(DISTINCT user_id)").
+		Where("type = ? AND created_at BETWEEN ? AND ? AND COALESCE(NULLIF(TRIM(user_id), ''), '') <> ''", logType, startAt, endAt).
+		Scan(&count).Error
+	return count, err
+}
+
+func countLogRequestsWithDB(db *gorm.DB, startAt int64, endAt int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("log database handle is nil")
+	}
+	count := int64(0)
+	err := db.Table(model.EventLogsTableName).
+		Where("type = ? AND created_at BETWEEN ? AND ?", model.LogTypeConsume, startAt, endAt).
+		Count(&count).Error
+	return count, err
+}
+
+func buildUserGrowthPeriodWithDB(db *gorm.DB, logDB *gorm.DB, start time.Time, end time.Time, granularity string) (userGrowthPeriodSummary, error) {
+	point := userGrowthPeriodSummary{
+		Bucket:  userGrowthBucketLabel(start, granularity),
+		StartAt: start.Unix(),
+		EndAt:   end.Unix(),
+	}
+	newUsers, err := countNewUsersWithDB(db, point.StartAt, point.EndAt)
+	if err != nil {
+		return point, err
+	}
+	activeUsers, err := countDistinctLogUsersWithDB(logDB, model.LogTypeConsume, point.StartAt, point.EndAt)
+	if err != nil {
+		return point, err
+	}
+	topupUsers, err := countDistinctLogUsersWithDB(logDB, model.LogTypeTopup, point.StartAt, point.EndAt)
+	if err != nil {
+		return point, err
+	}
+	requestCount, err := countLogRequestsWithDB(logDB, point.StartAt, point.EndAt)
+	if err != nil {
+		return point, err
+	}
+	point.NewUserCount = newUsers
+	point.ActiveUserCount = activeUsers
+	point.TopupUserCount = topupUsers
+	point.RequestCount = requestCount
+	return point, nil
+}
+
+func buildUserGrowthDashboardWithDB(db *gorm.DB, logDB *gorm.DB, rawGranularity string, now time.Time) (userGrowthSummaryData, []userGrowthPeriodSummary, error) {
+	granularity := normalizeUserGrowthGranularity(rawGranularity)
+	if now.IsZero() {
+		now = time.Now()
+	}
+	trendStart, bucketCount := userGrowthTrendStart(granularity, now)
+	trend := make([]userGrowthPeriodSummary, 0, bucketCount)
+	for i := 0; i < bucketCount; i++ {
+		start := trendStart
+		if granularity == granularityMonth {
+			start = trendStart.AddDate(0, i, 0)
+		} else {
+			start = trendStart.AddDate(0, 0, i*7)
+		}
+		bucketStart, bucketEnd := userGrowthBucketRange(start, granularity, now)
+		point, err := buildUserGrowthPeriodWithDB(db, logDB, bucketStart, bucketEnd, granularity)
+		if err != nil {
+			return userGrowthSummaryData{}, nil, err
+		}
+		trend = append(trend, point)
+	}
+
+	currentStart := dashboardStartOfWeek(now)
+	if granularity == granularityMonth {
+		currentStart = dashboardStartOfMonth(now)
+	}
+	current, err := buildUserGrowthPeriodWithDB(db, logDB, currentStart, now, granularity)
+	if err != nil {
+		return userGrowthSummaryData{}, nil, err
+	}
+	previousStart, previousEnd := previousUserGrowthPeriod(currentStart, now, granularity)
+	previous, err := buildUserGrowthPeriodWithDB(db, logDB, previousStart, previousEnd, granularity)
+	if err != nil {
+		return userGrowthSummaryData{}, nil, err
+	}
+	summary := userGrowthSummaryData{
+		Granularity: granularity,
+		Current:     current,
+		Previous:    previous,
+		NewUsers:    compareUserGrowth(current.NewUserCount, previous.NewUserCount),
+		ActiveUsers: compareUserGrowth(current.ActiveUserCount, previous.ActiveUserCount),
+		TopupUsers:  compareUserGrowth(current.TopupUserCount, previous.TopupUserCount),
+	}
+	return summary, trend, nil
+}
+
+func buildUserGrowthDashboard(rawGranularity string, now time.Time) (userGrowthSummaryData, []userGrowthPeriodSummary, error) {
+	return buildUserGrowthDashboardWithDB(model.DB, model.LOG_DB, rawGranularity, now)
 }
 
 func sumQuotaByType(logType int, startAt int64, endAt int64) (int64, error) {
@@ -473,26 +743,158 @@ func collectCapabilities(channel *model.Channel) []string {
 	return result
 }
 
-func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
-	total, enabled, disabled, err := countChannelSummary()
-	if err != nil {
-		return nil, 0, 0, 0, err
+func buildChannelCircuitBreakerDashboardItem(row model.ChannelCircuitBreakerState) *channelCircuitBreakerDashboardItem {
+	if strings.TrimSpace(row.ChannelId) == "" {
+		return nil
 	}
-	rows := make([]*model.Channel, 0, channelTopLimit)
-	err = model.DB.Model(&model.Channel{}).
+	return &channelCircuitBreakerDashboardItem{
+		State:        strings.TrimSpace(row.State),
+		Reason:       strings.TrimSpace(row.Reason),
+		SuccessRate:  row.SuccessRate,
+		DisabledAt:   row.DisabledAt,
+		RecoverAfter: row.RecoverAfter,
+		RecoveredAt:  row.RecoveredAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}
+
+func buildChannelHealthPoints(history []bool) []channelHealthPoint {
+	if len(history) == 0 {
+		return []channelHealthPoint{}
+	}
+	if len(history) > channelHealthHistoryLimit {
+		history = history[len(history)-channelHealthHistoryLimit:]
+	}
+	result := make([]channelHealthPoint, 0, len(history))
+	for _, success := range history {
+		state := channelHealthPointFailure
+		if success {
+			state = channelHealthPointSuccess
+		}
+		result = append(result, channelHealthPoint{State: state})
+	}
+	return result
+}
+
+func isActiveDashboardCircuitBreaker(circuitBreaker *channelCircuitBreakerDashboardItem) bool {
+	if circuitBreaker == nil {
+		return false
+	}
+	switch strings.TrimSpace(strings.ToLower(circuitBreaker.State)) {
+	case model.ChannelCircuitBreakerStateOpen, model.ChannelCircuitBreakerStateHalfOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+func dashboardChannelNeedsRetest(item channelHealthItem) bool {
+	return item.SelectedModelCount > 0 &&
+		(!item.HasTestData || item.CoverageRate < 1 || item.PassRate < 1)
+}
+
+func dashboardChannelRisky(item channelHealthItem) bool {
+	return item.HealthLevel == channelHealthLevelCritical ||
+		isActiveDashboardCircuitBreaker(item.CircuitBreaker) ||
+		(item.HasTestData && item.PassRate < 0.8)
+}
+
+func summarizeChannelHealthItems(items []channelHealthItem) channelHealthSummaryData {
+	summary := channelHealthSummaryData{}
+	if len(items) == 0 {
+		return summary
+	}
+	passRateTotal := 0.0
+	selectedModelTotal := int64(0)
+	testedModelTotal := int64(0)
+	latencyTotal := int64(0)
+	latencyCount := int64(0)
+	for _, item := range items {
+		selectedModelTotal += int64(item.SelectedModelCount)
+		testedModelTotal += int64(item.TestedModelCount)
+		if item.HasTestData {
+			summary.WithTests++
+			passRateTotal += item.PassRate
+		} else {
+			summary.WithoutTests++
+		}
+		if item.AvgLatencyMs > 0 {
+			latencyTotal += item.AvgLatencyMs
+			latencyCount++
+		}
+		if dashboardChannelNeedsRetest(item) {
+			summary.NeedsRetest++
+		}
+		if dashboardChannelRisky(item) {
+			summary.RiskCount++
+		}
+		if isActiveDashboardCircuitBreaker(item.CircuitBreaker) {
+			summary.ActiveCircuitBreakerCount++
+		}
+		if item.AvgLatencyMs >= 8000 {
+			summary.HighLatencyCount++
+		}
+	}
+	if summary.WithTests > 0 {
+		summary.AvgPassRate = passRateTotal / float64(summary.WithTests)
+	}
+	if selectedModelTotal > 0 {
+		summary.AvgCoverageRate = clamp01(float64(testedModelTotal) / float64(selectedModelTotal))
+	}
+	if latencyCount > 0 {
+		summary.AvgLatencyMs = latencyTotal / latencyCount
+	}
+	return summary
+}
+
+func channelHealthLevelSortRank(level string) int {
+	switch strings.TrimSpace(strings.ToLower(level)) {
+	case channelHealthLevelCritical:
+		return 0
+	case channelHealthLevelWarning:
+		return 1
+	case channelHealthLevelUnknown:
+		return 2
+	case channelHealthLevelHealthy:
+		return 3
+	default:
+		return 4
+	}
+}
+
+func listDashboardChannels() ([]channelHealthItem, channelHealthSummaryData, error) {
+	rows := make([]*model.Channel, 0)
+	err := model.DB.Model(&model.Channel{}).
 		Order("used_quota desc, created_time desc").
-		Limit(channelTopLimit).
 		Omit("key").
 		Find(&rows).Error
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	if err := model.HydrateChannelsWithModels(model.DB, rows); err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
 	if err := model.HydrateChannelsWithTests(model.DB, rows); err != nil {
-		return nil, 0, 0, 0, err
+		return nil, channelHealthSummaryData{}, err
 	}
+	channelIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		if channelID := strings.TrimSpace(row.Id); channelID != "" {
+			channelIDs = append(channelIDs, channelID)
+		}
+	}
+	circuitRows, err := model.ListChannelCircuitBreakerStatesByChannelIDsWithDB(model.DB, channelIDs)
+	if err != nil {
+		return nil, channelHealthSummaryData{}, err
+	}
+	circuitByChannelID := make(map[string]model.ChannelCircuitBreakerState, len(circuitRows))
+	for _, row := range circuitRows {
+		circuitByChannelID[strings.TrimSpace(row.ChannelId)] = row
+	}
+	metricHistoryByChannelID := monitor.SnapshotChannelMetricHistory(channelIDs, channelHealthHistoryLimit)
 	nowTs := helper.GetTimestamp()
 	items := make([]channelHealthItem, 0, len(rows))
 	for _, row := range rows {
@@ -501,14 +903,19 @@ func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
 		}
 		row.NormalizeProtocol()
 		health := calcChannelHealth(row, nowTs)
+		channelID := strings.TrimSpace(row.Id)
+		var circuitBreaker *channelCircuitBreakerDashboardItem
+		if circuitRow, ok := circuitByChannelID[channelID]; ok {
+			circuitBreaker = buildChannelCircuitBreakerDashboardItem(circuitRow)
+		}
 		items = append(items, channelHealthItem{
-			ID:                 strings.TrimSpace(row.Id),
+			ID:                 channelID,
 			Name:               strings.TrimSpace(row.Name),
 			Protocol:           strings.TrimSpace(row.Protocol),
 			Status:             row.Status,
 			Capabilities:       collectCapabilities(row),
 			UsedQuota:          row.UsedQuota,
-			YYCUsed:            row.UsedQuota,
+			UsedAmount:         row.UsedQuota,
 			Priority:           row.GetPriority(),
 			SelectedModelCount: health.SelectedModelCount,
 			TestedModelCount:   health.TestedModelCount,
@@ -522,9 +929,42 @@ func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
 			HasTestData:        health.HasTestData,
 			HealthScore:        health.HealthScore,
 			HealthLevel:        health.HealthLevel,
+			CircuitBreaker:     circuitBreaker,
+			HealthPoints:       buildChannelHealthPoints(metricHistoryByChannelID[channelID]),
 		})
 	}
-	return items, total, enabled, disabled, nil
+	healthSummary := summarizeChannelHealthItems(items)
+	sort.Slice(items, func(i, j int) bool {
+		leftCircuit := isActiveDashboardCircuitBreaker(items[i].CircuitBreaker)
+		rightCircuit := isActiveDashboardCircuitBreaker(items[j].CircuitBreaker)
+		if leftCircuit != rightCircuit {
+			return leftCircuit
+		}
+		leftRiskRank := channelHealthLevelSortRank(items[i].HealthLevel)
+		rightRiskRank := channelHealthLevelSortRank(items[j].HealthLevel)
+		if leftRiskRank != rightRiskRank {
+			return leftRiskRank < rightRiskRank
+		}
+		leftNeedsRetest := dashboardChannelNeedsRetest(items[i])
+		rightNeedsRetest := dashboardChannelNeedsRetest(items[j])
+		if leftNeedsRetest != rightNeedsRetest {
+			return leftNeedsRetest
+		}
+		if items[i].AvgLatencyMs != items[j].AvgLatencyMs {
+			return items[i].AvgLatencyMs > items[j].AvgLatencyMs
+		}
+		if items[i].UsedAmount != items[j].UsedAmount {
+			return items[i].UsedAmount > items[j].UsedAmount
+		}
+		if items[i].HealthScore != items[j].HealthScore {
+			return items[i].HealthScore < items[j].HealthScore
+		}
+		return items[i].Name < items[j].Name
+	})
+	if channelDashboardListLimit > 0 && len(items) > channelDashboardListLimit {
+		items = items[:channelDashboardListLimit]
+	}
+	return items, healthSummary, nil
 }
 
 func countChannelSummary() (int64, int64, int64, error) {
@@ -655,10 +1095,10 @@ func buildTrend(startAt int64, endAt int64, granularity string) ([]trendPoint, e
 		}
 		if row.Type == model.LogTypeConsume {
 			points[bucket].ConsumeQuota += row.Quota
-			points[bucket].ConsumeYYC += row.Quota
+			points[bucket].ConsumeAmount += row.Quota
 		} else if row.Type == model.LogTypeTopup {
 			points[bucket].TopupQuota += row.Quota
-			points[bucket].TopupYYC += row.Quota
+			points[bucket].TopupAmount += row.Quota
 		}
 	}
 	for _, row := range requestRows {
@@ -732,7 +1172,7 @@ func summarizeUsageTotals(startAt int64, endAt int64, userKeyword string) (usage
 	summary.RequestCount = row.RequestCount
 	summary.TotalTokens = row.PromptTokens + row.CompletionTs
 	summary.SpendQuota = row.SpendQuota
-	summary.SpendYYC = row.SpendQuota
+	summary.SpendAmount = row.SpendQuota
 	return summary, nil
 }
 
@@ -747,7 +1187,7 @@ func summarizeUsageRanking(items []usageRankingItem) usageRankSummary {
 		summary.RequestCount += item.RequestCount
 		summary.TotalTokens += item.TotalTokens
 		summary.SpendQuota += item.SpendQuota
-		summary.SpendYYC += item.SpendYYC
+		summary.SpendAmount += item.SpendAmount
 		if index == 0 || item.SpendQuota > topSpendQuota {
 			topSpendQuota = item.SpendQuota
 			summary.TopUsername = strings.TrimSpace(item.Username)
@@ -792,13 +1232,14 @@ func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota 
 	}
 
 	type dashboardUserRow struct {
-		UserID    string `gorm:"column:user_id"`
-		Username  string `gorm:"column:username"`
-		CreatedAt int64  `gorm:"column:created_at"`
+		UserID        string `gorm:"column:user_id"`
+		Username      string `gorm:"column:username"`
+		BalanceAmount int64  `gorm:"column:balance_amount"`
+		CreatedAt     int64  `gorm:"column:created_at"`
 	}
 	userRows := make([]dashboardUserRow, 0)
 	userQuery := model.DB.Table("users AS u").
-		Select("u.id AS user_id, COALESCE(NULLIF(TRIM(u.display_name), ''), NULLIF(TRIM(u.username), ''), u.id) AS username, COALESCE(u.created_at, 0) AS created_at").
+		Select("u.id AS user_id, COALESCE(NULLIF(TRIM(u.display_name), ''), NULLIF(TRIM(u.username), ''), u.id) AS username, COALESCE(u.quota, 0) AS balance_amount, COALESCE(u.created_at, 0) AS created_at").
 		Where("u.status != ?", model.UserStatusDeleted)
 	if keyword != "" {
 		like := "%" + keyword + "%"
@@ -828,13 +1269,14 @@ func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota 
 		totalTokens := row.PromptTokens + row.CompletionTs
 		candidates = append(candidates, usageRankingCandidate{
 			usageRankingItem: usageRankingItem{
-				UserID:       strings.TrimSpace(row.UserID),
-				Username:     strings.TrimSpace(row.Username),
-				RequestCount: row.RequestCount,
-				TotalTokens:  totalTokens,
-				SpendQuota:   row.SpendQuota,
-				SpendYYC:     row.SpendQuota,
-				LastUsedAt:   row.LastUsedAt,
+				UserID:        strings.TrimSpace(row.UserID),
+				Username:      strings.TrimSpace(row.Username),
+				RequestCount:  row.RequestCount,
+				TotalTokens:   totalTokens,
+				SpendQuota:    row.SpendQuota,
+				SpendAmount:   row.SpendQuota,
+				BalanceAmount: userRow.BalanceAmount,
+				LastUsedAt:    row.LastUsedAt,
 			},
 			CreatedAt: userRow.CreatedAt,
 		})
@@ -1122,7 +1564,7 @@ func buildModelDashboard(startAt int64, endAt int64, limit int) (modelSummaryDat
 		agg.item.RequestCount = row.RequestCount
 		agg.item.TotalTokens = row.PromptTokens + row.CompletionTokens
 		agg.item.SpendQuota = row.SpendQuota
-		agg.item.SpendYYC = row.SpendQuota
+		agg.item.SpendAmount = row.SpendQuota
 		if row.LastUsedAt > agg.item.LastTestedAt {
 			// keep usage recency separate from test recency; test time remains authoritative for health
 		}
@@ -1165,7 +1607,7 @@ func buildModelDashboard(startAt int64, endAt int64, limit int) (modelSummaryDat
 		summary.RequestCount += item.RequestCount
 		summary.TotalTokens += item.TotalTokens
 		summary.SpendQuota += item.SpendQuota
-		summary.SpendYYC += item.SpendYYC
+		summary.SpendAmount += item.SpendAmount
 		summary.AvgPassRate += item.PassRate
 		if item.AvgLatencyMs > 0 {
 			summary.AvgLatencyMs += item.AvgLatencyMs
@@ -1188,8 +1630,8 @@ func buildModelDashboard(startAt int64, endAt int64, limit int) (modelSummaryDat
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].SpendYYC != items[j].SpendYYC {
-			return items[i].SpendYYC > items[j].SpendYYC
+		if items[i].SpendAmount != items[j].SpendAmount {
+			return items[i].SpendAmount > items[j].SpendAmount
 		}
 		if items[i].RequestCount != items[j].RequestCount {
 			return items[i].RequestCount > items[j].RequestCount
@@ -1210,6 +1652,7 @@ func GetDashboard(c *gin.Context) {
 	period := normalizePeriod(c.DefaultQuery("period", periodLast7Days))
 	section := normalizeSection(c.Query("section"))
 	userKeyword := strings.TrimSpace(c.Query("user_keyword"))
+	userGrowthGranularity := normalizeUserGrowthGranularity(c.DefaultQuery("user_growth_granularity", userGrowthGranularityWeek))
 	now := time.Now()
 	start, end := periodRange(period, now)
 	if period == periodAllTime {
@@ -1289,11 +1732,11 @@ func GetDashboard(c *gin.Context) {
 		}
 		payload.Summary = summaryData{
 			ConsumeQuota:    consumeQuota,
-			ConsumeYYC:      consumeQuota,
+			ConsumeAmount:   consumeQuota,
 			TopupQuota:      topupQuota,
-			TopupYYC:        topupQuota,
+			TopupAmount:     topupQuota,
 			NetQuota:        topupQuota - consumeQuota,
-			NetYYC:          topupQuota - consumeQuota,
+			NetAmount:       topupQuota - consumeQuota,
 			RequestCount:    requestCount,
 			ActiveUserCount: activeUserCount,
 			ChannelTotal:    channelTotal,
@@ -1318,6 +1761,13 @@ func GetDashboard(c *gin.Context) {
 			payload.UsageSummary = summarizeUsageRanking(usageRank)
 			payload.UsageTotals = usageTotals
 			payload.UsageRank = usageRank
+			userGrowthSummary, userGrowthTrend, err := buildUserGrowthDashboard(userGrowthGranularity, now)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+				return
+			}
+			payload.UserGrowthSummary = userGrowthSummary
+			payload.UserGrowthTrend = userGrowthTrend
 		}
 	}
 
@@ -1331,12 +1781,13 @@ func GetDashboard(c *gin.Context) {
 	}
 
 	if section == sectionAll || section == sectionChannels {
-		topChannels, _, _, _, err := listTopChannels()
+		topChannels, channelHealthSummary, err := listDashboardChannels()
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 			return
 		}
 		payload.TopChannels = topChannels
+		payload.ChannelHealthSummary = channelHealthSummary
 	}
 
 	if section == sectionAll || section == sectionModels {

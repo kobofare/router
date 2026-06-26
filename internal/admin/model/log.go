@@ -28,26 +28,26 @@ type Log struct {
 	BillingEstimatePrecision         string  `json:"billing_estimate_precision" gorm:"type:varchar(32);default:''"`
 	BillingSettlementMode            string  `json:"billing_settlement_mode" gorm:"type:varchar(64);default:''"`
 	BillingGroupRatio                float64 `json:"billing_group_ratio" gorm:"type:double precision;default:0"`
-	BillingYYCRate                   float64 `json:"billing_yyc_rate" gorm:"type:double precision;default:0"`
+	BillingChargeRate                float64 `json:"billing_charge_rate" gorm:"type:double precision;default:0"`
 	BillingInputQuantity             float64 `json:"billing_input_quantity" gorm:"type:double precision;default:0"`
 	BillingOutputQuantity            float64 `json:"billing_output_quantity" gorm:"type:double precision;default:0"`
 	BillingInputAmount               float64 `json:"billing_input_amount" gorm:"type:double precision;default:0"`
 	BillingOutputAmount              float64 `json:"billing_output_amount" gorm:"type:double precision;default:0"`
 	BillingAmount                    float64 `json:"billing_amount" gorm:"type:double precision;default:0"`
-	BillingYYCAmount                 int64   `json:"billing_yyc_amount" gorm:"bigint;default:0"`
+	BillingChargeAmount              int64   `json:"billing_charge_amount" gorm:"bigint;default:0"`
 	BillingImageToolCalls            int     `json:"billing_image_tool_calls" gorm:"default:0"`
 	BillingImageToolOutputTokens     int     `json:"billing_image_tool_output_tokens" gorm:"default:0"`
 	BillingImageToolAmount           float64 `json:"billing_image_tool_amount" gorm:"type:double precision;default:0"`
-	BillingImageToolYYCAmount        int64   `json:"billing_image_tool_yyc_amount" gorm:"bigint;default:0"`
+	BillingImageToolChargeAmount     int64   `json:"billing_image_tool_charge_amount" gorm:"bigint;default:0"`
 	BillingSettlementTruthMode       string  `json:"billing_settlement_truth_mode" gorm:"type:varchar(64);default:''"`
 	BillingOfficialAnchorAmount      float64 `json:"billing_official_anchor_amount" gorm:"type:double precision;default:0"`
 	BillingOfficialAnchorCurrency    string  `json:"billing_official_anchor_currency" gorm:"type:varchar(16);default:''"`
-	BillingOfficialAnchorAmountCNY   float64 `json:"billing_official_anchor_amount_cny" gorm:"type:double precision;default:0"`
-	BillingProcurementCostCNY        float64 `json:"billing_procurement_cost_cny" gorm:"type:double precision;default:0"`
+	BillingOfficialAnchorBaseAmount  float64 `json:"billing_official_anchor_base_amount" gorm:"type:double precision;default:0"`
+	BillingProcurementCostBaseAmount float64 `json:"billing_procurement_cost_base_amount" gorm:"type:double precision;default:0"`
 	BillingProcurementCostSource     string  `json:"billing_procurement_cost_source" gorm:"type:varchar(32);default:''"`
 	BillingProcurementCostConfidence string  `json:"billing_procurement_cost_confidence" gorm:"type:varchar(64);default:''"`
-	BillingSellAmountCNY             float64 `json:"billing_sell_amount_cny" gorm:"type:double precision;default:0"`
-	BillingGrossProfitCNY            float64 `json:"billing_gross_profit_cny" gorm:"type:double precision;default:0"`
+	BillingSellBaseAmount            float64 `json:"billing_sell_base_amount" gorm:"type:double precision;default:0"`
+	BillingGrossProfitBaseAmount     float64 `json:"billing_gross_profit_base_amount" gorm:"type:double precision;default:0"`
 	BillingGrossMargin               float64 `json:"billing_gross_margin" gorm:"type:double precision;default:0"`
 	BillingPricingRuleVersion        string  `json:"billing_pricing_rule_version" gorm:"type:varchar(64);default:''"`
 	BillingCostRuleVersion           string  `json:"billing_cost_rule_version" gorm:"type:varchar(64);default:''"`
@@ -56,6 +56,15 @@ type Log struct {
 	CompletionTokens                 int     `json:"completion_tokens" gorm:"default:0"`
 	ChannelId                        string  `json:"channel" gorm:"type:varchar(64);index"`
 	ChannelName                      string  `json:"channel_name,omitempty" gorm:"-"`
+	RequestModelName                 string  `json:"request_model_name" gorm:"type:varchar(191);index;default:''"`
+	ActualModelName                  string  `json:"actual_model_name" gorm:"type:varchar(191);index;default:''"`
+	UpstreamEndpoint                 string  `json:"upstream_endpoint" gorm:"type:varchar(191);index;default:''"`
+	UpstreamProtocol                 string  `json:"upstream_protocol" gorm:"type:varchar(64);index;default:''"`
+	FallbackCount                    int     `json:"fallback_count" gorm:"default:0"`
+	FallbackAttempts                 string  `json:"fallback_attempts" gorm:"type:text"`
+	RelayErrorType                   string  `json:"relay_error_type" gorm:"type:varchar(64);default:''"`
+	RelayErrorCode                   string  `json:"relay_error_code" gorm:"type:varchar(128);default:''"`
+	RelayErrorMessage                string  `json:"relay_error_message" gorm:"type:text"`
 	TraceID                          string  `json:"trace_id" gorm:"column:trace_id;default:''"`
 	ElapsedTime                      int64   `json:"elapsed_time" gorm:"default:0"`
 	IsStream                         bool    `json:"is_stream" gorm:"default:false"`
@@ -72,6 +81,7 @@ const (
 	LogTypeManage
 	LogTypeSystem
 	LogTypeTest
+	LogTypeRelayFailure
 )
 
 const (
@@ -96,6 +106,10 @@ func RecordTopupLog(ctx context.Context, userId string, content string, quota in
 
 func RecordConsumeLog(ctx context.Context, log *Log) {
 	mustLogRepo().RecordConsumeLog(ctx, log)
+}
+
+func RecordRelayFailureLog(ctx context.Context, log *Log) {
+	mustLogRepo().RecordRelayFailureLog(ctx, log)
 }
 
 func RecordTestLog(ctx context.Context, log *Log) {

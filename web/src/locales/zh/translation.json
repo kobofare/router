@@ -140,7 +140,7 @@
       "package_preview_effective_at": "生效时间",
       "package_preview_expires_at": "新到期",
       "package_preview_payable": "应付金额",
-      "package_preview_payable_yyc": "折合 YYC",
+      "package_preview_payable_charge_amount": "折合 YYC",
       "package_confirm_button": "去支付",
       "package_operation": {
         "purchase": "新购",
@@ -666,7 +666,7 @@
         "manual_purchase_currency": "采购币种",
         "manual_purchase_amount": "实付金额",
         "manual_purchase_fx_rate": "折算汇率",
-        "manual_purchase_cost_cny": "采购成本 CNY",
+        "manual_purchase_cost_amount": "采购成本 CNY",
         "manual_purchase_hint": "先填写这笔采购的实付信息，再填写买到了什么权益。",
         "manual_snapshot_invalid": "请至少填写一条有效权益项",
         "manual_snapshot_success": "采购记录保存成功",
@@ -764,7 +764,7 @@
           "purchase_currency": "采购币种",
           "purchase_amount": "采购金额",
           "purchase_fx_rate": "折算汇率",
-          "purchase_cost_cny": "采购成本 CNY",
+          "purchase_cost_amount": "采购成本 CNY",
           "cost_unconfigured": "成本未配置"
         },
         "procurement_consumption_table": {
@@ -845,7 +845,7 @@
           "created_at": "时间",
           "purchase_at": "采购时间",
           "purchase_amount": "实付金额",
-          "purchase_cost_cny": "采购成本 CNY",
+          "purchase_cost_amount": "采购成本 CNY",
           "source_type": "来源",
           "quota_items": "额度项",
           "message": "备注",
@@ -889,8 +889,36 @@
         "disable_success": "关闭端点能力成功",
         "update_failed": "更新端点能力失败",
         "filters": {
+          "runtime_state": "运行状态",
+          "all_runtime_state": "全部运行状态",
           "test_status": "测试状态",
           "all_test_status": "全部测试状态"
+        },
+        "summary_cards": {
+          "total": "端点总数",
+          "available": "可用",
+          "paused": "已暂停",
+          "blocked": "受阻",
+          "untested": "待测试"
+        },
+        "runtime_state": {
+          "available": "可用",
+          "paused": "已暂停",
+          "blocked": "受阻",
+          "untested": "待测试",
+          "disabled": "未启用"
+        },
+        "status_detail": {
+          "recovery_state_available": "恢复状态：当前可参与真实选路",
+          "recovery_state_paused": "恢复状态：等待人工启用或自动恢复",
+          "recovery_state_blocked": "恢复状态：需先解决启用阻断",
+          "recovery_state_untested": "恢复状态：需先完成端点测试",
+          "recovery_state_disabled": "恢复状态：当前未启用",
+          "pause_reason": "暂停原因：{{value}}",
+          "paused_at": "暂停时间：{{value}}",
+          "paused_by": "最近自动暂停来源：{{value}}",
+          "block_reason": "启用阻断：{{value}}",
+          "last_tested_at": "最近测试：{{value}}"
         },
         "table": {
           "model": "模型",
@@ -900,6 +928,7 @@
           "enabled": "启用",
           "latest_test": "最近测试",
           "test_status": "测试状态",
+          "runtime_status": "状态详情",
           "enable_block_reason": "不能启用原因",
           "updated_at": "更新时间"
         }
@@ -1526,7 +1555,7 @@
       },
       "messages": {
         "update_success": "令牌更新成功！",
-        "create_success": "令牌创建成功，请在列表页面点击复制获取令牌！",
+        "create_success": "令牌创建成功，请立即复制并妥善保存完整令牌！",
         "name_required": "请输入令牌名称。",
         "id_required": "令牌标识为空，请刷新页面后重试。",
         "expire_time_invalid": "过期时间格式错误！",
@@ -1543,7 +1572,7 @@
     },
     "messages": {
       "copy_success": "已复制到剪贴板！",
-      "copy_failed": "无法复制到剪贴板，请手动复制，已将令牌填入搜索框。",
+      "copy_failed": "无法复制到剪贴板，请手动复制。",
       "operation_success": "操作成功完成！"
     }
   },
@@ -1567,6 +1596,8 @@
     "unlimited": "不限额",
     "day": "天",
     "never": "永久",
+    "created_at": "创建时间",
+    "updated_at": "更新时间",
     "quota": {
       "display": "等价金额：${{amount}}",
       "display_short": "${{amount}}",
@@ -1673,7 +1704,8 @@
       "usage": "消费",
       "admin": "管理",
       "system": "系统",
-      "test": "测试"
+      "test": "测试",
+      "relay_failure": "调用失败"
     },
     "table": {
       "time": "时间",
@@ -1713,8 +1745,51 @@
       },
       "sections": {
         "basic": "基础信息",
+        "route": "路由说明",
         "billing": "计费快照",
         "content": "详情内容"
+      },
+      "route": {
+        "summary_title": "本次路由摘要",
+        "summary": "本次请求最终命中渠道 {{channel}}，最终模型为 {{model}}，经历 {{fallbackCount}} 次 fallback，估算来源为 {{source}}，结算模式为 {{settlement}}。",
+        "failure_summary": "本次请求最终失败，最后尝试渠道为 {{channel}}，请求模型为 {{model}}，经历 {{fallbackCount}} 次 fallback。",
+        "attempt_title": "第 {{attempt}} 次尝试",
+        "outcome": {
+          "succeeded": "成功",
+          "failed": "失败",
+          "direct": "未 fallback",
+          "fallback": "{{count}} 次 fallback"
+        },
+        "attempt_fields": {
+          "channel": "渠道",
+          "model": "模型",
+          "endpoint": "端点",
+          "protocol": "协议",
+          "error_code": "错误码",
+          "error": "错误"
+        },
+        "fields": {
+          "channel_target": "命中渠道",
+          "request_model": "请求模型",
+          "actual_model": "最终模型",
+          "upstream_endpoint": "上游端点",
+          "upstream_protocol": "上游协议",
+          "stream_mode": "流式模式",
+          "elapsed_time": "请求耗时",
+          "estimate_source": "估算来源",
+          "estimate_estimator": "估算器",
+          "estimate_precision": "估算精度",
+          "settlement_mode": "结算模式",
+          "trace_id": "Trace ID",
+          "fallback_count": "Fallback 次数",
+          "relay_error": "最终错误",
+          "fallback_attempts": "Fallback 尝试"
+        },
+        "precision": {
+          "high": "高",
+          "medium": "中",
+          "low": "低"
+        }
       },
       "fields": {
         "id": "日志 ID",
@@ -1742,17 +1817,17 @@
         "estimated_prompt_tokens": "预估提示词消耗",
         "billing_settlement_mode": "结算模式",
         "billing_group_ratio": "命中业务倍率",
-        "billing_yyc_rate": "折算比率",
+        "billing_charge_rate": "折算比率",
         "billing_input_quantity": "输入计费数量",
         "billing_output_quantity": "输出计费数量",
         "billing_input_amount": "输入金额",
         "billing_output_amount": "输出金额",
         "billing_amount": "计费金额",
-        "billing_yyc_amount": "折算金额",
+        "billing_charge_amount": "折算金额",
         "billing_image_tool_calls": "图片工具调用次数",
         "billing_image_tool_output_tokens": "图片工具输出词元",
         "billing_image_tool_amount": "图片工具金额",
-        "billing_image_tool_yyc_amount": "图片工具折算金额",
+        "billing_image_tool_charge_amount": "图片工具折算金额",
         "elapsed_time": "耗时",
         "is_stream": "流式输出",
         "system_prompt_reset": "重置系统提示词"
@@ -1904,6 +1979,7 @@
       "balance_lots": {
         "title": "余额批次",
         "empty": "暂无符合条件的余额批次",
+        "summary": "当前页 {{page_count}} 条 / 共 {{total_count}} 条",
         "columns": {
           "source": "来源",
           "source_id": "来源ID",
@@ -1917,7 +1993,7 @@
           "all_source": "全部来源",
           "all_status": "全部状态",
           "positive_only_yes": "仅看有剩余",
-          "positive_only_no": "包含已清零"
+          "positive_only_no": "包含历史批次"
         }
       },
       "package_none": "未开通套餐",
@@ -1991,6 +2067,20 @@
       "active_package_load_failed": "加载用户当前套餐失败",
       "wallet_copy_success": "钱包地址已复制",
       "wallet_copy_failed": "复制失败，请手动复制"
+    },
+    "focus": {
+      "title": "当前筛选用户",
+      "summary": "当前列表展示 {{count}} 个用户，来源命中 {{total}} 个用户，可直接导出当前结果。",
+      "clear": "清空筛选"
+    },
+    "batch": {
+      "grant_topup": "批量赠送额度",
+      "confirm_grant": "确认赠送",
+      "topup_select_required": "请先选择至少一个用户",
+      "topup_confirm_hint": "将向已选 {{count}} 个用户赠送所选充值额度，执行后会生成充值订单和余额流水。",
+      "topup_done": "批量赠送完成：成功 {{success}}，失败 {{failed}}。",
+      "topup_result_summary": "共 {{total}} 个用户，成功 {{success}}，失败 {{failed}}。",
+      "failed_users": "失败用户"
     },
     "search": "搜索用户或钱包ID...",
     "table": {
@@ -2292,8 +2382,46 @@
           "retest_hint": "已选模型未覆盖测试，或通过率、覆盖率尚未达到 100% 的渠道。",
           "risk": "风险渠道",
           "risk_hint": "健康度已落入风险，或当前测试通过率低于 80% 的渠道。",
+          "circuit": "熔断中",
+          "circuit_hint": "当前处于熔断或半开恢复状态的渠道。",
           "latency": "延迟异常渠道",
           "latency_hint": "当前平均延迟达到 8 秒及以上的渠道。"
+        },
+        "history": {
+          "title": "最近调用健康",
+          "hint": "优先展示熔断、风险、待补测和高用量渠道；每个格子代表一次最近的模型调用结果，灰色表示当前进程没有监控样本。",
+          "no_data": "无调用样本",
+          "state": {
+            "success": "成功",
+            "failure": "失败",
+            "unknown": "无数据"
+          }
+        },
+        "events": {
+          "title": "最近熔断事件",
+          "hint": "汇总全局渠道熔断、半开、恢复和取消记录，方便直接进入渠道详情继续排查。",
+          "empty": "暂无熔断事件",
+          "columns": {
+            "time": "发生时间",
+            "channel": "渠道",
+            "state": "状态",
+            "reason": "原因",
+            "success_rate": "触发成功率",
+            "recover_after": "预计恢复"
+          }
+        },
+        "circuit": {
+          "reason": "原因",
+          "success_rate": "成功率",
+          "disabled_at": "停用时间",
+          "recover_after": "预计恢复",
+          "state": {
+            "open": "熔断",
+            "half_open": "半开",
+            "recovered": "已恢复",
+            "canceled": "已取消",
+            "unknown": "未知"
+          }
         }
       },
       "alerts": {
@@ -2403,6 +2531,36 @@
         }
       },
       "users": {
+        "growth": {
+          "title": "用户增长",
+          "description": "新增、活跃、充值用户的周期变化。",
+          "trend_title": "增长趋势",
+          "current_period": "当前周期：{{range}}",
+          "previous_period": "上一周期：{{range}}",
+          "no_baseline": "无上期基准",
+          "period_labels": {
+            "current_week": "本周",
+            "previous_week": "上周",
+            "compare_previous_week": "较上周",
+            "current_month": "本月",
+            "previous_month": "上月",
+            "compare_previous_month": "较上月"
+          },
+          "granularity": {
+            "week": "按周",
+            "month": "按月"
+          },
+          "metrics": {
+            "new_users": "新增用户",
+            "active_users": "活跃用户",
+            "topup_users": "充值用户"
+          },
+          "lines": {
+            "new_user_count": "新增用户",
+            "active_user_count": "活跃用户",
+            "topup_user_count": "充值用户"
+          }
+        },
         "summary": {
           "user_count": "命中用户数",
           "request_count": "命中请求数",
@@ -2430,6 +2588,10 @@
           "active_hint": "榜单内请求数高于当前榜单平均值的用户。",
           "long_tail": "长尾用户",
           "long_tail_hint": "榜单内消费占比低于 3%，且 Tokens 不高于平均值的用户。",
+          "balance_risk": "余额风险用户",
+          "balance_risk_hint": "当前周期消费已达到或超过剩余额度的活跃用户。",
+          "view_users": "查看用户",
+          "focus_limit": "跳转列表最多带入前 {{count}} 个用户。",
           "footnote": "以上分层仅基于当前筛选条件命中的榜单样本，不代表全站全量用户画像。"
         },
         "share_chart": {
@@ -2817,12 +2979,26 @@
         "chat_link": "聊天页面链接",
         "chat_link_placeholder": "例如 Chat Web 的部署地址",
         "quota_per_unit": "USD -> YYC 折算比率",
-        "quota_per_unit_placeholder": "1 USD 折算为多少 YYC",
+        "quota_per_unit_placeholder": "1 USD 折算为多少扣减额度",
         "channel_billing_auto_refresh": {
           "enabled": "启用渠道账务自动刷新",
           "interval_seconds": "刷新间隔（秒）",
           "last_run": "最近运行时间",
           "interval_invalid": "刷新间隔必须大于或等于 60 秒"
+        },
+        "pricing_policy": {
+          "title": "计价策略",
+          "description_title": "计价策略说明",
+          "description": "计价层先按供应商官方价格计算官方金额，再结合采购成本、目标毛利和风险缓冲决定最终扣减金额。",
+          "official_markup": "官方价格加价系数",
+          "official_markup_hint": "基于供应商官方价格的加价倍数，1 表示不加价，1.2 表示上浮 20%。",
+          "target_margin": "目标毛利率",
+          "target_margin_hint": "小数填写，0.2 表示目标毛利 20%；必须小于 0.95。",
+          "risk_buffer": "采购风险缓冲率",
+          "risk_buffer_hint": "用于覆盖采购成本波动，小数填写，0.1 表示成本上浮 10% 后再计算保底售价。",
+          "official_markup_invalid": "官方价格加价系数必须大于 0",
+          "target_margin_invalid": "目标毛利率必须大于或等于 0 且小于 0.95",
+          "risk_buffer_invalid": "采购风险缓冲率必须大于或等于 0"
         },
         "buttons": {
           "save": "保存通用设置"
@@ -2837,7 +3013,7 @@
           "name": "名称",
           "symbol": "符号",
           "minor_unit": "精度",
-          "yyc_per_unit": "每单位兑换 YYC",
+          "charge_rate": "每单位扣减额度",
           "status": "状态",
           "source": "来源",
           "updated_at": "更新时间",
@@ -2849,7 +3025,7 @@
         },
         "placeholders": {
           "name": "例如 US Dollar",
-          "yyc_per_unit": "例如 500000"
+          "charge_rate": "例如 500000"
         },
         "auto_sync": {
           "enabled": "启用自动汇率同步",
@@ -2876,7 +3052,7 @@
           "code_required": "币种代码不能为空",
           "name_required": "币种名称不能为空",
           "minor_unit_invalid": "精度必须大于或等于 0",
-          "yyc_per_unit_invalid": "YYC 兑换比率必须大于 0"
+          "charge_rate_invalid": "扣减比率必须大于 0"
         }
       }
     },
@@ -2917,7 +3093,7 @@
           "code_required": "币种代码不能为空",
           "name_required": "币种名称不能为空",
           "minor_unit_invalid": "精度必须大于或等于 0",
-          "enabled_rate_required": "启用币种前，请先在汇率设置中配置大于 0 的 YYC 汇率"
+          "enabled_rate_required": "启用币种前，请先在汇率设置中配置大于 0 的 扣减汇率"
         }
       }
     },
@@ -2973,7 +3149,7 @@
     },
     "exchange": {
       "title": "汇率管理",
-      "subtitle": "统一展示手动维护的 */YYC 汇率，以及同步得到的法币货币对汇率。",
+      "subtitle": "统一展示手动维护的 */扣减汇率，以及同步得到的法币货币对汇率。",
       "empty": "暂无汇率数据",
       "columns": {
         "pair": "货币对",
@@ -3012,6 +3188,21 @@
       "nav": "采购成本",
       "title": "采购成本报表",
       "empty": "暂无采购成本数据",
+      "health": {
+        "status": {
+          "ok": "计费健康",
+          "warning": "计费存在风险",
+          "critical": "计费需要处理"
+        },
+        "level": {
+          "critical": "严重",
+          "warning": "提醒"
+        },
+        "summary": "严重 {{critical}} 项，提醒 {{warning}} 项",
+        "no_issue": "未发现影响计费的配置风险",
+        "load_failed": "计费健康检查加载失败",
+        "load_failed_hint": "无法加载计费健康检查，请稍后刷新页面。"
+      },
       "group_by": {
         "channel": "按渠道",
         "model": "按模型"
@@ -3019,6 +3210,9 @@
       "cost_scope": {
         "all": "全部请求",
         "unconfigured": "仅未配置成本"
+      },
+      "filters": {
+        "group": "筛选分组"
       },
       "summary": {
         "request_count": "请求数",
@@ -3039,10 +3233,15 @@
         "request_count": "请求数",
         "configured_count": "已配置成本",
         "unconfigured_count": "未配置成本",
+        "related_channels": "关联渠道",
+        "more_channels": "+{{count}} 个",
         "sell_amount": "售价 CNY",
         "procurement_cost": "采购成本 CNY",
         "gross_profit": "毛利 CNY",
         "gross_margin": "毛利率"
+      },
+      "actions": {
+        "configure_cost": "打开渠道账务页补采购成本"
       },
       "messages": {
         "invalid_time": "请选择有效的时间范围",

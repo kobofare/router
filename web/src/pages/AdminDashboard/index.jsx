@@ -16,7 +16,7 @@ import {
 import { API } from '../../helpers/api';
 import {
   buildPublicDisplayCurrencyIndex,
-  convertYYCToDisplayAmount,
+  convertChargeAmountToDisplayAmount,
   formatCompactDisplayAmount,
 } from '../../helpers/billing';
 import {
@@ -33,6 +33,7 @@ import {
   AppToolbar,
 } from '../../router-ui';
 import AdminChannelAlertsPanel from '../../components/AdminChannelAlertsPanel';
+import AdminCircuitBreakerEventsPanel from '../../components/AdminCircuitBreakerEventsPanel';
 import '../Dashboard/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -52,6 +53,10 @@ const TREND_METRIC_OPTIONS = [
   'request_count',
   'active_user_count',
 ];
+
+const USER_GROWTH_GRANULARITY_OPTIONS = ['week', 'month'];
+const USER_GROWTH_LINE_KEYS = ['new_user_count', 'active_user_count', 'topup_user_count'];
+const USER_SEGMENT_FOCUS_LIMIT = 100;
 
 const DASHBOARD_SECTIONS = ['spending', 'channels', 'users', 'models'];
 const DASHBOARD_SECTION_TITLES = {
@@ -83,6 +88,51 @@ const EMPTY_SUMMARY = {
   task_failed_total: 0,
 };
 
+const EMPTY_CHANNEL_HEALTH_SUMMARY = {
+  with_tests: 0,
+  without_tests: 0,
+  avg_pass_rate: 0,
+  avg_coverage_rate: 0,
+  avg_latency_ms: 0,
+  needs_retest: 0,
+  risk_count: 0,
+  active_circuit_breaker_count: 0,
+  high_latency_count: 0,
+};
+
+const EMPTY_USER_GROWTH_COMPARISON = {
+  current: 0,
+  previous: 0,
+  delta: 0,
+  growth_rate: 0,
+  has_baseline: false,
+};
+
+const EMPTY_USER_GROWTH_SUMMARY = {
+  granularity: 'week',
+  current: {
+    bucket: '',
+    start_timestamp: 0,
+    end_timestamp: 0,
+    new_user_count: 0,
+    active_user_count: 0,
+    topup_user_count: 0,
+    request_count: 0,
+  },
+  previous: {
+    bucket: '',
+    start_timestamp: 0,
+    end_timestamp: 0,
+    new_user_count: 0,
+    active_user_count: 0,
+    topup_user_count: 0,
+    request_count: 0,
+  },
+  new_users: EMPTY_USER_GROWTH_COMPARISON,
+  active_users: EMPTY_USER_GROWTH_COMPARISON,
+  topup_users: EMPTY_USER_GROWTH_COMPARISON,
+};
+
 const EMPTY_DASHBOARD = {
   period: 'last_7_days',
   granularity: 'day',
@@ -95,7 +145,7 @@ const EMPTY_DASHBOARD = {
     user_count: 0,
     request_count: 0,
     total_tokens: 0,
-    spend_yyc: 0,
+    spend_amount: 0,
     top_username: '',
     top_user_share: 0,
   },
@@ -103,9 +153,11 @@ const EMPTY_DASHBOARD = {
     user_count: 0,
     request_count: 0,
     total_tokens: 0,
-    spend_yyc: 0,
+    spend_amount: 0,
   },
   usage_rank: [],
+  user_growth_summary: EMPTY_USER_GROWTH_SUMMARY,
+  user_growth_trend: [],
   model_summary: {
     selected_model_count: 0,
     tested_model_count: 0,
@@ -114,10 +166,11 @@ const EMPTY_DASHBOARD = {
     critical_model_count: 0,
     request_count: 0,
     total_tokens: 0,
-    spend_yyc: 0,
+    spend_amount: 0,
     avg_pass_rate: 0,
     avg_latency_ms: 0,
   },
+  channel_health_summary: EMPTY_CHANNEL_HEALTH_SUMMARY,
   top_models: [],
   generated_at: 0,
 };
@@ -128,6 +181,22 @@ const HEALTH_LEVEL_COLORS = {
   critical: '#ef4444',
   unknown: '#94a3b8',
 };
+
+const CHANNEL_HEALTH_HISTORY_SIZE = 60;
+
+const CHANNEL_HEALTH_POINT_COLORS = {
+  success: '#16a34a',
+  failure: '#dc2626',
+  unknown: '#cbd5e1',
+};
+
+const USER_GROWTH_LINE_COLORS = {
+  new_user_count: '#2563eb',
+  active_user_count: '#16a34a',
+  topup_user_count: '#f59e0b',
+};
+
+const ACTIVE_CIRCUIT_BREAKER_STATES = new Set(['open', 'half_open']);
 
 const formatCount = (value) => {
   const num = Number(value || 0);
@@ -144,7 +213,12 @@ const normalizeAdminDashboardPayload = (payload) => {
   const usageSummary = payload?.usage_summary || {};
   const usageTotals = payload?.usage_totals || {};
   const usageRank = Array.isArray(payload?.usage_rank) ? payload.usage_rank : [];
+  const userGrowthSummary = payload?.user_growth_summary || {};
+  const userGrowthTrend = Array.isArray(payload?.user_growth_trend)
+    ? payload.user_growth_trend
+    : [];
   const modelSummary = payload?.model_summary || {};
+  const channelHealthSummary = payload?.channel_health_summary || {};
   const topModels = Array.isArray(payload?.top_models) ? payload.top_models : [];
   return {
     ...EMPTY_DASHBOARD,
@@ -152,24 +226,46 @@ const normalizeAdminDashboardPayload = (payload) => {
     summary: {
       ...EMPTY_SUMMARY,
       ...summary,
-      spend_amount: Number(summary?.consume_yyc ?? summary?.consume_quota ?? 0),
-      topup_amount: Number(summary?.topup_yyc ?? summary?.topup_quota ?? 0),
-      net_amount: Number(summary?.net_yyc ?? summary?.net_quota ?? 0),
+      spend_amount: Number(summary?.consume_amount ?? summary?.consume_quota ?? 0),
+      topup_amount: Number(summary?.topup_amount ?? summary?.topup_quota ?? 0),
+      net_amount: Number(summary?.net_amount ?? summary?.net_quota ?? 0),
     },
     trend: trend.map((item) => ({
       ...item,
-      spend_amount: Number(item?.consume_yyc ?? item?.consume_quota ?? 0),
-      topup_amount: Number(item?.topup_yyc ?? item?.topup_quota ?? 0),
+      spend_amount: Number(item?.consume_amount ?? item?.consume_quota ?? 0),
+      topup_amount: Number(item?.topup_amount ?? item?.topup_quota ?? 0),
     })),
     top_channels: topChannels.map((item) => ({
       ...item,
-      usedYyc: Number(item?.yyc_used ?? item?.used_quota ?? 0),
+      usedYyc: Number(item?.used_amount ?? item?.used_quota ?? 0),
+      circuit_breaker:
+        item?.circuit_breaker && typeof item.circuit_breaker === 'object'
+          ? item.circuit_breaker
+          : null,
+      health_points: Array.isArray(item?.health_points)
+        ? item.health_points.map((point) => ({
+            state: normalizeChannelHealthPointState(point),
+          }))
+        : [],
     })),
+    channel_health_summary: {
+      with_tests: Number(channelHealthSummary?.with_tests || 0),
+      without_tests: Number(channelHealthSummary?.without_tests || 0),
+      avg_pass_rate: Number(channelHealthSummary?.avg_pass_rate || 0),
+      avg_coverage_rate: Number(channelHealthSummary?.avg_coverage_rate || 0),
+      avg_latency_ms: Number(channelHealthSummary?.avg_latency_ms || 0),
+      needs_retest: Number(channelHealthSummary?.needs_retest || 0),
+      risk_count: Number(channelHealthSummary?.risk_count || 0),
+      active_circuit_breaker_count: Number(
+        channelHealthSummary?.active_circuit_breaker_count || 0,
+      ),
+      high_latency_count: Number(channelHealthSummary?.high_latency_count || 0),
+    },
     usage_summary: {
       user_count: Number(usageSummary?.user_count || 0),
       request_count: Number(usageSummary?.request_count || 0),
       total_tokens: Number(usageSummary?.total_tokens || 0),
-      spend_yyc: Number(usageSummary?.spend_yyc ?? usageSummary?.spend_quota ?? 0),
+      spend_amount: Number(usageSummary?.spend_amount ?? usageSummary?.spend_quota ?? 0),
       top_username: String(usageSummary?.top_username || ''),
       top_user_share: Number(usageSummary?.top_user_share || 0),
     },
@@ -177,15 +273,76 @@ const normalizeAdminDashboardPayload = (payload) => {
       user_count: Number(usageTotals?.user_count || 0),
       request_count: Number(usageTotals?.request_count || 0),
       total_tokens: Number(usageTotals?.total_tokens || 0),
-      spend_yyc: Number(usageTotals?.spend_yyc ?? usageTotals?.spend_quota ?? 0),
+      spend_amount: Number(usageTotals?.spend_amount ?? usageTotals?.spend_quota ?? 0),
     },
     usage_rank: usageRank.map((item) => ({
       ...item,
       request_count: Number(item?.request_count || 0),
       total_tokens: Number(item?.total_tokens || 0),
-      spend_yyc: Number(item?.spend_yyc ?? item?.spend_quota ?? 0),
+      spend_amount: Number(item?.spend_amount ?? item?.spend_quota ?? 0),
+      balance_amount: Number(item?.balance_amount || 0),
       share_rate: Number(item?.share_rate || 0),
       last_used_at: Number(item?.last_used_at || 0),
+    })),
+    user_growth_summary: {
+      ...EMPTY_USER_GROWTH_SUMMARY,
+      ...(userGrowthSummary || {}),
+      current: {
+        ...EMPTY_USER_GROWTH_SUMMARY.current,
+        ...(userGrowthSummary?.current || {}),
+        new_user_count: Number(userGrowthSummary?.current?.new_user_count || 0),
+        active_user_count: Number(userGrowthSummary?.current?.active_user_count || 0),
+        topup_user_count: Number(userGrowthSummary?.current?.topup_user_count || 0),
+        request_count: Number(userGrowthSummary?.current?.request_count || 0),
+        start_timestamp: Number(userGrowthSummary?.current?.start_timestamp || 0),
+        end_timestamp: Number(userGrowthSummary?.current?.end_timestamp || 0),
+      },
+      previous: {
+        ...EMPTY_USER_GROWTH_SUMMARY.previous,
+        ...(userGrowthSummary?.previous || {}),
+        new_user_count: Number(userGrowthSummary?.previous?.new_user_count || 0),
+        active_user_count: Number(userGrowthSummary?.previous?.active_user_count || 0),
+        topup_user_count: Number(userGrowthSummary?.previous?.topup_user_count || 0),
+        request_count: Number(userGrowthSummary?.previous?.request_count || 0),
+        start_timestamp: Number(userGrowthSummary?.previous?.start_timestamp || 0),
+        end_timestamp: Number(userGrowthSummary?.previous?.end_timestamp || 0),
+      },
+      new_users: {
+        ...EMPTY_USER_GROWTH_COMPARISON,
+        ...(userGrowthSummary?.new_users || {}),
+        current: Number(userGrowthSummary?.new_users?.current || 0),
+        previous: Number(userGrowthSummary?.new_users?.previous || 0),
+        delta: Number(userGrowthSummary?.new_users?.delta || 0),
+        growth_rate: Number(userGrowthSummary?.new_users?.growth_rate || 0),
+        has_baseline: Boolean(userGrowthSummary?.new_users?.has_baseline),
+      },
+      active_users: {
+        ...EMPTY_USER_GROWTH_COMPARISON,
+        ...(userGrowthSummary?.active_users || {}),
+        current: Number(userGrowthSummary?.active_users?.current || 0),
+        previous: Number(userGrowthSummary?.active_users?.previous || 0),
+        delta: Number(userGrowthSummary?.active_users?.delta || 0),
+        growth_rate: Number(userGrowthSummary?.active_users?.growth_rate || 0),
+        has_baseline: Boolean(userGrowthSummary?.active_users?.has_baseline),
+      },
+      topup_users: {
+        ...EMPTY_USER_GROWTH_COMPARISON,
+        ...(userGrowthSummary?.topup_users || {}),
+        current: Number(userGrowthSummary?.topup_users?.current || 0),
+        previous: Number(userGrowthSummary?.topup_users?.previous || 0),
+        delta: Number(userGrowthSummary?.topup_users?.delta || 0),
+        growth_rate: Number(userGrowthSummary?.topup_users?.growth_rate || 0),
+        has_baseline: Boolean(userGrowthSummary?.topup_users?.has_baseline),
+      },
+    },
+    user_growth_trend: userGrowthTrend.map((item) => ({
+      ...item,
+      start_timestamp: Number(item?.start_timestamp || 0),
+      end_timestamp: Number(item?.end_timestamp || 0),
+      new_user_count: Number(item?.new_user_count || 0),
+      active_user_count: Number(item?.active_user_count || 0),
+      topup_user_count: Number(item?.topup_user_count || 0),
+      request_count: Number(item?.request_count || 0),
     })),
     model_summary: {
       selected_model_count: Number(modelSummary?.selected_model_count || 0),
@@ -195,7 +352,7 @@ const normalizeAdminDashboardPayload = (payload) => {
       critical_model_count: Number(modelSummary?.critical_model_count || 0),
       request_count: Number(modelSummary?.request_count || 0),
       total_tokens: Number(modelSummary?.total_tokens || 0),
-      spend_yyc: Number(modelSummary?.spend_yyc ?? modelSummary?.spend_quota ?? 0),
+      spend_amount: Number(modelSummary?.spend_amount ?? modelSummary?.spend_quota ?? 0),
       avg_pass_rate: Number(modelSummary?.avg_pass_rate || 0),
       avg_latency_ms: Number(modelSummary?.avg_latency_ms || 0),
     },
@@ -203,7 +360,7 @@ const normalizeAdminDashboardPayload = (payload) => {
       ...item,
       request_count: Number(item?.request_count || 0),
       total_tokens: Number(item?.total_tokens || 0),
-      spend_yyc: Number(item?.spend_yyc ?? item?.spend_quota ?? 0),
+      spend_amount: Number(item?.spend_amount ?? item?.spend_quota ?? 0),
       channel_count: Number(item?.channel_count || 0),
       tested_channel_count: Number(item?.tested_channel_count || 0),
       tested_endpoint_count: Number(item?.tested_endpoint_count || 0),
@@ -228,6 +385,43 @@ const toPercent = (raw) => {
 
 const formatPercent = (raw) => `${toPercent(raw).toFixed(1)}%`;
 
+const normalizeChannelHealthPointState = (point) => {
+  const raw = typeof point === 'string' ? point : point?.state;
+  const normalized = String(raw || '').trim().toLowerCase();
+  if (normalized === 'success' || normalized === 'ok') return 'success';
+  if (normalized === 'failure' || normalized === 'failed' || normalized === 'error') {
+    return 'failure';
+  }
+  return 'unknown';
+};
+
+const buildChannelHealthHistory = (points) => {
+  const normalized = Array.isArray(points)
+    ? points.map(normalizeChannelHealthPointState).slice(-CHANNEL_HEALTH_HISTORY_SIZE)
+    : [];
+  const paddingCount = Math.max(
+    0,
+    CHANNEL_HEALTH_HISTORY_SIZE - normalized.length,
+  );
+  const states = [
+    ...Array.from({ length: paddingCount }, () => 'unknown'),
+    ...normalized,
+  ];
+  return states.map((state, index) => ({
+    key: `${index}-${state}`,
+    state,
+    observed: index >= paddingCount,
+  }));
+};
+
+const normalizeCircuitBreakerState = (raw) =>
+  String(raw || '').trim().toLowerCase();
+
+const isActiveCircuitBreaker = (circuitBreaker) =>
+  ACTIVE_CIRCUIT_BREAKER_STATES.has(
+    normalizeCircuitBreakerState(circuitBreaker?.state),
+  );
+
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -240,6 +434,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [trendMetric, setTrendMetric] = useState('spend_amount');
   const [modelSort, setModelSort] = useState('spend');
+  const [userGrowthGranularity, setUserGrowthGranularity] = useState('week');
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
   const [usageKeywordInput, setUsageKeywordInput] = useState('');
   const [usageKeyword, setUsageKeyword] = useState('');
@@ -259,9 +454,9 @@ const AdminDashboard = () => {
   const activeSectionTitle = t(DASHBOARD_SECTION_TITLES[activeSection]);
 
   const toUsd = useCallback(
-    (yycAmount) => {
-      const amount = convertYYCToDisplayAmount(
-        yycAmount,
+    (chargeAmount) => {
+      const amount = convertChargeAmountToDisplayAmount(
+        chargeAmount,
         'USD',
         displayCurrencyIndex,
       );
@@ -272,7 +467,7 @@ const AdminDashboard = () => {
   );
 
   const formatUsd = useCallback(
-    (yycAmount) => formatCompactDisplayAmount(toUsd(yycAmount)),
+    (chargeAmount) => formatCompactDisplayAmount(toUsd(chargeAmount)),
     [toUsd],
   );
 
@@ -295,12 +490,69 @@ const AdminDashboard = () => {
     [t],
   );
 
+  const userGrowthGranularityOptions = useMemo(
+    () =>
+      USER_GROWTH_GRANULARITY_OPTIONS.map((value) => ({
+        value,
+        label: t(`dashboard.admin.users.growth.granularity.${value}`),
+      })),
+    [t],
+  );
+
+  const formatPeriodRange = useCallback((startTimestamp, endTimestamp) => {
+    const start = Number(startTimestamp || 0);
+    const end = Number(endTimestamp || 0);
+    if (!start || !end) return '-';
+    const formatDate = (timestamp) =>
+      new Date(timestamp * 1000).toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+    return `${formatDate(start)} - ${formatDate(end)}`;
+  }, []);
+
+  const formatSignedCount = useCallback((value) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num) || num === 0) return '0';
+    return `${num > 0 ? '+' : '-'}${formatCount(Math.abs(num))}`;
+  }, []);
+
+  const formatGrowthRate = useCallback(
+    (comparison) => {
+      const current = Number(comparison?.current || 0);
+      const hasBaseline = comparison?.has_baseline === true;
+      if (!hasBaseline) {
+        return current > 0
+          ? t('dashboard.admin.users.growth.no_baseline')
+          : '0.0%';
+      }
+      const rate = Number(comparison?.growth_rate || 0);
+      if (!Number.isFinite(rate) || rate === 0) return '0.0%';
+      return `${rate > 0 ? '+' : ''}${(rate * 100).toFixed(1)}%`;
+    },
+    [t],
+  );
+
+  const userGrowthLineConfig = useMemo(
+    () =>
+      USER_GROWTH_LINE_KEYS.map((key) => ({
+        dataKey: key,
+        label: t(`dashboard.admin.users.growth.lines.${key}`),
+        color: USER_GROWTH_LINE_COLORS[key],
+      })),
+    [t],
+  );
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params = { period, section: activeSection };
       if (activeSection === 'users' && usageKeyword.trim() !== '') {
         params.user_keyword = usageKeyword.trim();
+      }
+      if (activeSection === 'users') {
+        params.user_growth_granularity = userGrowthGranularity;
       }
       const res = await API.get('/api/v1/admin/dashboard/', {
         params,
@@ -316,7 +568,7 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeSection, period, usageKeyword]);
+  }, [activeSection, period, usageKeyword, userGrowthGranularity]);
 
   useEffect(() => {
     loadData();
@@ -349,6 +601,7 @@ const AdminDashboard = () => {
     () =>
       (dashboard.top_channels || []).map((row, index) => ({
         id: row.id || `channel-${index}`,
+        channel_id: row.id || '',
         name: row.name || row.id || '-',
         status: Number(row.status || 0),
         capabilities: renderCapabilities(row.capabilities),
@@ -364,64 +617,111 @@ const AdminDashboard = () => {
         supported_count: Number(row.supported_count || 0),
         unsupported_count: Number(row.unsupported_count || 0),
         last_tested_at: Number(row.last_tested_at || 0),
+        circuit_breaker: row.circuit_breaker || null,
+        health_points: Array.isArray(row.health_points) ? row.health_points : [],
+        health_history: buildChannelHealthHistory(row.health_points),
       })),
     [dashboard.top_channels, renderCapabilities],
   );
 
-  const channelHealthSummary = useMemo(() => {
-    const rows = channelHealthData;
-    if (rows.length === 0) {
-      return {
-        with_tests: 0,
-        without_tests: 0,
-        avg_pass_rate: 0,
-        avg_coverage_rate: 0,
-        avg_latency_ms: 0,
-        needs_retest: 0,
-      };
-    }
-    const withTestsRows = rows.filter((item) => item.has_test_data);
-    const withoutTests = rows.length - withTestsRows.length;
-    const avgPassRate =
-      withTestsRows.length > 0
-        ? withTestsRows.reduce(
-            (sum, item) => sum + item.pass_rate_percent,
-            0,
-          ) / withTestsRows.length
-        : 0;
-    const selectedTotal = rows.reduce(
-      (sum, item) => sum + item.selected_model_count,
-      0,
-    );
-    const testedTotal = rows.reduce(
-      (sum, item) => sum + item.tested_model_count,
-      0,
-    );
-    const avgCoverageRate = selectedTotal > 0 ? (testedTotal / selectedTotal) * 100 : 0;
-    const latencyRows = rows.filter((item) => item.avg_latency_ms > 0);
-    const avgLatencyMs =
-      latencyRows.length > 0
-        ? Math.round(
-            latencyRows.reduce((sum, item) => sum + item.avg_latency_ms, 0) /
-              latencyRows.length,
-          )
-        : 0;
-    const needsRetest = rows.filter(
-      (item) =>
-        item.selected_model_count > 0 &&
-        (!item.has_test_data ||
-          item.coverage_rate_percent < 100 ||
-          item.pass_rate_percent < 100),
-    ).length;
-    return {
-      with_tests: withTestsRows.length,
-      without_tests: withoutTests,
-      avg_pass_rate: avgPassRate,
-      avg_coverage_rate: avgCoverageRate,
-      avg_latency_ms: avgLatencyMs,
-      needs_retest: needsRetest,
-    };
-  }, [channelHealthData]);
+  const channelHealthSummary = useMemo(
+    () => ({
+      ...EMPTY_CHANNEL_HEALTH_SUMMARY,
+      ...(dashboard.channel_health_summary || {}),
+    }),
+    [dashboard.channel_health_summary],
+  );
+
+  const userGrowthSummary = useMemo(
+    () => ({
+      ...EMPTY_USER_GROWTH_SUMMARY,
+      ...(dashboard.user_growth_summary || {}),
+    }),
+    [dashboard.user_growth_summary],
+  );
+
+  const resolvedUserGrowthGranularity = useMemo(() => {
+    const value = (userGrowthSummary?.granularity || userGrowthGranularity || '')
+      .toString()
+      .trim()
+      .toLowerCase();
+    return value === 'month' ? 'month' : 'week';
+  }, [userGrowthGranularity, userGrowthSummary?.granularity]);
+
+  const userGrowthCurrentLabel = useMemo(
+    () =>
+      resolvedUserGrowthGranularity === 'month'
+        ? t('dashboard.admin.users.growth.period_labels.current_month')
+        : t('dashboard.admin.users.growth.period_labels.current_week'),
+    [resolvedUserGrowthGranularity, t],
+  );
+
+  const userGrowthPreviousLabel = useMemo(
+    () =>
+      resolvedUserGrowthGranularity === 'month'
+        ? t('dashboard.admin.users.growth.period_labels.previous_month')
+        : t('dashboard.admin.users.growth.period_labels.previous_week'),
+    [resolvedUserGrowthGranularity, t],
+  );
+
+  const userGrowthComparisonLabel = useMemo(
+    () =>
+      resolvedUserGrowthGranularity === 'month'
+        ? t('dashboard.admin.users.growth.period_labels.compare_previous_month')
+        : t('dashboard.admin.users.growth.period_labels.compare_previous_week'),
+    [resolvedUserGrowthGranularity, t],
+  );
+
+  const userGrowthCards = useMemo(
+    () => [
+      {
+        key: 'new_users',
+        label: t('dashboard.admin.users.growth.metrics.new_users'),
+        value: Number(userGrowthSummary.current?.new_user_count || 0),
+        previousValue: Number(userGrowthSummary.previous?.new_user_count || 0),
+        comparison: userGrowthSummary.new_users,
+        tone: Number(userGrowthSummary.new_users?.delta || 0) > 0
+          ? 'positive'
+          : Number(userGrowthSummary.new_users?.delta || 0) < 0
+            ? 'negative'
+            : 'neutral',
+      },
+      {
+        key: 'active_users',
+        label: t('dashboard.admin.users.growth.metrics.active_users'),
+        value: Number(userGrowthSummary.current?.active_user_count || 0),
+        previousValue: Number(userGrowthSummary.previous?.active_user_count || 0),
+        comparison: userGrowthSummary.active_users,
+        tone: Number(userGrowthSummary.active_users?.delta || 0) > 0
+          ? 'positive'
+          : Number(userGrowthSummary.active_users?.delta || 0) < 0
+            ? 'negative'
+            : 'neutral',
+      },
+      {
+        key: 'topup_users',
+        label: t('dashboard.admin.users.growth.metrics.topup_users'),
+        value: Number(userGrowthSummary.current?.topup_user_count || 0),
+        previousValue: Number(userGrowthSummary.previous?.topup_user_count || 0),
+        comparison: userGrowthSummary.topup_users,
+        tone: Number(userGrowthSummary.topup_users?.delta || 0) > 0
+          ? 'positive'
+          : Number(userGrowthSummary.topup_users?.delta || 0) < 0
+            ? 'negative'
+            : 'neutral',
+      },
+    ],
+    [t, userGrowthSummary],
+  );
+
+  const userGrowthTrendData = useMemo(
+    () =>
+      (dashboard.user_growth_trend || []).map((item) => ({
+        ...item,
+        label: formatPeriodRange(item.start_timestamp, item.end_timestamp),
+      })),
+    [dashboard.user_growth_trend, formatPeriodRange],
+  );
 
   const trendLineColor = useMemo(() => {
     switch (trendMetric) {
@@ -471,8 +771,8 @@ const AdminDashboard = () => {
           if (rightLatency <= 0) return -1;
           return leftLatency - rightLatency;
         }
-      } else if (left.spend_yyc !== right.spend_yyc) {
-        return right.spend_yyc - left.spend_yyc;
+      } else if (left.spend_amount !== right.spend_amount) {
+        return right.spend_amount - left.spend_amount;
       }
       if (left.request_count !== right.request_count) {
         return right.request_count - left.request_count;
@@ -499,6 +799,49 @@ const AdminDashboard = () => {
             defaultValue: t('dashboard.admin.health.level.unknown'),
           })}
         </AppTag>
+      );
+    },
+    [t],
+  );
+
+  const renderCircuitBreakerTag = useCallback(
+    (circuitBreaker) => {
+      const state = normalizeCircuitBreakerState(circuitBreaker?.state);
+      if (!state || state === 'recovered') {
+        return null;
+      }
+      const color =
+        state === 'open'
+          ? 'red'
+          : state === 'half_open'
+            ? 'orange'
+            : 'grey';
+      const details = [
+        t(`dashboard.admin.channels.circuit.state.${state}`, {
+          defaultValue: t('dashboard.admin.channels.circuit.state.unknown'),
+        }),
+        circuitBreaker?.reason
+          ? `${t('dashboard.admin.channels.circuit.reason')}: ${circuitBreaker.reason}`
+          : null,
+        circuitBreaker?.success_rate !== null &&
+        circuitBreaker?.success_rate !== undefined
+          ? `${t('dashboard.admin.channels.circuit.success_rate')}: ${formatPercent(circuitBreaker.success_rate)}`
+          : null,
+        circuitBreaker?.disabled_at
+          ? `${t('dashboard.admin.channels.circuit.disabled_at')}: ${formatUpdatedAt(circuitBreaker.disabled_at)}`
+          : null,
+        circuitBreaker?.recover_after
+          ? `${t('dashboard.admin.channels.circuit.recover_after')}: ${formatUpdatedAt(circuitBreaker.recover_after)}`
+          : null,
+      ].filter(Boolean);
+      return (
+        <AppTooltip title={details.join(' / ')}>
+          <AppTag color={color} className='router-tag'>
+            {t(`dashboard.admin.channels.circuit.state.${state}`, {
+              defaultValue: t('dashboard.admin.channels.circuit.state.unknown'),
+            })}
+          </AppTag>
+        </AppTooltip>
       );
     },
     [t],
@@ -558,8 +901,8 @@ const AdminDashboard = () => {
       },
       {
         title: t('dashboard.admin.usage_rank.columns.spend'),
-        dataIndex: 'spend_yyc',
-        key: 'spend_yyc',
+        dataIndex: 'spend_amount',
+        key: 'spend_amount',
         width: 120,
         render: (value) => formatUsd(value),
       },
@@ -624,8 +967,8 @@ const AdminDashboard = () => {
 
   const modelLeaderboardData = useMemo(() => {
     return sortedModels.slice(0, 8).map((item) => {
-      let value = Number(item.spend_yyc || 0);
-      let displayValue = formatUsd(item.spend_yyc);
+      let value = Number(item.spend_amount || 0);
+      let displayValue = formatUsd(item.spend_amount);
       let metricLabel = t('dashboard.admin.models.sort.spend');
       if (modelSort === 'requests') {
         value = Number(item.request_count || 0);
@@ -651,48 +994,6 @@ const AdminDashboard = () => {
       };
     });
   }, [formatCount, formatUsd, modelSort, sortedModels, t]);
-
-  const channelInsightData = useMemo(() => {
-    const rows = Array.isArray(channelHealthData) ? channelHealthData : [];
-    const retestCount = rows.filter(
-      (item) =>
-        item.selected_model_count > 0 &&
-        (!item.has_test_data ||
-          item.coverage_rate_percent < 100 ||
-          item.pass_rate_percent < 100),
-    ).length;
-    const riskyCount = rows.filter(
-      (item) =>
-        item.health_level === 'critical' ||
-        (item.has_test_data && item.pass_rate_percent < 80),
-    ).length;
-    const latencyCount = rows.filter(
-      (item) => Number(item.avg_latency_ms || 0) >= 8000,
-    ).length;
-    return [
-      {
-        key: 'retest',
-        label: t('dashboard.admin.channels.insights.retest'),
-        hint: t('dashboard.admin.channels.insights.retest_hint'),
-        count: retestCount,
-        color: '#2563eb',
-      },
-      {
-        key: 'risk',
-        label: t('dashboard.admin.channels.insights.risk'),
-        hint: t('dashboard.admin.channels.insights.risk_hint'),
-        count: riskyCount,
-        color: '#dc2626',
-      },
-      {
-        key: 'latency',
-        label: t('dashboard.admin.channels.insights.latency'),
-        hint: t('dashboard.admin.channels.insights.latency_hint'),
-        count: latencyCount,
-        color: '#f59e0b',
-      },
-    ];
-  }, [channelHealthData, t]);
 
   const spendingInsightData = useMemo(() => {
     const trendRows = Array.isArray(dashboard.trend) ? dashboard.trend : [];
@@ -802,6 +1103,95 @@ const AdminDashboard = () => {
     setUsageKeywordInput('');
     setUsageKeyword('');
   }, []);
+
+  const openUserSegment = useCallback(
+    (segment) => {
+      const rows = Array.isArray(segment?.rows) ? segment.rows : [];
+      const ids = [
+        ...new Set(
+          rows
+            .map((item) => (item?.user_id || '').toString().trim())
+            .filter(Boolean),
+        ),
+      ].slice(0, USER_SEGMENT_FOCUS_LIMIT);
+      if (ids.length === 0) {
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('focus_ids', ids.join(','));
+      params.set('focus_name', segment.label);
+      params.set('focus_total', String(rows.length));
+      navigate(`/admin/user?${params.toString()}`);
+    },
+    [navigate],
+  );
+
+  const userSegments = useMemo(() => {
+    const rows = Array.isArray(dashboard.usage_rank)
+      ? dashboard.usage_rank.filter((item) => (item?.user_id || '').toString().trim() !== '')
+      : [];
+    const activeRows = rows.filter((item) => Number(item.request_count || 0) > 0);
+    const requestTotal = activeRows.reduce(
+      (sum, item) => sum + Number(item.request_count || 0),
+      0,
+    );
+    const tokenTotal = activeRows.reduce(
+      (sum, item) => sum + Number(item.total_tokens || 0),
+      0,
+    );
+    const averageRequests = activeRows.length > 0 ? requestTotal / activeRows.length : 0;
+    const averageTokens = activeRows.length > 0 ? tokenTotal / activeRows.length : 0;
+    const bySpendDesc = (left, right) =>
+      Number(right.spend_amount || 0) - Number(left.spend_amount || 0) ||
+      Number(right.request_count || 0) - Number(left.request_count || 0);
+    const highSpendRows = rows
+      .filter((item) => Number(item.spend_amount || 0) > 0 && Number(item.share_rate || 0) >= 0.1)
+      .sort(bySpendDesc);
+    const activeUserRows = activeRows
+      .filter((item) => Number(item.request_count || 0) > averageRequests)
+      .sort((left, right) => Number(right.request_count || 0) - Number(left.request_count || 0));
+    const longTailRows = rows
+      .filter(
+        (item) =>
+          Number(item.spend_amount || 0) > 0 &&
+          Number(item.share_rate || 0) < 0.03 &&
+          Number(item.total_tokens || 0) <= averageTokens,
+      )
+      .sort((left, right) => Number(left.spend_amount || 0) - Number(right.spend_amount || 0));
+    const balanceRiskRows = activeRows
+      .filter((item) => {
+        const spend = Number(item.spend_amount || 0);
+        const balance = Number(item.balance_amount || 0);
+        return spend > 0 && balance <= spend;
+      })
+      .sort((left, right) => Number(left.balance_amount || 0) - Number(right.balance_amount || 0));
+    return [
+      {
+        key: 'high_spend',
+        label: t('dashboard.admin.users.insights.high_spend'),
+        hint: t('dashboard.admin.users.insights.high_spend_hint'),
+        rows: highSpendRows,
+      },
+      {
+        key: 'active',
+        label: t('dashboard.admin.users.insights.active'),
+        hint: t('dashboard.admin.users.insights.active_hint'),
+        rows: activeUserRows,
+      },
+      {
+        key: 'long_tail',
+        label: t('dashboard.admin.users.insights.long_tail'),
+        hint: t('dashboard.admin.users.insights.long_tail_hint'),
+        rows: longTailRows,
+      },
+      {
+        key: 'balance_risk',
+        label: t('dashboard.admin.users.insights.balance_risk'),
+        hint: t('dashboard.admin.users.insights.balance_risk_hint'),
+        rows: balanceRiskRows,
+      },
+    ];
+  }, [dashboard.usage_rank, t]);
 
   const renderSpendingSection = () => (
     <AppSection className='admin-dashboard-section'>
@@ -1030,205 +1420,138 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <>
-            <div className='admin-dashboard-channel-overview-grid'>
-              {channelInsightData.map((item) => (
-                <div
-                  key={item.key}
-                  className='admin-dashboard-channel-panel'
-                >
-                  <div className='admin-dashboard-channel-panel-main'>
-                    <AppTooltip title={item.hint}>
-                      <div className='admin-dashboard-channel-panel-label-row'>
-                        <span
-                          className='admin-dashboard-channel-panel-dot'
-                          style={{ background: item.color }}
-                        />
-                        <span className='admin-dashboard-channel-panel-label'>
-                          {item.label}
+            <div className='admin-dashboard-channel-health-list'>
+              <div className='admin-dashboard-channel-health-list-header'>
+                <div className='admin-dashboard-channel-health-list-title'>
+                  <div className='admin-dashboard-card-title'>
+                    {t('dashboard.admin.channels.history.title')}
+                  </div>
+                  <div className='admin-dashboard-channel-health-hint'>
+                    {t('dashboard.admin.channels.history.hint')}
+                  </div>
+                </div>
+                <div className='admin-dashboard-health-strip-legend'>
+                  {['success', 'failure', 'unknown'].map((state) => (
+                    <span
+                      key={state}
+                      className='admin-dashboard-health-strip-legend-item'
+                    >
+                      <span
+                        className='admin-dashboard-health-strip-legend-dot'
+                        style={{
+                          background:
+                            CHANNEL_HEALTH_POINT_COLORS[state] ||
+                            CHANNEL_HEALTH_POINT_COLORS.unknown,
+                        }}
+                      />
+                      {t(`dashboard.admin.channels.history.state.${state}`)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {channelHealthData.map((item) => {
+                const statusText = t(
+                  `dashboard.admin.channel_status.${Number(item.status)}`,
+                  {
+                    defaultValue: t('dashboard.admin.channel_status.default'),
+                  },
+                );
+                const lastTested = item.last_tested_at
+                  ? formatUpdatedAt(item.last_tested_at)
+                  : '-';
+                const activeCircuit = isActiveCircuitBreaker(
+                  item.circuit_breaker,
+                );
+                const canOpenDetail = Boolean(item.channel_id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`admin-dashboard-channel-health-row${
+                      activeCircuit ? ' admin-dashboard-channel-health-row-circuit' : ''
+                    }`}
+                  >
+                    <div className='admin-dashboard-channel-health-info'>
+                      <div className='admin-dashboard-channel-health-title-row'>
+                        <button
+                          type='button'
+                          className='admin-dashboard-channel-health-name'
+                          title={item.name}
+                          disabled={!canOpenDetail}
+                          onClick={() => {
+                            if (!canOpenDetail) return;
+                            navigate(
+                              `/admin/channel/detail/${encodeURIComponent(
+                                item.channel_id,
+                              )}`,
+                            );
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                        {renderHealthTag(item.health_level)}
+                        {renderCircuitBreakerTag(item.circuit_breaker)}
+                      </div>
+                      <div className='admin-dashboard-channel-health-subtitle'>
+                        <span>{statusText}</span>
+                        <span>{item.capabilities}</span>
+                        <span>
+                          {t('dashboard.admin.health.chart.last_tested')}:{' '}
+                          {lastTested}
                         </span>
                       </div>
-                    </AppTooltip>
+                    </div>
+                    <div className='admin-dashboard-channel-health-strip-wrap'>
+                      <div
+                        className='admin-dashboard-health-strip'
+                        aria-label={`${item.name} ${t(
+                          'dashboard.admin.channels.history.title',
+                        )}`}
+                      >
+                        {item.health_history.map((point, index) => {
+                          const stateLabel = t(
+                            `dashboard.admin.channels.history.state.${point.state}`,
+                          );
+                          const title = point.observed
+                            ? `${item.name} #${index + 1}: ${stateLabel}`
+                            : `${item.name}: ${t('dashboard.admin.channels.history.no_data')}`;
+                          return (
+                            <AppTooltip key={point.key} title={title}>
+                              <span
+                                className={`admin-dashboard-health-cell admin-dashboard-health-cell-${point.state}`}
+                                style={{
+                                  background:
+                                    CHANNEL_HEALTH_POINT_COLORS[point.state] ||
+                                    CHANNEL_HEALTH_POINT_COLORS.unknown,
+                                }}
+                              />
+                            </AppTooltip>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className='admin-dashboard-channel-health-metrics'>
+                      <div className='admin-dashboard-channel-health-metric'>
+                        <span>{t('dashboard.admin.health.chart.health_score')}</span>
+                        <strong>{Number(item.health_score || 0).toFixed(0)}</strong>
+                      </div>
+                      <div className='admin-dashboard-channel-health-metric'>
+                        <span>{t('dashboard.admin.health.chart.pass_rate')}</span>
+                        <strong>{formatPercent(item.pass_rate_percent)}</strong>
+                      </div>
+                      <div className='admin-dashboard-channel-health-metric'>
+                        <span>{t('dashboard.admin.health.chart.avg_latency')}</span>
+                        <strong>
+                          {item.avg_latency_ms > 0
+                            ? `${formatCount(item.avg_latency_ms)} ms`
+                            : '-'}
+                        </strong>
+                      </div>
+                    </div>
                   </div>
-                  <div className='admin-dashboard-channel-panel-value'>
-                    {formatCount(item.count)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div className='admin-dashboard-health-summary-grid'>
-              <div className='admin-dashboard-kpi-item'>
-                <div className='admin-dashboard-kpi-label'>
-                  {t('dashboard.admin.health.summary.with_tests')}
-                </div>
-                <div className='admin-dashboard-kpi-value'>
-                  {formatCount(channelHealthSummary.with_tests)}
-                </div>
-              </div>
-              <div className='admin-dashboard-kpi-item'>
-                <div className='admin-dashboard-kpi-label'>
-                  {t('dashboard.admin.health.summary.without_tests')}
-                </div>
-                <div className='admin-dashboard-kpi-value'>
-                  {formatCount(channelHealthSummary.without_tests)}
-                </div>
-              </div>
-              <div className='admin-dashboard-kpi-item'>
-                <div className='admin-dashboard-kpi-label'>
-                  {t('dashboard.admin.health.summary.avg_pass_rate')}
-                </div>
-                <div className='admin-dashboard-kpi-value'>
-                  {formatPercent(channelHealthSummary.avg_pass_rate)}
-                </div>
-              </div>
-            </div>
-            <div className='chart-container admin-dashboard-health-chart'>
-              <ResponsiveContainer width='100%' height={300}>
-                <BarChart
-                  data={channelHealthData}
-                  margin={{ top: 8, right: 20, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray='3 3'
-                    vertical={false}
-                    opacity={0.1}
-                  />
-                  <XAxis
-                    dataKey='name'
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#A3AED0' }}
-                    minTickGap={8}
-                  />
-                  <YAxis
-                    yAxisId='score'
-                    domain={[0, 100]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#A3AED0' }}
-                  />
-                  <YAxis
-                    yAxisId='latency'
-                    orientation='right'
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#A3AED0' }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    }}
-                    formatter={(value, name) => {
-                      if (name === 'health_score') {
-                        return [
-                          `${Number(value).toFixed(0)}`,
-                          t('dashboard.admin.health.chart.health_score'),
-                        ];
-                      }
-                      if (name === 'pass_rate_percent') {
-                        return [
-                          `${Number(value).toFixed(1)}%`,
-                          t('dashboard.admin.health.chart.pass_rate'),
-                        ];
-                      }
-                      if (name === 'coverage_rate_percent') {
-                        return [
-                          `${Number(value).toFixed(1)}%`,
-                          t('dashboard.admin.health.chart.coverage_rate'),
-                        ];
-                      }
-                      if (name === 'avg_latency_ms') {
-                        return [
-                          `${Number(value).toFixed(0)} ms`,
-                          t('dashboard.admin.health.chart.avg_latency'),
-                        ];
-                      }
-                      return [String(value ?? '-'), String(name)];
-                    }}
-                    labelFormatter={(label, payload) => {
-                      if (!Array.isArray(payload) || payload.length === 0) {
-                        return label;
-                      }
-                      const entry = payload[0]?.payload || {};
-                      const statusText = t(
-                        `dashboard.admin.channel_status.${Number(entry.status)}`,
-                        {
-                          defaultValue: t(
-                            'dashboard.admin.channel_status.default',
-                          ),
-                        },
-                      );
-                      const healthLevelText = t(
-                        `dashboard.admin.health.level.${
-                          entry.health_level || 'unknown'
-                        }`,
-                        {
-                          defaultValue: t(
-                            'dashboard.admin.health.level.unknown',
-                          ),
-                        },
-                      );
-                      const lastTested = entry.last_tested_at
-                        ? formatUpdatedAt(entry.last_tested_at)
-                        : '-';
-                      return `${label} | ${statusText} | ${healthLevelText} | ${t('dashboard.admin.health.chart.last_tested')}: ${lastTested}`;
-                    }}
-                  />
-                  <Bar
-                    yAxisId='score'
-                    dataKey='health_score'
-                    name='health_score'
-                    radius={[4, 4, 0, 0]}
-                    fill='#60a5fa'
-                  >
-                    {channelHealthData.map((item) => (
-                      <Cell
-                        key={item.id}
-                        fill={
-                          HEALTH_LEVEL_COLORS[item.health_level] ||
-                          HEALTH_LEVEL_COLORS.unknown
-                        }
-                      />
-                    ))}
-                  </Bar>
-                  <Line
-                    yAxisId='score'
-                    type='monotone'
-                    dataKey='pass_rate_percent'
-                    name='pass_rate_percent'
-                    stroke='#16a34a'
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    yAxisId='score'
-                    type='monotone'
-                    dataKey='coverage_rate_percent'
-                    name='coverage_rate_percent'
-                    stroke='#2563eb'
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    yAxisId='latency'
-                    type='monotone'
-                    dataKey='avg_latency_ms'
-                    name='avg_latency_ms'
-                    stroke='#ef4444'
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className='admin-dashboard-health-legend'>
-              <span>{t('dashboard.admin.health.chart.legend_health')}</span>
-              <span>{t('dashboard.admin.health.chart.legend_pass')}</span>
-              <span>{t('dashboard.admin.health.chart.legend_coverage')}</span>
-              <span>{t('dashboard.admin.health.chart.legend_latency')}</span>
-            </div>
+            <AdminCircuitBreakerEventsPanel embedded />
             <AdminChannelAlertsPanel embedded />
           </>
         )}
@@ -1238,64 +1561,258 @@ const AdminDashboard = () => {
 
   const renderUsersSection = () => (
     <AppSection className='admin-dashboard-section'>
-      <div className='admin-dashboard-subsection-header admin-dashboard-usage-rank-header'>
-        <div className='admin-dashboard-usage-rank-title-row'>
+      <div className='admin-dashboard-subsection-header'>
+        <div className='admin-dashboard-subsection-header-main'>
           <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
-            {t('dashboard.admin.usage_rank.title')}
+            {t('dashboard.admin.users.growth.title')}
           </div>
-          {renderRefreshControls()}
-        </div>
-        <div className='admin-dashboard-usage-rank-filter-row'>
           <div className='admin-dashboard-subsection-description'>
-            {t('dashboard.admin.usage_rank.description')}
+            {t('dashboard.admin.users.growth.description')}
           </div>
-          <div className='admin-dashboard-usage-rank-filters'>
-            {renderPeriodControl()}
-            <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
-              <AppInput
-                className='admin-dashboard-usage-rank-search'
-                value={usageKeywordInput}
-                placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
-                onChange={(e, { value }) => setUsageKeywordInput(value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    applyUsageKeyword();
-                  }
-                }}
+        </div>
+        <AppToolbar
+          className='admin-dashboard-section-toolbar'
+          end={
+            <div className='admin-dashboard-section-controls'>
+              <AppSegmented
+                className='admin-dashboard-segmented'
+                options={userGrowthGranularityOptions}
+                value={userGrowthGranularity}
+                onChange={(e, { value }) => setUserGrowthGranularity(value)}
               />
-              <AppButton color='blue' type='button' onClick={applyUsageKeyword}>
-                {t('dashboard.admin.usage_rank.search.submit')}
-              </AppButton>
-              {usageKeyword ? (
-                <AppButton
-                  type='button'
-                  className='router-inline-button'
-                  onClick={clearUsageKeyword}
-                >
-                  {t('dashboard.admin.usage_rank.search.reset')}
-                </AppButton>
-              ) : null}
+              {renderRefreshControls()}
+            </div>
+          }
+        />
+      </div>
+      <div className='admin-dashboard-user-growth-grid'>
+        {userGrowthCards.map((item) => (
+          <div key={item.key} className='admin-dashboard-user-growth-card'>
+            <div className='admin-dashboard-user-growth-card-label'>
+              {item.label}
+            </div>
+            <div className='admin-dashboard-user-growth-card-value'>
+              {formatCount(item.value)}
+            </div>
+            <div className='admin-dashboard-user-growth-card-periods'>
+              <span>
+                {userGrowthCurrentLabel} {formatCount(item.value)}
+              </span>
+              <span>
+                {userGrowthPreviousLabel} {formatCount(item.previousValue)}
+              </span>
+            </div>
+            <div className={`admin-dashboard-user-growth-card-delta admin-dashboard-user-growth-card-delta-${item.tone}`}>
+              <span>
+                {userGrowthComparisonLabel} {formatSignedCount(item.comparison?.delta)}
+              </span>
+              <span>{formatGrowthRate(item.comparison)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className='admin-dashboard-user-growth-panel'>
+        <div className='admin-dashboard-user-growth-panel-header'>
+          <div>
+            <div className='admin-dashboard-card-title'>
+              {t('dashboard.admin.users.growth.trend_title')}
+            </div>
+            <div className='admin-dashboard-user-growth-period'>
+              {t('dashboard.admin.users.growth.current_period', {
+                range: formatPeriodRange(
+                  userGrowthSummary.current?.start_timestamp,
+                  userGrowthSummary.current?.end_timestamp,
+                ),
+              })}
+            </div>
+            <div className='admin-dashboard-user-growth-period'>
+              {t('dashboard.admin.users.growth.previous_period', {
+                range: formatPeriodRange(
+                  userGrowthSummary.previous?.start_timestamp,
+                  userGrowthSummary.previous?.end_timestamp,
+                ),
+              })}
+            </div>
+          </div>
+          <div className='admin-dashboard-user-growth-legend'>
+            {userGrowthLineConfig.map((item) => (
+              <span key={item.dataKey} className='admin-dashboard-user-growth-legend-item'>
+                <span
+                  className='admin-dashboard-user-growth-legend-dot'
+                  style={{ background: item.color }}
+                />
+                {item.label}
+              </span>
+            ))}
+          </div>
+        </div>
+        {userGrowthTrendData.length === 0 ? (
+          <div className='admin-dashboard-empty'>
+            {t('dashboard.admin.empty.trend')}
+          </div>
+        ) : (
+          <div className='chart-container'>
+            <ResponsiveContainer width='100%' height={240}>
+              <LineChart data={userGrowthTrendData}>
+                <CartesianGrid
+                  strokeDasharray='3 3'
+                  vertical={false}
+                  opacity={0.1}
+                />
+                <XAxis
+                  dataKey='bucket'
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#A3AED0' }}
+                  minTickGap={8}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  tick={{ fontSize: 12, fill: '#A3AED0' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  }}
+                  formatter={(value, name) => {
+                    const config = userGrowthLineConfig.find(
+                      (item) => item.dataKey === name,
+                    );
+                    return [formatCount(value), config?.label || name];
+                  }}
+                  labelFormatter={(label, payload) =>
+                    payload?.[0]?.payload?.label || label
+                  }
+                />
+                {userGrowthLineConfig.map((item) => (
+                  <Line
+                    key={item.dataKey}
+                    type='monotone'
+                    dataKey={item.dataKey}
+                    stroke={item.color}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+      <div className='admin-dashboard-user-segments'>
+        <div className='admin-dashboard-user-segments-header'>
+          <div>
+            <div className='admin-dashboard-card-title'>
+              {t('dashboard.admin.users.insights.title')}
+            </div>
+            <div className='admin-dashboard-subsection-description'>
+              {t('dashboard.admin.users.insights.footnote')}
             </div>
           </div>
         </div>
-      </div>
-      {dashboard.usage_rank.length === 0 ? (
-        <div className='admin-dashboard-empty'>
-          {t('dashboard.admin.empty.usage_rank')}
+        <div className='admin-dashboard-user-segment-grid'>
+          {userSegments.map((segment) => {
+            const count = Array.isArray(segment.rows) ? segment.rows.length : 0;
+            const isLimited = count > USER_SEGMENT_FOCUS_LIMIT;
+            return (
+              <div key={segment.key} className='admin-dashboard-user-segment-card'>
+                <div className='admin-dashboard-user-segment-main'>
+                  <div className='admin-dashboard-user-segment-label'>
+                    {segment.label}
+                  </div>
+                  <div className='admin-dashboard-user-segment-count'>
+                    {formatCount(count)}
+                  </div>
+                  <div className='admin-dashboard-user-segment-hint'>
+                    {segment.hint}
+                  </div>
+                  {isLimited ? (
+                    <div className='admin-dashboard-user-segment-limit'>
+                      {t('dashboard.admin.users.insights.focus_limit', {
+                        count: USER_SEGMENT_FOCUS_LIMIT,
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+                <AppButton
+                  className='router-inline-button admin-dashboard-user-segment-action'
+                  type='button'
+                  icon={<AppIcon name='users' />}
+                  disabled={count === 0}
+                  onClick={() => openUserSegment(segment)}
+                >
+                  {t('dashboard.admin.users.insights.view_users')}
+                </AppButton>
+              </div>
+            );
+          })}
         </div>
-      ) : (
-        <AppTable
-          className='admin-dashboard-rank-table'
-          columns={usageRankColumns}
-          dataSource={dashboard.usage_rank}
-          pagination={false}
-          rowKey={(record) =>
-            record.user_id ||
-            `${record.username || 'unknown'}-${record.last_used_at || 0}`
-          }
-          scroll={{ x: 980 }}
-        />
-      )}
+      </div>
+      <div className='admin-dashboard-usage-rank'>
+        <div className='admin-dashboard-subsection-header admin-dashboard-usage-rank-header'>
+          <div className='admin-dashboard-usage-rank-title-row'>
+            <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
+              {t('dashboard.admin.usage_rank.title')}
+            </div>
+          </div>
+          <div className='admin-dashboard-usage-rank-filter-row'>
+            <div className='admin-dashboard-subsection-description'>
+              {t('dashboard.admin.usage_rank.description')}
+            </div>
+            <div className='admin-dashboard-usage-rank-filters'>
+              {renderPeriodControl()}
+              <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+                <AppInput
+                  className='admin-dashboard-usage-rank-search'
+                  value={usageKeywordInput}
+                  placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
+                  onChange={(e, { value }) => setUsageKeywordInput(value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyUsageKeyword();
+                    }
+                  }}
+                />
+                <AppButton color='blue' type='button' onClick={applyUsageKeyword}>
+                  {t('dashboard.admin.usage_rank.search.submit')}
+                </AppButton>
+                {usageKeyword ? (
+                  <AppButton
+                    type='button'
+                    className='router-inline-button'
+                    onClick={clearUsageKeyword}
+                  >
+                    {t('dashboard.admin.usage_rank.search.reset')}
+                  </AppButton>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+        {dashboard.usage_rank.length === 0 ? (
+          <div className='admin-dashboard-empty'>
+            {t('dashboard.admin.empty.usage_rank')}
+          </div>
+        ) : (
+          <AppTable
+            className='admin-dashboard-rank-table'
+            columns={usageRankColumns}
+            dataSource={dashboard.usage_rank}
+            pagination={false}
+            rowKey={(record) =>
+              record.user_id ||
+              `${record.username || 'unknown'}-${record.last_used_at || 0}`
+            }
+            scroll={{ x: 980 }}
+          />
+        )}
+      </div>
     </AppSection>
   );
 
@@ -1376,7 +1893,7 @@ const AdminDashboard = () => {
             {t('dashboard.admin.models.summary.total_spend')}
           </div>
           <div className='admin-dashboard-kpi-value'>
-            {formatUsd(dashboard.model_summary.spend_yyc)}
+            {formatUsd(dashboard.model_summary.spend_amount)}
           </div>
         </div>
         <div className='admin-dashboard-kpi-item'>
@@ -1552,7 +2069,7 @@ const AdminDashboard = () => {
                         {t('dashboard.admin.models.card.spend')}
                       </div>
                       <div className='admin-dashboard-model-metric-value'>
-                        {formatUsd(item.spend_yyc)}
+                        {formatUsd(item.spend_amount)}
                       </div>
                     </div>
                     <div className='admin-dashboard-model-metric'>

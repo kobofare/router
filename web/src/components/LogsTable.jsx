@@ -13,14 +13,14 @@ import UnitDropdown from './UnitDropdown';
 import { ITEMS_PER_PAGE } from '../constants';
 import {
   renderColorLabel,
-  isYYCDisplayedInCurrency,
+  isChargeDisplayedInCurrency,
   YYC_SYMBOL,
 } from '../helpers/render';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   buildPublicDisplayCurrencyIndex,
   buildDisplayUnitOptions,
-  formatDisplayAmountFromYYC,
+  formatDisplayAmountFromChargeAmount,
   loadPublicDisplayCurrencyCatalog,
   resolvePreferredDisplayCurrency,
   YYC_DISPLAY_CODE,
@@ -98,6 +98,12 @@ function renderType(type) {
           测试
         </AppTag>
       );
+    case 6:
+      return (
+        <AppTag color='red' className='router-tag'>
+          失败
+        </AppTag>
+      );
     default:
       return (
         <AppTag color='black' className='router-tag'>
@@ -145,10 +151,10 @@ function getLogChannelLabel(log) {
 function normalizeLogEntry(log) {
   return {
     ...(log || {}),
-    // Prefer YYC-native settlement fields, fall back to legacy quota-based logs.
-    yycAmount: Number(log?.yyc_amount ?? log?.quota ?? 0),
-    userDailyYYC: Number(log?.yyc_user_daily ?? log?.user_daily_quota ?? 0),
-    userEmergencyYYC: Number(log?.yyc_user_emergency ?? log?.user_emergency_quota ?? 0),
+    // Prefer charge-amount settlement fields, fall back to legacy quota-based logs.
+    chargeAmount: Number(log?.charge_amount ?? log?.quota ?? 0),
+    userDailyChargeAmount: Number(log?.user_daily_charge_amount ?? log?.user_daily_quota ?? 0),
+    userEmergencyChargeAmount: Number(log?.user_emergency_charge_amount ?? log?.user_emergency_quota ?? 0),
   };
 }
 
@@ -297,6 +303,7 @@ const LogsTable = () => {
     { key: '3', text: t('log.type.admin'), value: 3 },
     { key: '4', text: t('log.type.system'), value: 4 },
     { key: '5', text: t('log.type.test'), value: 5 },
+    { key: '6', text: t('log.type.relay_failure'), value: 6 },
   ];
 
   const conditionalFilterConfig = useMemo(() => {
@@ -536,7 +543,7 @@ const LogsTable = () => {
     try {
       if (!isAdminScope) {
         const { currencyIndex: nextIndex } = await loadPublicDisplayCurrencyCatalog();
-        const preferredUnit = isYYCDisplayedInCurrency() ? 'USD' : YYC_DISPLAY_CODE;
+        const preferredUnit = isChargeDisplayedInCurrency() ? 'USD' : YYC_DISPLAY_CODE;
         setCurrencyIndex(nextIndex);
         setDisplayUnit((current) =>
           resolvePreferredDisplayCurrency(
@@ -564,7 +571,7 @@ const LogsTable = () => {
 
   const showAmountColumns = () => {
     const effectiveLogType = activeFilterKeys.includes('log_type') ? logType : 0;
-    return effectiveLogType !== 5;
+    return effectiveLogType !== 5 && effectiveLogType !== 6;
   };
 
   const loadLogs = useCallback(
@@ -725,8 +732,8 @@ const LogsTable = () => {
             left.completion_tokens,
             right.completion_tokens,
           );
-        case 'yycAmount':
-          return compareNumberValue(left.yycAmount, right.yycAmount);
+        case 'chargeAmount':
+          return compareNumberValue(left.chargeAmount, right.chargeAmount);
         default:
           return 0;
       }
@@ -1169,22 +1176,22 @@ const LogsTable = () => {
                   ) : (
                     <span>{t('log.table.quota')}</span>
                   ),
-                  dataIndex: 'yycAmount',
-                  key: 'yycAmount',
+                  dataIndex: 'chargeAmount',
+                  key: 'chargeAmount',
                   width: LOG_LIST_COLUMN_WIDTHS.quota,
                   sorter: true,
                   sortDirections: ['ascend', 'descend'],
                   sortOrder:
-                    tableSorter.columnKey === 'yycAmount'
+                    tableSorter.columnKey === 'chargeAmount'
                       ? tableSorter.order
                       : null,
                   render: (value) =>
                     isAdminScope
-                      ? formatDisplayAmountFromYYC(value, displayUnit, currencyIndex)
+                      ? formatDisplayAmountFromChargeAmount(value, displayUnit, currencyIndex)
                       : value
-                        ? formatDisplayAmountFromYYC(value, displayUnit, currencyIndex, {
+                        ? formatDisplayAmountFromChargeAmount(value, displayUnit, currencyIndex, {
                             includeSymbol: true,
-                            yycMode: 'compact',
+                            chargeMode: 'compact',
                           })
                         : '',
                 },

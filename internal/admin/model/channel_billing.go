@@ -87,28 +87,61 @@ func (ChannelBillingProfile) TableName() string {
 }
 
 type ChannelBillingSnapshot struct {
-	Id               string                       `json:"id" gorm:"type:char(36);primaryKey"`
-	ChannelId        string                       `json:"channel_id" gorm:"type:char(36);not null;index"`
-	SourceType       string                       `json:"source_type" gorm:"type:varchar(32);not null;default:'manual'"`
-	Balance          float64                      `json:"balance" gorm:"not null;default:0"`
-	Currency         string                       `json:"currency" gorm:"type:varchar(16);default:''"`
-	PurchaseAt       int64                        `json:"purchase_at" gorm:"bigint;not null;default:0;index"`
-	PurchaseCurrency string                       `json:"purchase_currency" gorm:"type:varchar(16);not null;default:''"`
-	PurchaseAmount   float64                      `json:"purchase_amount" gorm:"type:double precision;not null;default:0"`
-	PurchaseFXRate   float64                      `json:"purchase_fx_rate" gorm:"type:double precision;not null;default:0"`
-	PurchaseCostCNY  float64                      `json:"purchase_cost_cny" gorm:"type:double precision;not null;default:0"`
-	RawStatus        string                       `json:"raw_status" gorm:"type:varchar(64);default:''"`
-	Message          string                       `json:"message" gorm:"type:text"`
-	RequestURL       string                       `json:"request_url" gorm:"type:text"`
-	ResponseExcerpt  string                       `json:"response_excerpt" gorm:"type:text"`
-	OperatorUserId   string                       `json:"operator_user_id" gorm:"type:char(36);default:'';index"`
-	TaskId           string                       `json:"task_id" gorm:"type:char(36);default:'';index"`
-	CreatedAt        int64                        `json:"created_at" gorm:"bigint;index"`
-	Items            []ChannelBillingSnapshotItem `json:"items,omitempty" gorm:"-"`
+	Id                 string                       `json:"id" gorm:"type:char(36);primaryKey"`
+	ChannelId          string                       `json:"channel_id" gorm:"type:char(36);not null;index"`
+	SourceType         string                       `json:"source_type" gorm:"type:varchar(32);not null;default:'manual'"`
+	Balance            float64                      `json:"balance" gorm:"not null;default:0"`
+	Currency           string                       `json:"currency" gorm:"type:varchar(16);default:''"`
+	PurchaseAt         int64                        `json:"purchase_at" gorm:"bigint;not null;default:0;index"`
+	PurchaseCurrency   string                       `json:"purchase_currency" gorm:"type:varchar(16);not null;default:''"`
+	PurchaseAmount     float64                      `json:"purchase_amount" gorm:"type:double precision;not null;default:0"`
+	PurchaseFXRate     float64                      `json:"purchase_fx_rate" gorm:"type:double precision;not null;default:0"`
+	PurchaseCostAmount float64                      `json:"purchase_cost_amount" gorm:"type:double precision;not null;default:0"`
+	RawStatus          string                       `json:"raw_status" gorm:"type:varchar(64);default:''"`
+	Message            string                       `json:"message" gorm:"type:text"`
+	RequestURL         string                       `json:"request_url" gorm:"type:text"`
+	ResponseExcerpt    string                       `json:"response_excerpt" gorm:"type:text"`
+	OperatorUserId     string                       `json:"operator_user_id" gorm:"type:char(36);default:'';index"`
+	TaskId             string                       `json:"task_id" gorm:"type:char(36);default:'';index"`
+	CreatedAt          int64                        `json:"created_at" gorm:"bigint;index"`
+	Items              []ChannelBillingSnapshotItem `json:"items,omitempty" gorm:"-"`
 }
 
 func (ChannelBillingSnapshot) TableName() string {
 	return ChannelBillingSnapshotsTableName
+}
+
+func ensureChannelBillingSnapshotPurchaseFieldsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	if !db.Migrator().HasTable(&ChannelBillingSnapshot{}) {
+		if err := db.AutoMigrate(&ChannelBillingSnapshot{}); err != nil {
+			return err
+		}
+	} else {
+		requiredColumns := []string{
+			"PurchaseAt",
+			"PurchaseCurrency",
+			"PurchaseAmount",
+			"PurchaseFXRate",
+			"PurchaseCostAmount",
+		}
+		for _, column := range requiredColumns {
+			if db.Migrator().HasColumn(&ChannelBillingSnapshot{}, column) {
+				continue
+			}
+			if err := db.Migrator().AddColumn(&ChannelBillingSnapshot{}, column); err != nil {
+				return err
+			}
+		}
+	}
+	if !db.Migrator().HasTable(&ChannelBillingSnapshotItem{}) {
+		if err := db.AutoMigrate(&ChannelBillingSnapshotItem{}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type ChannelBillingSnapshotItem struct {
@@ -360,11 +393,17 @@ func ListChannelBillingSnapshotItemsBySnapshotIDsWithDB(db *gorm.DB, snapshotIDs
 	if len(normalizedSnapshotIDs) == 0 {
 		return []ChannelBillingSnapshotItem{}, nil
 	}
+	if !db.Migrator().HasTable(&ChannelBillingSnapshotItem{}) {
+		if err := ensureChannelBillingSnapshotPurchaseFieldsWithDB(db); err != nil {
+			return nil, err
+		}
+	}
 	rows := make([]ChannelBillingSnapshotItem, 0)
-	if err := db.
+	err := db.
 		Where("snapshot_id IN ?", normalizedSnapshotIDs).
 		Order("sort_order asc, created_at asc, id asc").
-		Find(&rows).Error; err != nil {
+		Find(&rows).Error
+	if err != nil {
 		return nil, err
 	}
 	return NormalizeChannelBillingSnapshotItems(rows), nil
@@ -715,7 +754,18 @@ func CreateChannelBillingSnapshotWithDB(db *gorm.DB, row ChannelBillingSnapshot)
 	if normalized.CreatedAt == 0 {
 		normalized.CreatedAt = now
 	}
-	return normalized, db.Create(&normalized).Error
+	if !db.Migrator().HasTable(&ChannelBillingSnapshot{}) ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseAt") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseCurrency") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseAmount") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseFXRate") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseCostAmount") {
+		if err := ensureChannelBillingSnapshotPurchaseFieldsWithDB(db); err != nil {
+			return ChannelBillingSnapshot{}, err
+		}
+	}
+	err := db.Create(&normalized).Error
+	return normalized, err
 }
 
 func UpdateChannelBillingSnapshotPurchaseWithDB(db *gorm.DB, row ChannelBillingSnapshot) (ChannelBillingSnapshot, error) {
@@ -742,17 +792,28 @@ func UpdateChannelBillingSnapshotPurchaseWithDB(db *gorm.DB, row ChannelBillingS
 		return ChannelBillingSnapshot{}, fmt.Errorf("采购币种不能为空")
 	}
 	updates := map[string]any{
-		"purchase_at":       row.PurchaseAt,
-		"purchase_currency": purchaseCurrency,
-		"purchase_amount":   row.PurchaseAmount,
-		"purchase_fx_rate":  row.PurchaseFXRate,
-		"purchase_cost_cny": row.PurchaseCostCNY,
-		"message":           strings.TrimSpace(row.Message),
-		"operator_user_id":  strings.TrimSpace(row.OperatorUserId),
+		"purchase_at":          row.PurchaseAt,
+		"purchase_currency":    purchaseCurrency,
+		"purchase_amount":      row.PurchaseAmount,
+		"purchase_fx_rate":     row.PurchaseFXRate,
+		"purchase_cost_amount": row.PurchaseCostAmount,
+		"message":              strings.TrimSpace(row.Message),
+		"operator_user_id":     strings.TrimSpace(row.OperatorUserId),
 	}
-	if err := db.Model(&ChannelBillingSnapshot{}).
+	if !db.Migrator().HasTable(&ChannelBillingSnapshot{}) ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseAt") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseCurrency") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseAmount") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseFXRate") ||
+		!db.Migrator().HasColumn(&ChannelBillingSnapshot{}, "PurchaseCostAmount") {
+		if err := ensureChannelBillingSnapshotPurchaseFieldsWithDB(db); err != nil {
+			return ChannelBillingSnapshot{}, err
+		}
+	}
+	err = db.Model(&ChannelBillingSnapshot{}).
 		Where("id = ? AND channel_id = ?", normalizedID, normalizedChannelID).
-		Updates(updates).Error; err != nil {
+		Updates(updates).Error
+	if err != nil {
 		return ChannelBillingSnapshot{}, err
 	}
 	return GetChannelBillingSnapshotByIDWithDB(db, normalizedID)
@@ -812,6 +873,11 @@ func CreateChannelBillingSnapshotItemsWithDB(db *gorm.DB, snapshotID string, cha
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedSnapshotID == "" || normalizedChannelID == "" {
 		return nil, fmt.Errorf("渠道账务额度项无效")
+	}
+	if !db.Migrator().HasTable(&ChannelBillingSnapshotItem{}) {
+		if err := ensureChannelBillingSnapshotPurchaseFieldsWithDB(db); err != nil {
+			return nil, err
+		}
 	}
 	normalizedItems := NormalizeChannelBillingSnapshotItems(items)
 	if len(normalizedItems) == 0 {

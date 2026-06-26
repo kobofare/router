@@ -9,7 +9,7 @@ import {
 import {
   buildBillingCurrencyIndex,
   buildBillingUnitOptions,
-  yycToBillingInputValue,
+  chargeAmountToBillingInputValue,
   resolveDefaultBillingUnit,
   resolveBillingInputStep,
 } from '../../helpers/billing';
@@ -25,6 +25,7 @@ import {
   AppInput,
   AppInputNumber,
   AppModal,
+  AppPagination,
   AppSelect,
   AppTable,
   AppTabs,
@@ -34,6 +35,8 @@ import {
 import {
   formatAmountWithUnit,
 } from '../../helpers/render';
+
+const BALANCE_LOT_PAGE_SIZE = 20;
 
 const ROLE_OPTIONS = (t) => [
   { key: 1, value: 1, text: t('user.table.role_types.normal') },
@@ -227,10 +230,10 @@ const createEmptyQuotaSummary = () => ({
 const normalizeDailySnapshot = (raw) => ({
   biz_date: (raw?.biz_date || '').toString().trim(),
   timezone: (raw?.timezone || '').toString().trim(),
-  limit: Number(raw?.yyc_limit ?? raw?.limit ?? 0) || 0,
-  consumed_quota: Number(raw?.yyc_consumed ?? raw?.consumed_quota ?? 0) || 0,
-  reserved_quota: Number(raw?.yyc_reserved ?? raw?.reserved_quota ?? 0) || 0,
-  remaining_quota: Number(raw?.yyc_remaining ?? raw?.remaining_quota ?? 0) || 0,
+  limit: Number(raw?.limit_amount ?? raw?.limit ?? 0) || 0,
+  consumed_quota: Number(raw?.consumed_amount ?? raw?.consumed_quota ?? 0) || 0,
+  reserved_quota: Number(raw?.reserved_amount ?? raw?.reserved_quota ?? 0) || 0,
+  remaining_quota: Number(raw?.remaining_amount ?? raw?.remaining_quota ?? 0) || 0,
   unlimited: raw?.unlimited === true,
 });
 
@@ -238,22 +241,22 @@ const normalizeQuotaSummary = (raw) => ({
   package_emergency: {
     biz_month: (raw?.package_emergency?.biz_month || '').toString().trim(),
     timezone: (raw?.package_emergency?.timezone || '').toString().trim(),
-    limit: Number(raw?.package_emergency?.yyc_limit ?? raw?.package_emergency?.limit ?? 0) || 0,
+    limit: Number(raw?.package_emergency?.limit_amount ?? raw?.package_emergency?.limit ?? 0) || 0,
     consumed_quota:
       Number(
-        raw?.package_emergency?.yyc_consumed ??
+        raw?.package_emergency?.consumed_amount ??
           raw?.package_emergency?.consumed_quota ??
           0,
       ) || 0,
     reserved_quota:
       Number(
-        raw?.package_emergency?.yyc_reserved ??
+        raw?.package_emergency?.reserved_amount ??
           raw?.package_emergency?.reserved_quota ??
           0,
       ) || 0,
     remaining_quota:
       Number(
-        raw?.package_emergency?.yyc_remaining ??
+        raw?.package_emergency?.remaining_amount ??
           raw?.package_emergency?.remaining_quota ??
           0,
       ) || 0,
@@ -359,10 +362,13 @@ const UserDetail = () => {
   const [packageQuotaSummary, setPackageQuotaSummary] = useState(createEmptyQuotaSummary());
   const [balanceLots, setBalanceLots] = useState([]);
   const [balanceLotsLoading, setBalanceLotsLoading] = useState(false);
+  const [balanceLotsPage, setBalanceLotsPage] = useState(1);
+  const [balanceLotsPageSize, setBalanceLotsPageSize] = useState(BALANCE_LOT_PAGE_SIZE);
+  const [balanceLotsTotal, setBalanceLotsTotal] = useState(0);
   const [balanceLotFilters, setBalanceLotFilters] = useState({
     source_type: '',
-    status: 'active',
-    positive_only: true,
+    status: '',
+    positive_only: false,
   });
   const [packageOptions, setPackageOptions] = useState([]);
   const [packageOptionsLoading, setPackageOptionsLoading] = useState(false);
@@ -380,13 +386,13 @@ const UserDetail = () => {
   const [inputs, setInputs] = useState({
     username: '',
     email: '',
-    yyc_balance: 0,
+    balance_amount: 0,
     group: '',
     reset_timezone: 'Asia/Shanghai',
     role: 1,
     status: 1,
     wallet_address: '',
-    yyc_used: 0,
+    used_amount: 0,
     request_count: 0,
     can_manage_users: false,
     created_at: 0,
@@ -425,13 +431,13 @@ const UserDetail = () => {
       const nextInputs = {
         username: data?.username || '',
         email: data?.email || '',
-        yyc_balance: Number(data?.yyc_balance ?? data?.quota ?? 0),
+        balance_amount: Number(data?.balance_amount ?? data?.quota ?? 0),
         group: data?.group || '',
         reset_timezone: data?.quota_reset_timezone || 'Asia/Shanghai',
         role: Number(data?.role || 1),
         status: Number(data?.status || 1),
         wallet_address: walletAddress,
-        yyc_used: Number(data?.yyc_used ?? data?.used_quota ?? 0),
+        used_amount: Number(data?.used_amount ?? data?.used_quota ?? 0),
         request_count: data?.request_count ?? 0,
         can_manage_users: data?.can_manage_users === true,
         created_at: Number(data?.created_at || 0),
@@ -505,12 +511,14 @@ const UserDetail = () => {
   }, [t, userId]);
 
   const loadBalanceLots = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, page = balanceLotsPage } = {}) => {
       const normalizedUserId = (userId || '').toString().trim();
       if (normalizedUserId === '') {
         setBalanceLots([]);
+        setBalanceLotsTotal(0);
         return;
       }
+      const nextPage = Math.max(1, Number(page || 1) || 1);
       if (!silent) {
         setBalanceLotsLoading(true);
       }
@@ -519,8 +527,8 @@ const UserDetail = () => {
           `/api/v1/admin/user/${encodeURIComponent(normalizedUserId)}/topup/balance/lots`,
           {
             params: {
-              page: 1,
-              page_size: 20,
+              page: nextPage,
+              page_size: BALANCE_LOT_PAGE_SIZE,
               source_type: (balanceLotFilters.source_type || '').toString().trim() || undefined,
               status: (balanceLotFilters.status || '').toString().trim() || undefined,
               positive_only: balanceLotFilters.positive_only !== false,
@@ -534,7 +542,14 @@ const UserDetail = () => {
           }
           return;
         }
-        setBalanceLots(Array.isArray(data?.items) ? data.items : []);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const responsePage = Math.max(1, Number(data?.page || nextPage) || nextPage);
+        const responsePageSize = Math.max(1, Number(data?.page_size || BALANCE_LOT_PAGE_SIZE) || BALANCE_LOT_PAGE_SIZE);
+        const responseTotal = Math.max(0, Number(data?.total ?? items.length ?? 0) || 0);
+        setBalanceLots(items);
+        setBalanceLotsPage(responsePage);
+        setBalanceLotsPageSize(responsePageSize);
+        setBalanceLotsTotal(responseTotal);
       } catch (error) {
         if (!silent) {
           showError(error?.message || error);
@@ -546,6 +561,7 @@ const UserDetail = () => {
       }
     },
     [
+      balanceLotsPage,
       balanceLotFilters.positive_only,
       balanceLotFilters.source_type,
       balanceLotFilters.status,
@@ -654,12 +670,12 @@ const UserDetail = () => {
     [balanceUnit, billingCurrencyIndex],
   );
   const balanceDisplayValue = useMemo(
-    () => yycToBillingInputValue(inputs.yyc_balance, balanceUnit, billingCurrencyIndex),
-    [balanceUnit, billingCurrencyIndex, inputs.yyc_balance],
+    () => chargeAmountToBillingInputValue(inputs.balance_amount, balanceUnit, billingCurrencyIndex),
+    [balanceUnit, billingCurrencyIndex, inputs.balance_amount],
   );
   const usedDisplayValue = useMemo(
-    () => yycToBillingInputValue(inputs.yyc_used, balanceUnit, billingCurrencyIndex),
-    [balanceUnit, billingCurrencyIndex, inputs.yyc_used],
+    () => chargeAmountToBillingInputValue(inputs.used_amount, balanceUnit, billingCurrencyIndex),
+    [balanceUnit, billingCurrencyIndex, inputs.used_amount],
   );
 
   const isProtectedUser = inputs.can_manage_users === true;
@@ -732,6 +748,104 @@ const UserDetail = () => {
     ],
     [t],
   );
+  const balanceLotTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(balanceLotsTotal / Math.max(1, balanceLotsPageSize))),
+    [balanceLotsPageSize, balanceLotsTotal],
+  );
+
+  const currentDetailPath = useMemo(
+    () => `${location.pathname}${location.search}${location.hash}`,
+    [location.hash, location.pathname, location.search],
+  );
+
+  const resolveBalanceLotSourcePath = useCallback((lot) => {
+    const detailPath = (lot?.source_detail?.detail_path || '').toString().trim();
+    if (detailPath !== '') {
+      return detailPath;
+    }
+    const sourceID = (lot?.source_id || '').toString().trim();
+    if (sourceID === '') {
+      return '';
+    }
+    switch ((lot?.source_type || '').toString().trim()) {
+      case 'topup_order':
+        return `/admin/flow/topup/${encodeURIComponent(sourceID)}`;
+      case 'redemption':
+        return `/admin/flow/redemption/${encodeURIComponent(sourceID)}`;
+      default:
+        return '';
+    }
+  }, []);
+
+  const goToBalanceLotSource = useCallback(
+    (lot) => {
+      const path = resolveBalanceLotSourcePath(lot);
+      if (path === '') {
+        return;
+      }
+      navigate(path, {
+        state: { from: currentDetailPath },
+      });
+    },
+    [currentDetailPath, navigate, resolveBalanceLotSourcePath],
+  );
+
+  const renderBalanceLotSourceLink = useCallback(
+    (lot, content, className = '') => {
+      if (resolveBalanceLotSourcePath(lot) === '') {
+        return content;
+      }
+      return (
+        <button
+          type='button'
+          className={`router-link-button router-link-inline ${className}`.trim()}
+          onClick={(event) => {
+            event.stopPropagation();
+            goToBalanceLotSource(lot);
+          }}
+        >
+          {content}
+        </button>
+      );
+    },
+    [goToBalanceLotSource, resolveBalanceLotSourcePath],
+  );
+
+  const renderBalanceLotSourceCell = useCallback(
+    (lot) => {
+      const sourceLabel = formatBalanceLotSource(lot?.source_type, t);
+      const title = (lot?.source_detail?.title || '').toString().trim();
+      const content = (
+        <span className='router-balance-lot-source-cell'>
+          <span>{title || sourceLabel}</span>
+          {title && title !== sourceLabel ? (
+            <span className='router-balance-lot-source-type'>{sourceLabel}</span>
+          ) : null}
+        </span>
+      );
+      return renderBalanceLotSourceLink(lot, content);
+    },
+    [renderBalanceLotSourceLink, t],
+  );
+
+  const renderBalanceLotSourceIDCell = useCallback(
+    (lot) => {
+      const value = (lot?.source_id || '').toString();
+      if (value === '') {
+        return readOnlyValue(value);
+      }
+      const content = (
+        <span
+          className='router-monospace-value router-monospace-truncate'
+          title={value}
+        >
+          {value}
+        </span>
+      );
+      return renderBalanceLotSourceLink(lot, content, 'router-balance-lot-source-id-link');
+    },
+    [renderBalanceLotSourceLink],
+  );
 
   useEffect(() => {
     loadActivePackage().then();
@@ -740,6 +854,12 @@ const UserDetail = () => {
   useEffect(() => {
     loadBalanceLots({ silent: true }).then();
   }, [loadBalanceLots]);
+
+  useEffect(() => {
+    if (balanceLotsPage > balanceLotTotalPages) {
+      setBalanceLotsPage(balanceLotTotalPages);
+    }
+  }, [balanceLotTotalPages, balanceLotsPage]);
 
   const roleControl = useMemo(() => {
     return (
@@ -829,12 +949,12 @@ const UserDetail = () => {
     setEditSection('');
   }, [resetBasicEditInputs]);
 
-  const updateUser = useCallback(async ({ username, email, group, yycBalance, actionKey }) => {
+  const updateUser = useCallback(async ({ username, email, group, balanceAmount, actionKey }) => {
     if (username === '') {
       showError(t('user.edit.username_placeholder'));
       return false;
     }
-    if (!Number.isFinite(yycBalance) || yycBalance < 0) {
+    if (!Number.isFinite(balanceAmount) || balanceAmount < 0) {
       showError(t('user.messages.operation_failed'));
       return false;
     }
@@ -845,7 +965,7 @@ const UserDetail = () => {
         username,
         email,
         group,
-        quota: Math.trunc(yycBalance),
+        quota: Math.trunc(balanceAmount),
         quota_reset_timezone: inputs.reset_timezone || 'Asia/Shanghai',
         role: Number(inputs.role || 1),
         status: Number(inputs.status || 1),
@@ -885,10 +1005,10 @@ const UserDetail = () => {
       username,
       email,
       group: (inputs.group || '').toString().trim(),
-      yycBalance: Number(inputs.yyc_balance || 0),
+      balanceAmount: Number(inputs.balance_amount || 0),
       actionKey: 'save-basic',
     });
-  }, [basicEditInputs.email, basicEditInputs.username, inputs.group, inputs.yyc_balance, updateUser]);
+  }, [basicEditInputs.email, basicEditInputs.username, inputs.group, inputs.balance_amount, updateUser]);
 
   const backToList = useCallback(() => {
     if (returnPath !== '') {
@@ -1027,12 +1147,12 @@ const UserDetail = () => {
   }, [assignTopupForm.plan_id, loadActivePackage, loadBalanceLots, loadUser, t, userId]);
 
   const formatAmountBySelectedUnit = useCallback(
-    (yycAmount, { unlimited = false } = {}) => {
+    (chargeAmount, { unlimited = false } = {}) => {
       if (unlimited) {
         return t('common.unlimited');
       }
-      const convertedAmount = yycToBillingInputValue(
-        yycAmount,
+      const convertedAmount = chargeAmountToBillingInputValue(
+        chargeAmount,
         balanceUnit,
         billingCurrencyIndex,
       );
@@ -1088,7 +1208,7 @@ const UserDetail = () => {
   );
 
   const renderReadonlyAmountField = useCallback(
-    ({ label, yycAmount, fallback = '-' }) => {
+    ({ label, chargeAmount, fallback = '-' }) => {
       if (fallback !== null) {
         return (
           <AppField className='router-section-input' label={label} readOnly>
@@ -1108,7 +1228,7 @@ const UserDetail = () => {
               fluid
               min={0}
               step={balanceInputStep}
-              value={yycToBillingInputValue(yycAmount, balanceUnit, billingCurrencyIndex)}
+              value={chargeAmountToBillingInputValue(chargeAmount, balanceUnit, billingCurrencyIndex)}
               readOnly
             />
             <UnitDropdown
@@ -1362,7 +1482,7 @@ const UserDetail = () => {
               <AppFormRow>
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_daily_limit'),
-                  yycAmount: activePackageSubscription?.daily_amount || 0,
+                  chargeAmount: activePackageSubscription?.daily_amount || 0,
                   fallback: hasActivePackage
                     ? Number(activePackageSubscription?.daily_amount || 0) > 0
                       ? null
@@ -1371,19 +1491,19 @@ const UserDetail = () => {
                 })}
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_emergency_limit'),
-                  yycAmount: activePackageSubscription?.emergency_amount || 0,
+                  chargeAmount: activePackageSubscription?.emergency_amount || 0,
                   fallback: hasActivePackage ? null : '-'
                 })}
               </AppFormRow>
               <AppFormRow>
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_daily_used'),
-                  yycAmount: packageDailySnapshot.consumed_quota || 0,
+                  chargeAmount: packageDailySnapshot.consumed_quota || 0,
                   fallback: hasActivePackage ? null : '-'
                 })}
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_daily_remaining'),
-                  yycAmount: packageDailySnapshot.remaining_quota || 0,
+                  chargeAmount: packageDailySnapshot.remaining_quota || 0,
                   fallback: hasActivePackage
                     ? packageDailySnapshot.unlimited
                       ? t('common.unlimited')
@@ -1392,12 +1512,12 @@ const UserDetail = () => {
                 })}
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_emergency_used'),
-                  yycAmount: packageEmergencySnapshot.consumed_quota || 0,
+                  chargeAmount: packageEmergencySnapshot.consumed_quota || 0,
                   fallback: hasActivePackage && packageEmergencySnapshot.enabled ? null : '-'
                 })}
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_emergency_remaining'),
-                  yycAmount: packageEmergencySnapshot.remaining_quota || 0,
+                  chargeAmount: packageEmergencySnapshot.remaining_quota || 0,
                   fallback: hasActivePackage && packageEmergencySnapshot.enabled ? null : '-'
                 })}
               </AppFormRow>
@@ -1469,7 +1589,7 @@ const UserDetail = () => {
                   })}
                   {renderBalanceAmountField({
                     label: t('user.detail.used_amount'),
-                    name: 'yyc_used',
+                    name: 'used_amount',
                     value: usedDisplayValue,
                   })}
                   <AppField
@@ -1497,10 +1617,13 @@ const UserDetail = () => {
                       value={balanceLotFilters.source_type}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          source_type: (value || '').toString(),
-                        }))
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => ({
+                            ...prev,
+                            source_type: (value || '').toString(),
+                          }));
+                        }
                       }
                     />
                     <AppSelect
@@ -1509,10 +1632,17 @@ const UserDetail = () => {
                       value={balanceLotFilters.status}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          status: (value || '').toString(),
-                        }))
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => {
+                            const nextStatus = (value || '').toString();
+                            return {
+                              ...prev,
+                              status: nextStatus,
+                              positive_only: nextStatus === 'active',
+                            };
+                          });
+                        }
                       }
                     />
                     <AppSelect
@@ -1521,10 +1651,13 @@ const UserDetail = () => {
                       value={balanceLotFilters.positive_only ? '1' : '0'}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          positive_only: (value || '1').toString() !== '0',
-                        }))
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => ({
+                            ...prev,
+                            positive_only: (value || '1').toString() !== '0',
+                          }));
+                        }
                       }
                     />
                     <AppButton
@@ -1540,83 +1673,91 @@ const UserDetail = () => {
                   }
                 />
 
+                <div className='router-balance-lot-summary'>
+                  {t('user.detail.balance_lots.summary', {
+                    page_count: balanceLots.length,
+                    total_count: balanceLotsTotal,
+                  })}
+                </div>
+
                 {balanceLots.length === 0 ? (
                   <div className='router-empty'>{t('user.detail.balance_lots.empty')}</div>
                 ) : (
-                  <div className='router-table-scroll-x'>
-                    <AppTable
-                      className='router-table router-list-table router-table-fit-page'
-                      pagination={false}
-                      scroll={{ x: BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH }}
-                      rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
-                      dataSource={balanceLots}
-                      columns={[
-                        {
-                          title: t('user.detail.balance_lots.columns.source'),
-                          key: 'source',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.source,
-                          render: (_, lot) => formatBalanceLotSource(lot.source_type, t),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.source_id'),
-                          dataIndex: 'source_id',
-                          key: 'source_id',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.sourceId,
-                          render: (value) =>
-                            value ? (
-                              <span
-                                className='router-monospace-value router-monospace-truncate'
-                                title={value}
-                              >
-                                {value}
-                              </span>
-                            ) : (
-                              readOnlyValue(value)
-                            ),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.remaining'),
-                          key: 'remaining_yyc',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
-                          render: (_, lot) =>
-                            formatAmountBySelectedUnit(lot.remaining_yyc || 0),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.total'),
-                          key: 'total_yyc',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.total,
-                          render: (_, lot) =>
-                            formatAmountBySelectedUnit(lot.total_yyc || 0),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.status'),
-                          key: 'status',
-                          className: 'router-table-col-status-compact',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.status,
-                          render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.granted_at'),
-                          dataIndex: 'granted_at',
-                          key: 'granted_at',
-                          className: 'router-table-col-datetime',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
-                          render: (value) => formatDateTime(value),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.expires_at'),
-                          dataIndex: 'expires_at',
-                          key: 'expires_at',
-                          className: 'router-table-col-datetime',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
-                          render: (value) =>
-                            Number(value || 0) > 0
-                              ? formatDateTime(value)
-                              : t('common.never'),
-                        },
-                      ]}
-                    />
-                  </div>
+                  <>
+                    <div className='router-table-scroll-x'>
+                      <AppTable
+                        className='router-table router-list-table router-table-fit-page'
+                        pagination={false}
+                        scroll={{ x: BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH }}
+                        rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
+                        dataSource={balanceLots}
+                        columns={[
+                          {
+                            title: t('user.detail.balance_lots.columns.source'),
+                            key: 'source',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.source,
+                            render: (_, lot) => renderBalanceLotSourceCell(lot),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.source_id'),
+                            dataIndex: 'source_id',
+                            key: 'source_id',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.sourceId,
+                            render: (_, lot) => renderBalanceLotSourceIDCell(lot),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.remaining'),
+                            key: 'remaining_amount',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
+                            render: (_, lot) =>
+                              formatAmountBySelectedUnit(lot.remaining_amount || 0),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.total'),
+                            key: 'total_amount',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.total,
+                            render: (_, lot) =>
+                              formatAmountBySelectedUnit(lot.total_amount || 0),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.status'),
+                            key: 'status',
+                            className: 'router-table-col-status-compact',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.status,
+                            render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.granted_at'),
+                            dataIndex: 'granted_at',
+                            key: 'granted_at',
+                            className: 'router-table-col-datetime',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
+                            render: (value) => formatDateTime(value),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.expires_at'),
+                            dataIndex: 'expires_at',
+                            key: 'expires_at',
+                            className: 'router-table-col-datetime',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
+                            render: (value) =>
+                              Number(value || 0) > 0
+                                ? formatDateTime(value)
+                                : t('common.never'),
+                          },
+                        ]}
+                      />
+                    </div>
+                    {balanceLotTotalPages > 1 ? (
+                      <div className='router-pagination-wrap'>
+                        <AppPagination
+                          activePage={balanceLotsPage}
+                          totalPages={balanceLotTotalPages}
+                          onPageChange={(event, { activePage }) => setBalanceLotsPage(activePage)}
+                        />
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </AppDetailSection>
               ) : null}

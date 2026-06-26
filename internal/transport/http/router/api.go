@@ -105,6 +105,11 @@ func SetApiRouter(engine *gin.Engine) {
 			}
 		}
 
+		publicTokenStatusRoute := publicRouter.Group("/token")
+		publicTokenStatusRoute.Use(middleware.TokenAuth())
+		{
+			publicTokenStatusRoute.GET("/status", token.GetTokenStatus)
+		}
 		publicTokenRoute := publicRouter.Group("/token")
 		publicTokenRoute.Use(middleware.UserAuth())
 		{
@@ -220,6 +225,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminUserRoute.GET("/tasks/:id", task.GetUserTask)
 			adminUserRoute.GET("/", user.GetAllUsers)
 			adminUserRoute.GET("/search", user.SearchUsers)
+			adminUserRoute.POST("/batch/topup/grant", user.BatchGrantUserTopUpPlan)
 			adminUserRoute.GET("/:id", user.GetUser)
 			adminUserRoute.GET("/:id/package/subscription", user.GetUserActivePackageSubscription)
 			adminUserRoute.GET("/:id/redemptions", user.GetUserRecentRedemptions)
@@ -244,6 +250,7 @@ func SetApiRouter(engine *gin.Engine) {
 		adminBillingRoute.Use(middleware.AdminAuth())
 		{
 			adminBillingRoute.GET("/currencies", adminbilling.GetBillingCurrencies)
+			adminBillingRoute.GET("/health", adminbilling.GetBillingHealth)
 			adminBillingRoute.GET("/procurement-report", adminbilling.GetProcurementReport)
 			adminBillingRoute.GET("/fx/status", adminbilling.GetFXSyncStatus)
 			adminBillingRoute.GET("/fx/rates", adminbilling.GetFXMarketRates)

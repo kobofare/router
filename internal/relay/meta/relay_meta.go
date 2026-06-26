@@ -38,6 +38,11 @@ type Meta struct {
 	UpstreamRequestPath string
 	PromptTokens        int // only for DoResponse
 	StartTime           time.Time
+	FallbackCount       int
+	FallbackAttempts    string
+	RelayErrorType      string
+	RelayErrorCode      string
+	RelayErrorMessage   string
 }
 
 func GetByContext(c *gin.Context) *Meta {
@@ -58,6 +63,11 @@ func GetByContext(c *gin.Context) *Meta {
 		UpstreamMode:        relaymode.GetByPath(c.Request.URL.Path),
 		UpstreamRequestPath: normalizedPath,
 		StartTime:           time.Now(),
+		FallbackCount:       c.GetInt(ctxkey.RelayRetryCount),
+		FallbackAttempts:    c.GetString(ctxkey.RelayFallbackAttempts),
+		RelayErrorType:      c.GetString(ctxkey.RelayErrorType),
+		RelayErrorCode:      c.GetString(ctxkey.RelayErrorCode),
+		RelayErrorMessage:   c.GetString(ctxkey.RelayError),
 	}
 	cfg, ok := c.Get(ctxkey.Config)
 	if ok {

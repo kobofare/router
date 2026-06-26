@@ -94,14 +94,14 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
 const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
-  '14%',
-  '14%',
-  '18%',
-  '8%',
-  '20%',
-  '14%',
-  '12%',
-  '8%',
+  '13%',
+  '13%',
+  '17%',
+  '7%',
+  '15%',
+  '19%',
+  '9%',
+  '7%',
 ];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
@@ -607,7 +607,7 @@ const normalizeChannelBillingSnapshots = (items) => {
       purchase_currency: (item.purchase_currency || '').toString().trim(),
       purchase_amount: Number(item.purchase_amount || 0),
       purchase_fx_rate: Number(item.purchase_fx_rate || 0),
-      purchase_cost_cny: Number(item.purchase_cost_cny || 0),
+      purchase_cost_amount: Number(item.purchase_cost_amount || 0),
       created_at: Number(item.created_at || 0),
       items: Array.isArray(item.items)
         ? item.items.map((quotaItem) => ({
@@ -661,8 +661,8 @@ const normalizeChannelProcurementBatches = (items) => {
       purchase_currency: (item.purchase_currency || '').toString().trim(),
       purchase_amount: Number(item.purchase_amount || 0),
       purchase_fx_rate: Number(item.purchase_fx_rate || 0),
-      purchase_cost_cny: Number(item.purchase_cost_cny || 0),
-      cost_per_unit_cny: Number(item.cost_per_unit_cny || 0),
+      purchase_cost_amount: Number(item.purchase_cost_amount || 0),
+      cost_per_unit_amount: Number(item.cost_per_unit_amount || 0),
       cost_source: (item.cost_source || '').toString().trim(),
       cost_status: (item.cost_status || '').toString().trim(),
       expire_at: Number(item.expire_at || 0),
@@ -1089,6 +1089,7 @@ const normalizeProviderIdentifier = (value) => {
       return 'hunyuan';
     case 'volc':
     case 'volcengine':
+    case 'volcengine-realtime':
     case 'doubao':
     case 'ark':
     case '火山':
@@ -1820,7 +1821,9 @@ const CHANNEL_DEFAULT_CONFIG = {
   region: '',
   sk: '',
   ak: '',
+  app_id: '',
   user_id: '',
+  resource_id: '',
   api_base_url: '',
   account_base_url: '',
   vertex_ai_project_id: '',
@@ -3506,7 +3509,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       purchase_currency,
       purchase_amount,
       purchase_fx_rate,
-      purchase_cost_cny,
+      purchase_cost_amount,
       items,
       message,
     }) => {
@@ -3560,7 +3563,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             purchase_currency: (purchase_currency || '').toString().trim(),
             purchase_amount: Number(purchase_amount || 0),
             purchase_fx_rate: Number(purchase_fx_rate || 0),
-            purchase_cost_cny: Number(purchase_cost_cny || 0),
+            purchase_cost_amount: Number(purchase_cost_amount || 0),
             items: normalizedItems,
             message: (message || '').toString().trim(),
           }
@@ -3638,7 +3641,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               .trim(),
             purchase_amount: Number(payload?.purchase_amount || 0),
             purchase_fx_rate: Number(payload?.purchase_fx_rate || 0),
-            purchase_cost_cny: Number(payload?.purchase_cost_cny || 0),
+            purchase_cost_amount: Number(payload?.purchase_cost_amount || 0),
             capacity_effective: Number(payload?.capacity_effective || 0),
             cost_source: (payload?.cost_source || 'actual').toString().trim(),
             cost_status: (payload?.cost_status || 'active').toString().trim(),
@@ -5454,6 +5457,46 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             }
           />
         )}
+        {inputs.protocol === 'volcengine-realtime' && (
+          <>
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={
+                <span>
+                  Volcengine Realtime 使用火山引擎官方语音 WebSocket 接口，请填写 App ID；默认 Resource ID 为
+                  <code>volc.speech.dialog</code>，如官方控制台分配了其他值，可在下方覆盖。
+                </span>
+              }
+            />
+            <AppFormRow>
+              <AppField label='App ID' required>
+                <AppInput
+                  className='router-section-input'
+                  name='app_id'
+                  required
+                  placeholder='请输入火山引擎语音应用 App ID'
+                  onChange={handleConfigChange}
+                  value={config.app_id}
+                  autoComplete='off'
+                  {...inputReadonlyProps}
+                />
+              </AppField>
+              <AppField label='Resource ID'>
+                <AppInput
+                  className='router-section-input'
+                  name='resource_id'
+                  placeholder='默认 volc.speech.dialog'
+                  onChange={handleConfigChange}
+                  value={config.resource_id}
+                  autoComplete='off'
+                  {...inputReadonlyProps}
+                />
+              </AppField>
+            </AppFormRow>
+          </>
+        )}
         {inputs.protocol === 'awsclaude' && (
           <AppFormRow>
             <AppField label='Region' required>
@@ -5843,7 +5886,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     channelEndpointPoliciesError={channelEndpointPoliciesError}
                     endpointPolicyReadonly={endpointPolicyReadonly}
                     openEndpointPolicyEditor={openEndpointPolicyEditor}
-                    timestamp2string={timestamp2string}
                   />
                 )}
               </>

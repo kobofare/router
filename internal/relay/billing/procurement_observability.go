@@ -20,6 +20,7 @@ const (
 	ProcurementCostConfidenceUnitBased     = "unit_based"
 
 	PricingRuleVersionOfficialAnchorV1 = "official_anchor_v1"
+	PricingRuleVersionCostFloorV1      = "cost_floor_v1"
 	CostRuleVersionUnconfiguredV1      = "procurement_unconfigured_v1"
 )
 
@@ -39,11 +40,11 @@ func ApplyProcurementCostObservation(logRow *model.Log) {
 	if logRow.BillingOfficialAnchorAmount == 0 {
 		logRow.BillingOfficialAnchorAmount = logRow.BillingAmount
 	}
-	if logRow.BillingOfficialAnchorAmountCNY == 0 {
-		logRow.BillingOfficialAnchorAmountCNY = convertBillingAmountToCNY(logRow.BillingOfficialAnchorAmount, logRow.BillingOfficialAnchorCurrency)
+	if logRow.BillingOfficialAnchorBaseAmount == 0 {
+		logRow.BillingOfficialAnchorBaseAmount = convertBillingAmountToBaseAmount(logRow.BillingOfficialAnchorAmount, logRow.BillingOfficialAnchorCurrency)
 	}
-	if logRow.BillingSellAmountCNY == 0 {
-		logRow.BillingSellAmountCNY = convertYYCToCNY(float64(logRow.BillingYYCAmount))
+	if logRow.BillingSellBaseAmount == 0 {
+		logRow.BillingSellBaseAmount = convertChargeAmountToBaseAmount(float64(logRow.BillingChargeAmount))
 	}
 	if strings.TrimSpace(logRow.BillingProcurementCostSource) == "" {
 		logRow.BillingProcurementCostSource = model.ProcurementCostSourceNone
@@ -58,9 +59,9 @@ func ApplyProcurementCostObservation(logRow *model.Log) {
 	if logRow.BillingProcurementCostSource == model.ProcurementCostSourceActual ||
 		logRow.BillingProcurementCostSource == model.ProcurementCostSourceEstimated ||
 		logRow.BillingProcurementCostSource == model.ProcurementCostSourceZeroCost {
-		logRow.BillingGrossProfitCNY = logRow.BillingSellAmountCNY - logRow.BillingProcurementCostCNY
-		if logRow.BillingSellAmountCNY > 0 {
-			logRow.BillingGrossMargin = logRow.BillingGrossProfitCNY / logRow.BillingSellAmountCNY
+		logRow.BillingGrossProfitBaseAmount = logRow.BillingSellBaseAmount - logRow.BillingProcurementCostBaseAmount
+		if logRow.BillingSellBaseAmount > 0 {
+			logRow.BillingGrossMargin = logRow.BillingGrossProfitBaseAmount / logRow.BillingSellBaseAmount
 		}
 	}
 }
@@ -72,28 +73,31 @@ func RecordProcurementConsumptionObservation(ctx context.Context, logRow *model.
 	if strings.TrimSpace(logRow.Id) == "" || strings.TrimSpace(logRow.ChannelId) == "" {
 		return
 	}
-	quantity := procurementConsumptionQuantity(logRow)
-	if quantity <= 0 {
+	candidates := procurementConsumptionCandidates(logRow)
+	if len(candidates) == 0 {
 		return
 	}
-	result, err := model.ConsumeChannelProcurementBatches(model.ProcurementConsumeInput{
-		RequestLogID:        logRow.Id,
-		ChannelID:           logRow.ChannelId,
-		ScopeType:           procurementScopeType(logRow),
-		ScopeValue:          strings.TrimSpace(logRow.ModelName),
-		CapacityUnit:        procurementCapacityUnit(logRow),
-		Quantity:            quantity,
-		SettlementTruthMode: strings.TrimSpace(logRow.BillingSettlementTruthMode),
-	})
-	if err != nil {
-		logger.Errorf(ctx, "procurement consumption observation failed log_id=%s channel_id=%s model=%s err=%q", strings.TrimSpace(logRow.Id), strings.TrimSpace(logRow.ChannelId), strings.TrimSpace(logRow.ModelName), err.Error())
+	for _, candidate := range candidates {
+		result, err := model.ConsumeChannelProcurementBatches(model.ProcurementConsumeInput{
+			RequestLogID:        logRow.Id,
+			ChannelID:           logRow.ChannelId,
+			ScopeType:           procurementScopeType(logRow),
+			ScopeValue:          strings.TrimSpace(logRow.ModelName),
+			CapacityUnit:        candidate.CapacityUnit,
+			Quantity:            candidate.Quantity,
+			SettlementTruthMode: strings.TrimSpace(logRow.BillingSettlementTruthMode),
+		})
+		if err != nil {
+			logger.Errorf(ctx, "procurement consumption observation failed log_id=%s channel_id=%s model=%s capacity_unit=%s quantity=%f err=%q", strings.TrimSpace(logRow.Id), strings.TrimSpace(logRow.ChannelId), strings.TrimSpace(logRow.ModelName), strings.TrimSpace(candidate.CapacityUnit), candidate.Quantity, err.Error())
+			return
+		}
+		if len(result.Consumptions) == 0 {
+			continue
+		}
+		if err := model.UpdateLogProcurementCostObservation(logRow.Id, result.TotalCostAmount, result.CostSource, logRow.BillingSellBaseAmount); err != nil {
+			logger.Errorf(ctx, "procurement cost log update failed log_id=%s channel_id=%s model=%s err=%q", strings.TrimSpace(logRow.Id), strings.TrimSpace(logRow.ChannelId), strings.TrimSpace(logRow.ModelName), err.Error())
+		}
 		return
-	}
-	if len(result.Consumptions) == 0 {
-		return
-	}
-	if err := model.UpdateLogProcurementCostObservation(logRow.Id, result.TotalCostCNY, result.CostSource, logRow.BillingSellAmountCNY); err != nil {
-		logger.Errorf(ctx, "procurement cost log update failed log_id=%s channel_id=%s model=%s err=%q", strings.TrimSpace(logRow.Id), strings.TrimSpace(logRow.ChannelId), strings.TrimSpace(logRow.ModelName), err.Error())
 	}
 }
 
@@ -163,6 +167,47 @@ func procurementCapacityUnit(logRow *model.Log) string {
 	}
 }
 
+type procurementConsumptionCandidate struct {
+	CapacityUnit string
+	Quantity     float64
+}
+
+func procurementConsumptionCandidates(logRow *model.Log) []procurementConsumptionCandidate {
+	if logRow == nil {
+		return nil
+	}
+	candidates := make([]procurementConsumptionCandidate, 0, 2)
+	seen := map[string]struct{}{}
+	appendCandidate := func(capacityUnit string, quantity float64) {
+		normalizedUnit := strings.TrimSpace(strings.ToLower(capacityUnit))
+		if normalizedUnit == "" || quantity <= 0 {
+			return
+		}
+		if _, ok := seen[normalizedUnit]; ok {
+			return
+		}
+		seen[normalizedUnit] = struct{}{}
+		candidates = append(candidates, procurementConsumptionCandidate{
+			CapacityUnit: normalizedUnit,
+			Quantity:     quantity,
+		})
+	}
+	appendCandidate(procurementCurrencyEquivalentCapacityUnit(logRow), logRow.BillingAmount)
+	appendCandidate(procurementCapacityUnit(logRow), procurementConsumptionQuantity(logRow))
+	return candidates
+}
+
+func procurementCurrencyEquivalentCapacityUnit(logRow *model.Log) string {
+	if logRow == nil {
+		return ""
+	}
+	currency := strings.TrimSpace(strings.ToLower(logRow.BillingCurrency))
+	if currency == "" {
+		return ""
+	}
+	return currency + "_equivalent"
+}
+
 func procurementConsumptionQuantity(logRow *model.Log) float64 {
 	switch procurementCapacityUnit(logRow) {
 	case "image", "request", "char", "second", "minute", "video":
@@ -174,28 +219,28 @@ func procurementConsumptionQuantity(logRow *model.Log) float64 {
 	}
 }
 
-func convertBillingAmountToCNY(amount float64, currency string) float64 {
+func convertBillingAmountToBaseAmount(amount float64, currency string) float64 {
 	if amount == 0 {
 		return 0
 	}
-	sourceYYCPerUnit, err := model.GetBillingCurrencyYYCPerUnit(currency)
-	if err != nil || sourceYYCPerUnit <= 0 {
+	sourceChargeRate, err := model.GetBillingCurrencyChargeRate(currency)
+	if err != nil || sourceChargeRate <= 0 {
 		return 0
 	}
-	cnyYYCPerUnit, err := model.GetBillingCurrencyYYCPerUnit(model.BillingCurrencyCodeCNY)
-	if err != nil || cnyYYCPerUnit <= 0 {
+	cnyChargeRate, err := model.GetBillingCurrencyChargeRate(model.BillingCurrencyCodeCNY)
+	if err != nil || cnyChargeRate <= 0 {
 		return 0
 	}
-	return amount * sourceYYCPerUnit / cnyYYCPerUnit
+	return amount * sourceChargeRate / cnyChargeRate
 }
 
-func convertYYCToCNY(yycAmount float64) float64 {
-	if yycAmount == 0 {
+func convertChargeAmountToBaseAmount(chargeAmount float64) float64 {
+	if chargeAmount == 0 {
 		return 0
 	}
-	cnyYYCPerUnit, err := model.GetBillingCurrencyYYCPerUnit(model.BillingCurrencyCodeCNY)
-	if err != nil || cnyYYCPerUnit <= 0 {
+	cnyChargeRate, err := model.GetBillingCurrencyChargeRate(model.BillingCurrencyCodeCNY)
+	if err != nil || cnyChargeRate <= 0 {
 		return 0
 	}
-	return yycAmount / cnyYYCPerUnit
+	return chargeAmount / cnyChargeRate
 }

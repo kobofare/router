@@ -67,7 +67,7 @@ func TestApplyProcurementCostObservationDoesNotInventGrossProfitWithoutCost(t *t
 	logRow := &adminmodel.Log{
 		BillingAmount:         1,
 		BillingCurrency:       adminmodel.BillingCurrencyCodeCNY,
-		BillingYYCAmount:      1000,
+		BillingChargeAmount:   1000,
 		BillingSettlementMode: "usage_final",
 	}
 
@@ -76,8 +76,8 @@ func TestApplyProcurementCostObservationDoesNotInventGrossProfitWithoutCost(t *t
 	if logRow.BillingProcurementCostSource != adminmodel.ProcurementCostSourceNone {
 		t.Fatalf("BillingProcurementCostSource=%q, want %q", logRow.BillingProcurementCostSource, adminmodel.ProcurementCostSourceNone)
 	}
-	if logRow.BillingGrossProfitCNY != 0 {
-		t.Fatalf("BillingGrossProfitCNY=%v, want 0 without procurement cost", logRow.BillingGrossProfitCNY)
+	if logRow.BillingGrossProfitBaseAmount != 0 {
+		t.Fatalf("BillingGrossProfitBaseAmount=%v, want 0 without procurement cost", logRow.BillingGrossProfitBaseAmount)
 	}
 	if logRow.BillingGrossMargin != 0 {
 		t.Fatalf("BillingGrossMargin=%v, want 0 without procurement cost", logRow.BillingGrossMargin)
@@ -105,5 +105,44 @@ func TestProcurementCapacityUnit(t *testing.T) {
 				t.Fatalf("procurementCapacityUnit()=%q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestProcurementConsumptionCandidatesPreferCurrencyEquivalent(t *testing.T) {
+	logRow := &adminmodel.Log{
+		BillingPriceUnit:      adminmodel.ProviderPriceUnitPer1KTokens,
+		BillingCurrency:       adminmodel.ProviderPriceCurrencyUSD,
+		BillingAmount:         0.25,
+		BillingInputQuantity:  1000,
+		BillingOutputQuantity: 2000,
+	}
+
+	got := procurementConsumptionCandidates(logRow)
+
+	if len(got) != 2 {
+		t.Fatalf("candidates len=%d, want 2", len(got))
+	}
+	if got[0].CapacityUnit != "usd_equivalent" || got[0].Quantity != 0.25 {
+		t.Fatalf("first candidate=%+v, want usd_equivalent/0.25", got[0])
+	}
+	if got[1].CapacityUnit != "token" || got[1].Quantity != 3000 {
+		t.Fatalf("second candidate=%+v, want token/3000", got[1])
+	}
+}
+
+func TestProcurementConsumptionCandidatesFallbackToUsageUnit(t *testing.T) {
+	logRow := &adminmodel.Log{
+		BillingPriceUnit:      adminmodel.ProviderPriceUnitPerImage,
+		BillingInputQuantity:  2,
+		BillingOutputQuantity: 0,
+	}
+
+	got := procurementConsumptionCandidates(logRow)
+
+	if len(got) != 1 {
+		t.Fatalf("candidates len=%d, want 1", len(got))
+	}
+	if got[0].CapacityUnit != "image" || got[0].Quantity != 2 {
+		t.Fatalf("candidate=%+v, want image/2", got[0])
 	}
 }

@@ -1432,7 +1432,7 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Version:     "202606171030_procurement_cost_tables",
 			Description: "add procurement cost batch and request consumption tables",
 			Up: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&ChannelProcurementBatch{}, &RequestProcurementConsumption{})
+				return ensureProcurementCostTablesWithDB(tx)
 			},
 		},
 		{
@@ -1467,6 +1467,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
+			Version:     "202606261430_refresh_qwen_new_model_aliases",
+			Description: "upsert qwen official qwen3 max snapshot and coder models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
+			},
+		},
+		{
 			Version:     "202606191230_refresh_provider_image_model_specifications",
 			Description: "refresh official image model specifications for supported providers",
 			Up: func(tx *gorm.DB) error {
@@ -1483,8 +1490,88 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				)
 			},
 		},
+		{
+			Version:     "202606211230_billing_currency_charge_rate",
+			Description: "migrate billing currency yyc_per_unit values into charge_rate",
+			Up: func(tx *gorm.DB) error {
+				return migrateBillingCurrencyChargeRateWithDB(tx)
+			},
+		},
+		{
+			Version:     "202606221030_user_balance_lot_amount_columns",
+			Description: "ensure user balance lot amount columns exist and backfill legacy yyc columns",
+			Up: func(tx *gorm.DB) error {
+				return ensureUserBalanceLotAmountColumnsWithDB(tx)
+			},
+		},
+		{
+			Version:     "202606231030_openai_realtime_model_tags",
+			Description: "refresh openai provider migration rows to mark realtime voice models with realtime capability tags",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "openai")
+			},
+		},
+		{
+			Version:     "202606231130_qwen_realtime_voice_models",
+			Description: "upsert qwen official realtime voice and omni websocket models and refresh channel endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "qwen"); err != nil {
+					return err
+				}
+				return cleanupChannelEndpointBaselineWithDB(tx, "ali", "qwen", false)
+			},
+		},
+		{
+			Version:     "202606231230_zhipu_realtime_voice_models",
+			Description: "upsert zhipu official realtime voice models and refresh channel endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "zhipu"); err != nil {
+					return err
+				}
+				return cleanupChannelEndpointBaselineWithDB(tx, "zhipu", "zhipu", true)
+			},
+		},
+		{
+			Version:     "202606231330_add_volcengine_realtime_protocol",
+			Description: "add volcengine realtime channel protocol catalog item",
+			Up: func(tx *gorm.DB) error {
+				now := helper.GetTimestamp()
+				item := ChannelProtocolCatalog{
+					Name:        "volcengine-realtime",
+					ProtocolID:  49,
+					Label:       "Volcengine Realtime",
+					Color:       "blue",
+					Description: "Volcengine Speech Realtime",
+					Source:      "default",
+					Enabled:     true,
+					SortOrder:   11,
+					UpdatedAt:   now,
+				}
+				return tx.Where("name = ?", item.Name).Assign(map[string]any{
+					"id":          item.ProtocolID,
+					"label":       item.Label,
+					"color":       item.Color,
+					"description": item.Description,
+					"source":      item.Source,
+					"enabled":     item.Enabled,
+					"sort_order":  item.SortOrder,
+					"updated_at":  item.UpdatedAt,
+				}).FirstOrCreate(&item).Error
+			},
+		},
+		{
+			Version:     "202606241850_procurement_cost_table_schema_repair",
+			Description: "ensure procurement cost unit columns exist for previously migrated databases",
+			Up: func(tx *gorm.DB) error {
+				return ensureProcurementCostTablesWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func ensureProcurementCostTablesWithDB(db *gorm.DB) error {
+	return db.AutoMigrate(&ChannelProcurementBatch{}, &RequestProcurementConsumption{})
 }
 
 func volcengineOldModelNameToOfficialModelMap() map[string]string {
@@ -1822,6 +1909,13 @@ func runLogVersionedMigrations(db *gorm.DB) error {
 		{
 			Version:     "202606171040_log_procurement_cost_snapshot",
 			Description: "add procurement cost and gross margin fields to consume logs",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Log{})
+			},
+		},
+		{
+			Version:     "202606241910_log_route_observability",
+			Description: "add route and fallback observability fields to consume logs",
 			Up: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&Log{})
 			},

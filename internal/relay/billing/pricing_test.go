@@ -136,8 +136,8 @@ func TestComputeTraditionalImageTokenBasedBillingSnapshot(t *testing.T) {
 	if snapshot.Amount <= 0 {
 		t.Fatalf("Amount = %v, want > 0", snapshot.Amount)
 	}
-	if snapshot.YYCAmount <= 0 {
-		t.Fatalf("YYCAmount = %d, want > 0", snapshot.YYCAmount)
+	if snapshot.ChargeAmount <= 0 {
+		t.Fatalf("ChargeAmount = %d, want > 0", snapshot.ChargeAmount)
 	}
 }
 
@@ -207,5 +207,72 @@ func TestComputeExplicitAmountBillingSnapshot(t *testing.T) {
 	}
 	if math.Abs(snapshot.Amount-0.246332) > 1e-9 {
 		t.Fatalf("Amount = %v, want 0.246332", snapshot.Amount)
+	}
+}
+
+func TestDecidePricingKeepsCurrentChargeForOfficialAnchor(t *testing.T) {
+	decision := DecidePricing(PricingDecisionInput{
+		OfficialAnchor: MoneyAmount{Amount: 1, Currency: adminmodel.BillingCurrencyCodeCNY},
+		CurrentCharge:  MoneyAmount{Amount: 123, Currency: adminmodel.BillingCurrencyCodeYYC},
+		Policy: PricingPolicy{
+			OfficialMarkup: 1,
+		},
+	})
+	if decision.Reason != PricingDecisionReasonOfficialAnchor {
+		t.Fatalf("Reason=%q, want %q", decision.Reason, PricingDecisionReasonOfficialAnchor)
+	}
+	if decision.SelectedCharge.Amount != 123 {
+		t.Fatalf("SelectedCharge.Amount=%v, want 123", decision.SelectedCharge.Amount)
+	}
+	if decision.SelectedCharge.Currency != adminmodel.BillingCurrencyCodeYYC {
+		t.Fatalf("SelectedCharge.Currency=%q, want YYC", decision.SelectedCharge.Currency)
+	}
+}
+
+func TestDecidePricingUsesCostFloorWhenHigher(t *testing.T) {
+	decision := DecidePricing(PricingDecisionInput{
+		OfficialAnchor:  MoneyAmount{Amount: 1, Currency: adminmodel.BillingCurrencyCodeCNY},
+		CurrentCharge:   MoneyAmount{Amount: 1, Currency: adminmodel.BillingCurrencyCodeYYC},
+		ProcurementCost: MoneyAmount{Amount: 10, Currency: adminmodel.BillingCurrencyCodeCNY},
+		Policy: PricingPolicy{
+			OfficialMarkup: 1,
+			TargetMargin:   0.2,
+			RiskBuffer:     0.1,
+		},
+	})
+	if decision.Reason != PricingDecisionReasonCostFloor {
+		t.Fatalf("Reason=%q, want %q", decision.Reason, PricingDecisionReasonCostFloor)
+	}
+	want := 10 * 1.1 / 0.8
+	if math.Abs(decision.CostFloor.Amount-want) > 1e-9 {
+		t.Fatalf("CostFloor.Amount=%v, want %v", decision.CostFloor.Amount, want)
+	}
+	if decision.SelectedSell.Currency != adminmodel.BillingCurrencyCodeCNY {
+		t.Fatalf("SelectedSell.Currency=%q, want CNY", decision.SelectedSell.Currency)
+	}
+	if decision.SelectedCharge.Currency != adminmodel.BillingCurrencyCodeYYC {
+		t.Fatalf("SelectedCharge.Currency=%q, want YYC", decision.SelectedCharge.Currency)
+	}
+}
+
+func TestProcurementConsumptionCandidatesFromSnapshotPreferCurrencyEquivalent(t *testing.T) {
+	snapshot := &BillingSnapshot{
+		PriceUnit:      adminmodel.ProviderPriceUnitPer1KTokens,
+		Currency:       adminmodel.ProviderPriceCurrencyUSD,
+		InputQuantity:  1000,
+		OutputQuantity: 2000,
+		Amount:         0.25,
+	}
+
+	got := procurementConsumptionCandidatesFromSnapshot(snapshot)
+
+	if len(got) != 2 {
+		t.Fatalf("candidates len=%d, want 2", len(got))
+	}
+	if got[0].CapacityUnit != "usd_equivalent" || got[0].Quantity != 0.25 {
+		t.Fatalf("first candidate=%+v, want usd_equivalent/0.25", got[0])
+	}
+	if got[1].CapacityUnit != "token" || got[1].Quantity != 3000 {
+		t.Fatalf("second candidate=%+v, want token/3000", got[1])
 	}
 }

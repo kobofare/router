@@ -6,7 +6,6 @@ import { renderDisplayAmount, YYC_SYMBOL } from '../../helpers/render';
 import {
   AppDetailSection,
   AppFilterHeader,
-  AppIcon,
   AppTag,
 } from '../../router-ui';
 
@@ -42,6 +41,12 @@ function renderType(type, t) {
           {t('log.type.test')}
         </AppTag>
       );
+    case 6:
+      return (
+        <AppTag color='red' className='router-tag'>
+          {t('log.type.relay_failure')}
+        </AppTag>
+      );
     default:
       return (
         <AppTag color='black' className='router-tag'>
@@ -75,6 +80,67 @@ function renderBillingSource(value, t) {
     return t('log.detail.billing_sources.balance');
   }
   return renderText(value);
+}
+
+function renderEstimatePrecision(value, t) {
+  const normalized = (value || '').toString().trim().toLowerCase();
+  if (normalized === 'high') {
+    return t('log.detail.route.precision.high');
+  }
+  if (normalized === 'medium') {
+    return t('log.detail.route.precision.medium');
+  }
+  if (normalized === 'low') {
+    return t('log.detail.route.precision.low');
+  }
+  return renderText(value);
+}
+
+function renderRouteExplanationSummary(log, t) {
+  if (!log) return '-';
+  const channel = renderText(log.channel_name || log.channel);
+  const model = renderText(log.actual_model_name || log.model_name);
+  const source = renderText(log.billing_estimate_source);
+  const settlement = renderText(log.billing_settlement_mode);
+  const fallbackCount = Number(log.fallback_count || 0);
+  const summaryKey =
+    Number(log.type) === 6
+      ? 'log.detail.route.failure_summary'
+      : 'log.detail.route.summary';
+  return t(summaryKey, {
+    channel,
+    model,
+    source,
+    settlement,
+    fallbackCount,
+  });
+}
+
+function parseFallbackAttempts(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  const raw = (value || '').toString().trim();
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderRelayError(log) {
+  const parts = [
+    log?.relay_error_type,
+    log?.relay_error_code,
+    log?.relay_error_message,
+  ]
+    .map((item) => (item || '').toString().trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(' / ') : '-';
 }
 
 function formatNumber(value, maximumFractionDigits = 6) {
@@ -123,20 +189,86 @@ function renderRate(rate, currency) {
 function normalizeLogDetail(data) {
   return {
     ...(data || {}),
-    // Prefer YYC-native fields, fall back to legacy quota payloads for old logs.
-    yycAmount: Number(data?.yyc_amount ?? data?.quota ?? 0),
-    userDailyYYC: Number(data?.yyc_user_daily ?? data?.user_daily_quota ?? 0),
-    userEmergencyYYC: Number(
-      data?.yyc_user_emergency ?? data?.user_emergency_quota ?? 0,
+    // Prefer charge-amount fields, fall back to legacy quota payloads for old logs.
+    chargeAmount: Number(data?.charge_amount ?? data?.quota ?? 0),
+    userDailyChargeAmount: Number(data?.user_daily_charge_amount ?? data?.user_daily_quota ?? 0),
+    userEmergencyChargeAmount: Number(
+      data?.user_emergency_charge_amount ?? data?.user_emergency_quota ?? 0,
     ),
-    billingYYCAmount: Number(data?.billing_yyc_amount ?? 0),
+    billingChargeAmount: Number(data?.billing_charge_amount ?? 0),
     billingImageToolCalls: Number(data?.billing_image_tool_calls ?? 0),
     billingImageToolOutputTokens: Number(
       data?.billing_image_tool_output_tokens ?? 0,
     ),
     billingImageToolAmount: Number(data?.billing_image_tool_amount ?? 0),
-    billingImageToolYYCAmount: Number(data?.billing_image_tool_yyc_amount ?? 0),
+    billingImageToolChargeAmount: Number(data?.billing_image_tool_charge_amount ?? 0),
   };
+}
+
+function renderRouteOutcomeTags(log, fallbackAttempts, t) {
+  const failed = Number(log?.type) === 6;
+  const fallbackCount = Math.max(
+    Number(log?.fallback_count || 0),
+    Array.isArray(fallbackAttempts) ? fallbackAttempts.length : 0,
+  );
+  return (
+    <div className='router-route-explain-tags'>
+      <AppTag color={failed ? 'red' : 'green'} className='router-tag'>
+        {failed
+          ? t('log.detail.route.outcome.failed')
+          : t('log.detail.route.outcome.succeeded')}
+      </AppTag>
+      <AppTag color={fallbackCount > 0 ? 'orange' : 'blue'} className='router-tag'>
+        {fallbackCount > 0
+          ? t('log.detail.route.outcome.fallback', { count: fallbackCount })
+          : t('log.detail.route.outcome.direct')}
+      </AppTag>
+    </div>
+  );
+}
+
+function renderFallbackAttemptCards(attempts, t) {
+  if (!Array.isArray(attempts) || attempts.length === 0) {
+    return <div className='router-route-attempt-empty'>-</div>;
+  }
+  return (
+    <div className='router-route-attempt-list'>
+      {attempts.map((attempt, index) => {
+        const attemptNo = Number(attempt?.attempt || 0) || index + 1;
+        return (
+          <div
+            className='router-route-attempt-card'
+            key={`${attemptNo}-${attempt?.channel_id || index}`}
+          >
+            <div className='router-route-attempt-head'>
+              <span>
+                {t('log.detail.route.attempt_title', {
+                  attempt: attemptNo,
+                })}
+              </span>
+              <AppTag color='red' className='router-tag'>
+                HTTP {attempt?.status || '-'}
+              </AppTag>
+            </div>
+            <div className='router-route-attempt-grid'>
+              <span>{t('log.detail.route.attempt_fields.channel')}</span>
+              <strong>{renderText(attempt?.channel_name || attempt?.channel_id)}</strong>
+              <span>{t('log.detail.route.attempt_fields.model')}</span>
+              <strong>{renderText(attempt?.model)}</strong>
+              <span>{t('log.detail.route.attempt_fields.endpoint')}</span>
+              <strong>{renderText(attempt?.endpoint)}</strong>
+              <span>{t('log.detail.route.attempt_fields.protocol')}</span>
+              <strong>{renderText(attempt?.protocol)}</strong>
+              <span>{t('log.detail.route.attempt_fields.error_code')}</span>
+              <strong>{renderText(attempt?.error_code)}</strong>
+              <span>{t('log.detail.route.attempt_fields.error')}</span>
+              <strong>{renderText(attempt?.error)}</strong>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const LogDetail = () => {
@@ -153,6 +285,109 @@ const LogDetail = () => {
     () =>
       `${isAdminPage ? '/admin/log' : '/workspace/log'}${location.search || ''}`,
     [isAdminPage, location.search],
+  );
+
+  const fallbackAttempts = useMemo(
+    () => parseFallbackAttempts(log?.fallback_attempts),
+    [log?.fallback_attempts],
+  );
+
+  const routeExplanationItems = useMemo(
+    () => [
+      {
+        key: 'channel',
+        label: t('log.detail.route.fields.channel_target'),
+        value: isAdminPage ? (
+          log?.channel ? (
+            <AppTag
+              className='router-tag'
+              as={Link}
+              to={`/admin/channel/detail/${log.channel}`}
+              state={{ from: currentPagePath }}
+            >
+              {log?.channel_name || log?.channel}
+            </AppTag>
+          ) : (
+            '-'
+          )
+        ) : (
+          renderText(log?.channel_name || log?.channel)
+        ),
+      },
+      {
+        key: 'model',
+        label: t('log.detail.route.fields.request_model'),
+        value: renderText(log?.request_model_name || log?.model_name),
+      },
+      {
+        key: 'actual_model',
+        label: t('log.detail.route.fields.actual_model'),
+        value: renderText(log?.actual_model_name || log?.model_name),
+      },
+      {
+        key: 'upstream_endpoint',
+        label: t('log.detail.route.fields.upstream_endpoint'),
+        value: renderText(log?.upstream_endpoint),
+      },
+      {
+        key: 'upstream_protocol',
+        label: t('log.detail.route.fields.upstream_protocol'),
+        value: renderText(log?.upstream_protocol),
+      },
+      {
+        key: 'stream',
+        label: t('log.detail.route.fields.stream_mode'),
+        value: renderBoolean(log?.is_stream),
+      },
+      {
+        key: 'latency',
+        label: t('log.detail.route.fields.elapsed_time'),
+        value: log?.elapsed_time ? `${log.elapsed_time} ms` : '-',
+      },
+      {
+        key: 'estimate_source',
+        label: t('log.detail.route.fields.estimate_source'),
+        value: renderText(log?.billing_estimate_source),
+      },
+      {
+        key: 'estimate_estimator',
+        label: t('log.detail.route.fields.estimate_estimator'),
+        value: renderText(log?.billing_estimate_estimator),
+      },
+      {
+        key: 'estimate_precision',
+        label: t('log.detail.route.fields.estimate_precision'),
+        value: renderEstimatePrecision(log?.billing_estimate_precision, t),
+      },
+      {
+        key: 'settlement_mode',
+        label: t('log.detail.route.fields.settlement_mode'),
+        value: renderText(log?.billing_settlement_mode),
+      },
+      {
+        key: 'trace_id',
+        label: t('log.detail.route.fields.trace_id'),
+        value: renderText(log?.trace_id),
+      },
+      {
+        key: 'fallback_count',
+        label: t('log.detail.route.fields.fallback_count'),
+        value: Number(log?.fallback_count || 0),
+      },
+      {
+        key: 'relay_error',
+        label: t('log.detail.route.fields.relay_error'),
+        value: renderRelayError(log),
+        span: true,
+      },
+      {
+        key: 'fallback_attempts',
+        label: t('log.detail.route.fields.fallback_attempts'),
+        value: renderFallbackAttemptCards(fallbackAttempts, t),
+        span: true,
+      },
+    ],
+    [currentPagePath, fallbackAttempts, isAdminPage, log, t],
   );
 
   const loadDetail = useCallback(async () => {
@@ -334,8 +569,8 @@ const LogDetail = () => {
                         {t('log.detail.fields.quota')}
                       </div>
                       <div className='router-detail-value'>
-                        {typeof log?.yycAmount === 'number'
-                          ? renderDisplayAmount(log.yycAmount, t, 6)
+                        {typeof log?.chargeAmount === 'number'
+                          ? renderDisplayAmount(log.chargeAmount, t, 6)
                           : '-'}
                       </div>
                     </div>
@@ -352,8 +587,8 @@ const LogDetail = () => {
                         {t('log.detail.fields.user_daily_quota')}
                       </div>
                       <div className='router-detail-value'>
-                        {typeof log?.userDailyYYC === 'number'
-                          ? renderDisplayAmount(log.userDailyYYC, t, 6)
+                        {typeof log?.userDailyChargeAmount === 'number'
+                          ? renderDisplayAmount(log.userDailyChargeAmount, t, 6)
                           : '-'}
                       </div>
                     </div>
@@ -362,8 +597,8 @@ const LogDetail = () => {
                         {t('log.detail.fields.user_emergency_quota')}
                       </div>
                       <div className='router-detail-value'>
-                        {typeof log?.userEmergencyYYC === 'number'
-                          ? renderDisplayAmount(log.userEmergencyYYC, t, 6)
+                        {typeof log?.userEmergencyChargeAmount === 'number'
+                          ? renderDisplayAmount(log.userEmergencyChargeAmount, t, 6)
                           : '-'}
                       </div>
                     </div>
@@ -383,6 +618,31 @@ const LogDetail = () => {
                         {renderBoolean(log?.is_stream)}
                       </pre>
                     </div>
+                  </div>
+            </AppDetailSection>
+
+            <AppDetailSection title={t('log.detail.sections.route')} titleTag='div'>
+                  <div className='router-detail-grid'>
+                    <div className='router-detail-item router-detail-item-span-2'>
+                      <div className='router-route-explain-header'>
+                        <div className='router-detail-label'>
+                          {t('log.detail.route.summary_title')}
+                        </div>
+                        {renderRouteOutcomeTags(log, fallbackAttempts, t)}
+                      </div>
+                      <pre className='router-detail-value'>
+                        {renderRouteExplanationSummary(log, t)}
+                      </pre>
+                    </div>
+                    {routeExplanationItems.map((item) => (
+                      <div
+                        key={item.key}
+                        className={`router-detail-item${item.span ? ' router-detail-item-span-2' : ''}`}
+                      >
+                        <div className='router-detail-label'>{item.label}</div>
+                        <div className='router-detail-value'>{item.value}</div>
+                      </div>
+                    ))}
                   </div>
             </AppDetailSection>
 
@@ -470,11 +730,11 @@ const LogDetail = () => {
                     </div>
                     <div className='router-detail-item'>
                       <div className='router-detail-label'>
-                        {t('log.detail.fields.billing_yyc_rate')}
+                        {t('log.detail.fields.billing_charge_rate')}
                       </div>
                       <pre className='router-detail-value'>
                         {renderRate(
-                          log?.billing_yyc_rate,
+                          log?.billing_charge_rate,
                           log?.billing_currency,
                         )}
                       </pre>
@@ -530,11 +790,11 @@ const LogDetail = () => {
                     </div>
                     <div className='router-detail-item'>
                       <div className='router-detail-label'>
-                        {t('log.detail.fields.billing_yyc_amount')}
+                        {t('log.detail.fields.billing_charge_amount')}
                       </div>
                       <div className='router-detail-value'>
-                        {typeof log?.billingYYCAmount === 'number'
-                          ? renderDisplayAmount(log.billingYYCAmount, t, 6)
+                        {typeof log?.billingChargeAmount === 'number'
+                          ? renderDisplayAmount(log.billingChargeAmount, t, 6)
                           : '-'}
                       </div>
                     </div>
@@ -575,12 +835,12 @@ const LogDetail = () => {
                     </div>
                     <div className='router-detail-item'>
                       <div className='router-detail-label'>
-                        {t('log.detail.fields.billing_image_tool_yyc_amount')}
+                        {t('log.detail.fields.billing_image_tool_charge_amount')}
                       </div>
                       <div className='router-detail-value'>
-                        {log?.billingImageToolYYCAmount > 0
+                        {log?.billingImageToolChargeAmount > 0
                           ? renderDisplayAmount(
-                              log.billingImageToolYYCAmount,
+                              log.billingImageToolChargeAmount,
                               t,
                               6,
                             )

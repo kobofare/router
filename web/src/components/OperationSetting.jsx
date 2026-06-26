@@ -13,7 +13,7 @@ import {
   convertBillingInputValueUnit,
   createBillingUnitState,
   BILLING_OPTION_SETTING_KEYS,
-  billingInputValueToYYC,
+  billingInputValueToChargeAmount,
   resolveDefaultBillingUnit,
   resolveBillingInputStep,
 } from '../helpers/billing';
@@ -60,6 +60,12 @@ const BALANCE_OPTION_KEYS = {
   preConsumedAmount: 'PreConsumedQuota',
 };
 
+const PRICING_POLICY_KEYS = {
+  officialMarkup: 'BillingOfficialMarkup',
+  targetMargin: 'BillingTargetMargin',
+  riskBuffer: 'BillingRiskBuffer',
+};
+
 const OperationSetting = ({ section = '' }) => {
   const { t } = useTranslation();
   const now = new Date();
@@ -77,6 +83,9 @@ const OperationSetting = ({ section = '' }) => {
     ChannelBillingAutoRefreshEnabled: 'true',
     ChannelBillingAutoRefreshIntervalSeconds: 1800,
     ChannelBillingAutoRefreshLastRunAt: 0,
+    [PRICING_POLICY_KEYS.officialMarkup]: 1,
+    [PRICING_POLICY_KEYS.targetMargin]: 0,
+    [PRICING_POLICY_KEYS.riskBuffer]: 0,
   });
   const [originInputs, setOriginInputs] = useState({});
   const [groupOptions, setGroupOptions] = useState([]);
@@ -241,9 +250,9 @@ const OperationSetting = ({ section = '' }) => {
         .map((item) => ({
           ...item,
           minor_unit: Number(item?.minor_unit ?? 6),
-          yyc_per_unit:
-            item?.yyc_per_unit === 0 || item?.yyc_per_unit
-              ? `${item.yyc_per_unit}`
+          charge_rate:
+            item?.charge_rate === 0 || item?.charge_rate
+              ? `${item.charge_rate}`
               : '',
           status: Number(item?.status || 1),
           _isNew: false,
@@ -344,25 +353,25 @@ const OperationSetting = ({ section = '' }) => {
             showError(t('setting.operation.quota.messages.plan_invalid'));
             break;
           }
-          const preConsumedYYC = billingInputValueToYYC(
+          const preConsumedChargeAmount = billingInputValueToChargeAmount(
             inputs[BALANCE_OPTION_KEYS.preConsumedAmount],
             billingUnits[BALANCE_OPTION_KEYS.preConsumedAmount],
             billingCurrencyIndex
           );
           if (
-            !Number.isFinite(preConsumedYYC) ||
-            preConsumedYYC < 0
+            !Number.isFinite(preConsumedChargeAmount) ||
+            preConsumedChargeAmount < 0
           ) {
             showError(t('setting.operation.quota.messages.amount_invalid'));
             break;
           }
           if (
             normalizeOptionValue(originInputs[BALANCE_OPTION_KEYS.preConsumedAmount], '0') !==
-            `${Math.trunc(preConsumedYYC)}`
+            `${Math.trunc(preConsumedChargeAmount)}`
           ) {
             await updateOption(
               BALANCE_OPTION_KEYS.preConsumedAmount,
-              `${Math.trunc(preConsumedYYC)}`
+              `${Math.trunc(preConsumedChargeAmount)}`
             );
           }
           if (
@@ -436,6 +445,32 @@ const OperationSetting = ({ section = '' }) => {
               'ChannelBillingAutoRefreshIntervalSeconds',
               `${billingRefreshInterval}`
             );
+          }
+          const officialMarkup = Number(inputs[PRICING_POLICY_KEYS.officialMarkup] ?? 1);
+          const targetMargin = Number(inputs[PRICING_POLICY_KEYS.targetMargin] ?? 0);
+          const riskBuffer = Number(inputs[PRICING_POLICY_KEYS.riskBuffer] ?? 0);
+          if (!Number.isFinite(officialMarkup) || officialMarkup <= 0) {
+            showError(t('setting.operation.general.pricing_policy.official_markup_invalid'));
+            break;
+          }
+          if (!Number.isFinite(targetMargin) || targetMargin < 0 || targetMargin >= 0.95) {
+            showError(t('setting.operation.general.pricing_policy.target_margin_invalid'));
+            break;
+          }
+          if (!Number.isFinite(riskBuffer) || riskBuffer < 0) {
+            showError(t('setting.operation.general.pricing_policy.risk_buffer_invalid'));
+            break;
+          }
+          const pricingOptions = [
+            [PRICING_POLICY_KEYS.officialMarkup, officialMarkup],
+            [PRICING_POLICY_KEYS.targetMargin, targetMargin],
+            [PRICING_POLICY_KEYS.riskBuffer, riskBuffer],
+          ];
+          for (const [key, nextValue] of pricingOptions) {
+            const normalizedNextValue = `${nextValue}`;
+            if (normalizeOptionValue(originInputs[key], '') !== normalizedNextValue) {
+              await updateOption(key, normalizedNextValue);
+            }
           }
         }
         break;
@@ -873,6 +908,66 @@ const OperationSetting = ({ section = '' }) => {
                         : '-'
                     }
                     readOnly
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFilterHeader
+                title={t('setting.operation.general.pricing_policy.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppAlert
+                className='router-section-message'
+                type='info'
+                showIcon
+                title={t('setting.operation.general.pricing_policy.description_title')}
+                description={t('setting.operation.general.pricing_policy.description')}
+              />
+              <AppFormRow>
+                <AppField
+                  label={t('setting.operation.general.pricing_policy.official_markup')}
+                  hint={t('setting.operation.general.pricing_policy.official_markup_hint')}
+                >
+                  <AppInputNumber
+                    className='router-section-input'
+                    name={PRICING_POLICY_KEYS.officialMarkup}
+                    value={inputs[PRICING_POLICY_KEYS.officialMarkup] ?? 1}
+                    min={0.000001}
+                    precision={6}
+                    step={0.01}
+                    fluid
+                    onChange={handleInputChange}
+                  />
+                </AppField>
+                <AppField
+                  label={t('setting.operation.general.pricing_policy.target_margin')}
+                  hint={t('setting.operation.general.pricing_policy.target_margin_hint')}
+                >
+                  <AppInputNumber
+                    className='router-section-input'
+                    name={PRICING_POLICY_KEYS.targetMargin}
+                    value={inputs[PRICING_POLICY_KEYS.targetMargin] ?? 0}
+                    min={0}
+                    max={0.95}
+                    precision={6}
+                    step={0.01}
+                    fluid
+                    onChange={handleInputChange}
+                  />
+                </AppField>
+                <AppField
+                  label={t('setting.operation.general.pricing_policy.risk_buffer')}
+                  hint={t('setting.operation.general.pricing_policy.risk_buffer_hint')}
+                >
+                  <AppInputNumber
+                    className='router-section-input'
+                    name={PRICING_POLICY_KEYS.riskBuffer}
+                    value={inputs[PRICING_POLICY_KEYS.riskBuffer] ?? 0}
+                    min={0}
+                    precision={6}
+                    step={0.01}
+                    fluid
+                    onChange={handleInputChange}
                   />
                 </AppField>
               </AppFormRow>

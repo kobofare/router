@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import UnitDropdown from './UnitDropdown';
 import {
   API,
+  copy,
   showError,
   showSuccess,
   timestamp2string,
@@ -17,13 +18,14 @@ import {
 import {
   buildDisplayUnitOptions,
   buildPublicDisplayCurrencyIndex,
-  formatDisplayAmountFromYYC,
+  formatDisplayAmountFromChargeAmount,
   loadPublicDisplayCurrencyCatalog,
   resolvePreferredDisplayCurrency,
 } from '../helpers/billing';
 import {
   AppButton,
   AppFilterHeader,
+  AppIcon,
   AppInput,
   AppPagination,
   AppPopconfirm,
@@ -46,10 +48,11 @@ const normalizeTokenRow = (raw) => {
   }
   return {
     ...raw,
-    yycUsed: Number(raw?.yyc_used ?? raw?.used_quota ?? 0) || 0,
-    yycRemaining: Number(raw?.yyc_remain ?? raw?.remain_quota ?? 0) || 0,
-    hasUnlimitedYYCLimit: raw?.unlimited_quota === true,
+    usedAmount: Number(raw?.used_amount ?? raw?.used_quota ?? 0) || 0,
+    remainingAmount: Number(raw?.remaining_amount ?? raw?.remain_quota ?? 0) || 0,
+    hasUnlimitedLimitAmount: raw?.unlimited_quota === true,
     createdTime: Number(raw?.created_time ?? 0) || 0,
+    updatedTime: Number(raw?.updated_time ?? 0) || 0,
     expiredTime: Number(raw?.expired_time ?? 0) || 0,
   };
 };
@@ -71,6 +74,33 @@ function tokenStatusTooltip(status, t) {
     default:
       return t('token.table.status_unknown');
   }
+}
+
+function renderTokenPreview(key) {
+  const raw = typeof key === 'string' ? key.trim() : '';
+  if (raw === '') {
+    return '-';
+  }
+  const hasPrefix = raw.toLowerCase().startsWith('sk-');
+  const body = hasPrefix ? raw.slice(3) : raw;
+  if (body.includes('****')) {
+    return `sk-${body}`;
+  }
+  if (body.length <= 4) {
+    return 'sk-****';
+  }
+  if (body.length <= 8) {
+    return `sk-${body.slice(0, 2)}****${body.slice(-2)}`;
+  }
+  return `sk-${body.slice(0, 4)}****${body.slice(-4)}`;
+}
+
+function normalizeTokenCopyValue(key) {
+  const raw = typeof key === 'string' ? key.trim() : '';
+  if (raw === '' || raw.includes('****')) {
+    return '';
+  }
+  return raw.toLowerCase().startsWith('sk-') ? raw : `sk-${raw}`;
 }
 
 const TokensTable = () => {
@@ -391,6 +421,48 @@ const TokensTable = () => {
             render: (value) => value || t('token.table.no_name'),
           },
           {
+            title: t('token.table.token'),
+            dataIndex: 'key',
+            key: 'key',
+            width: TOKEN_LIST_COLUMN_WIDTHS.token,
+            ellipsis: true,
+            render: (value) => {
+              const preview = renderTokenPreview(value);
+              const copyValue = normalizeTokenCopyValue(value);
+              return (
+                <span
+                  className='router-action-group'
+                  onClick={(event) => stopRowClick(event)}
+                >
+                  <span
+                    className='router-token-key-link'
+                    title={preview}
+                  >
+                    {preview}
+                  </span>
+                  <button
+                    type='button'
+                    className='router-icon-button'
+                    title={t('token.buttons.copy')}
+                    onClick={async () => {
+                      if (copyValue === '') {
+                        showError(t('token.messages.copy_failed'));
+                        return;
+                      }
+                      if (await copy(copyValue)) {
+                        showSuccess(t('token.messages.copy_success'));
+                        return;
+                      }
+                      showError(t('token.messages.copy_failed'));
+                    }}
+                  >
+                    <AppIcon name='copy outline' />
+                  </button>
+                </span>
+              );
+            },
+          },
+          {
             title: t('token.table.status'),
             dataIndex: 'status',
             key: 'status',
@@ -422,15 +494,15 @@ const TokensTable = () => {
                 />
               </div>
             ),
-            dataIndex: 'yycUsed',
+            dataIndex: 'usedAmount',
             key: 'usedAmount',
             width: TOKEN_LIST_COLUMN_WIDTHS.usedAmount,
-            sorter: (a, b) => compareNumberValue(a.yycUsed, b.yycUsed),
+            sorter: (a, b) => compareNumberValue(a.usedAmount, b.usedAmount),
             sortDirections: ['ascend', 'descend'],
             sortOrder:
               tableSorter.columnKey === 'usedAmount' ? tableSorter.order : null,
             render: (value) =>
-              formatDisplayAmountFromYYC(value, displayUnit, currencyIndex),
+              formatDisplayAmountFromChargeAmount(value, displayUnit, currencyIndex),
           },
           {
             title: (
@@ -450,19 +522,19 @@ const TokensTable = () => {
                 />
               </div>
             ),
-            dataIndex: 'yycRemaining',
+            dataIndex: 'remainingAmount',
             key: 'remainingAmount',
             width: TOKEN_LIST_COLUMN_WIDTHS.remainingAmount,
-            sorter: (a, b) => compareNumberValue(a.yycRemaining, b.yycRemaining),
+            sorter: (a, b) => compareNumberValue(a.remainingAmount, b.remainingAmount),
             sortDirections: ['ascend', 'descend'],
             sortOrder:
               tableSorter.columnKey === 'remainingAmount'
                 ? tableSorter.order
                 : null,
             render: (value, token) =>
-              token.hasUnlimitedYYCLimit
+              token.hasUnlimitedLimitAmount
                 ? t('token.table.unlimited')
-                : formatDisplayAmountFromYYC(value, displayUnit, currencyIndex),
+                : formatDisplayAmountFromChargeAmount(value, displayUnit, currencyIndex),
           },
           {
             title: t('token.table.created_time'),
@@ -474,6 +546,18 @@ const TokensTable = () => {
             sortDirections: ['ascend', 'descend'],
             sortOrder:
               tableSorter.columnKey === 'createdTime' ? tableSorter.order : null,
+            render: (value) => renderTimestamp(value),
+          },
+          {
+            title: t('token.table.updated_time'),
+            dataIndex: 'updatedTime',
+            key: 'updatedTime',
+            className: 'router-table-col-datetime',
+            width: TOKEN_LIST_COLUMN_WIDTHS.updatedTime,
+            sorter: (a, b) => compareNumberValue(a.updatedTime, b.updatedTime),
+            sortDirections: ['ascend', 'descend'],
+            sortOrder:
+              tableSorter.columnKey === 'updatedTime' ? tableSorter.order : null,
             render: (value) => renderTimestamp(value),
           },
           {
