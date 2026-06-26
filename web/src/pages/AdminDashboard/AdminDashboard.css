@@ -260,6 +260,70 @@
   background: #fff;
 }
 
+.admin-dashboard-user-segments {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-dashboard-user-segments-header {
+  margin-bottom: 10px;
+}
+
+.admin-dashboard-user-segment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-dashboard-user-segment-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.admin-dashboard-user-segment-main {
+  min-width: 0;
+}
+
+.admin-dashboard-user-segment-label {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.admin-dashboard-user-segment-count {
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-dashboard-user-segment-hint,
+.admin-dashboard-user-segment-limit {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-dashboard-user-segment-limit {
+  color: #b45309;
+}
+
+.admin-dashboard-user-segment-action {
+  align-self: flex-start;
+}
+
 .admin-dashboard-user-growth-panel-header {
   display: flex;
   align-items: flex-start;
@@ -1043,6 +1107,7 @@
 
   .admin-dashboard-spending-overview-grid,
   .admin-dashboard-user-growth-grid,
+  .admin-dashboard-user-segment-grid,
   .admin-dashboard-model-overview-grid {
     grid-template-columns: 1fr;
   }

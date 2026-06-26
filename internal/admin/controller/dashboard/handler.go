@@ -132,14 +132,15 @@ type channelHealthPoint struct {
 }
 
 type usageRankingItem struct {
-	UserID       string  `json:"user_id"`
-	Username     string  `json:"username"`
-	RequestCount int64   `json:"request_count"`
-	TotalTokens  int64   `json:"total_tokens"`
-	SpendQuota   int64   `json:"spend_quota"`
-	SpendAmount  int64   `json:"spend_amount"`
-	ShareRate    float64 `json:"share_rate"`
-	LastUsedAt   int64   `json:"last_used_at"`
+	UserID        string  `json:"user_id"`
+	Username      string  `json:"username"`
+	RequestCount  int64   `json:"request_count"`
+	TotalTokens   int64   `json:"total_tokens"`
+	SpendQuota    int64   `json:"spend_quota"`
+	SpendAmount   int64   `json:"spend_amount"`
+	BalanceAmount int64   `json:"balance_amount"`
+	ShareRate     float64 `json:"share_rate"`
+	LastUsedAt    int64   `json:"last_used_at"`
 }
 
 type usageRankSummary struct {
@@ -1231,13 +1232,14 @@ func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota 
 	}
 
 	type dashboardUserRow struct {
-		UserID    string `gorm:"column:user_id"`
-		Username  string `gorm:"column:username"`
-		CreatedAt int64  `gorm:"column:created_at"`
+		UserID        string `gorm:"column:user_id"`
+		Username      string `gorm:"column:username"`
+		BalanceAmount int64  `gorm:"column:balance_amount"`
+		CreatedAt     int64  `gorm:"column:created_at"`
 	}
 	userRows := make([]dashboardUserRow, 0)
 	userQuery := model.DB.Table("users AS u").
-		Select("u.id AS user_id, COALESCE(NULLIF(TRIM(u.display_name), ''), NULLIF(TRIM(u.username), ''), u.id) AS username, COALESCE(u.created_at, 0) AS created_at").
+		Select("u.id AS user_id, COALESCE(NULLIF(TRIM(u.display_name), ''), NULLIF(TRIM(u.username), ''), u.id) AS username, COALESCE(u.quota, 0) AS balance_amount, COALESCE(u.created_at, 0) AS created_at").
 		Where("u.status != ?", model.UserStatusDeleted)
 	if keyword != "" {
 		like := "%" + keyword + "%"
@@ -1267,13 +1269,14 @@ func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota 
 		totalTokens := row.PromptTokens + row.CompletionTs
 		candidates = append(candidates, usageRankingCandidate{
 			usageRankingItem: usageRankingItem{
-				UserID:       strings.TrimSpace(row.UserID),
-				Username:     strings.TrimSpace(row.Username),
-				RequestCount: row.RequestCount,
-				TotalTokens:  totalTokens,
-				SpendQuota:   row.SpendQuota,
-				SpendAmount:  row.SpendQuota,
-				LastUsedAt:   row.LastUsedAt,
+				UserID:        strings.TrimSpace(row.UserID),
+				Username:      strings.TrimSpace(row.Username),
+				RequestCount:  row.RequestCount,
+				TotalTokens:   totalTokens,
+				SpendQuota:    row.SpendQuota,
+				SpendAmount:   row.SpendQuota,
+				BalanceAmount: userRow.BalanceAmount,
+				LastUsedAt:    row.LastUsedAt,
 			},
 			CreatedAt: userRow.CreatedAt,
 		})

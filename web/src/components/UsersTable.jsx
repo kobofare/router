@@ -105,6 +105,7 @@ const UsersTable = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searching, setSearching] = useState(false);
   const [focusLabel, setFocusLabel] = useState('');
+  const [focusTotal, setFocusTotal] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [tableSorter, setTableSorter] = useState({
     columnKey: 'created_at',
@@ -147,7 +148,7 @@ const UsersTable = () => {
     [],
   );
 
-  const loadUsersByIDs = useCallback(async (userIDs, label = '') => {
+  const loadUsersByIDs = useCallback(async (userIDs, label = '', totalHint = 0) => {
     const normalizedIDs = [...new Set(
       (Array.isArray(userIDs) ? userIDs : [])
         .map((item) => (item || '').toString().trim())
@@ -155,6 +156,7 @@ const UsersTable = () => {
     )];
     if (normalizedIDs.length === 0) {
       setFocusLabel('');
+      setFocusTotal(0);
       setIsSearchMode(false);
       setTotalCount(0);
       setUsers([]);
@@ -175,6 +177,7 @@ const UsersTable = () => {
     );
     const matchedUsers = responses.filter(Boolean);
     setFocusLabel(label);
+    setFocusTotal(Number(totalHint) > 0 ? Number(totalHint) : matchedUsers.length);
     setIsFocusMode(true);
     setSearchKeyword('');
     setIsSearchMode(true);
@@ -192,11 +195,13 @@ const UsersTable = () => {
       .map((item) => item.trim())
       .filter(Boolean);
     const focusName = (params.get('focus_name') || '').trim();
+    const focusTotalHint = Number(params.get('focus_total') || 0);
     if (focusIDs.length > 0) {
-      await loadUsersByIDs(focusIDs, focusName);
+      await loadUsersByIDs(focusIDs, focusName, focusTotalHint);
       return;
     }
     setIsFocusMode(false);
+    setFocusTotal(0);
     await loadUsers(activePage);
   };
 
@@ -220,15 +225,17 @@ const UsersTable = () => {
       .map((item) => item.trim())
       .filter(Boolean);
     const focusName = (params.get('focus_name') || '').trim();
+    const focusTotalHint = Number(params.get('focus_total') || 0);
     setLoading(true);
     if (focusIDs.length > 0) {
-      loadUsersByIDs(focusIDs, focusName).catch((reason) => {
+      loadUsersByIDs(focusIDs, focusName, focusTotalHint).catch((reason) => {
         showError(reason?.message || reason);
         setLoading(false);
       });
       return;
     }
     setFocusLabel('');
+    setFocusTotal(0);
     setIsFocusMode(false);
     loadUsers(1)
       .then()
@@ -316,6 +323,7 @@ const UsersTable = () => {
 
   const searchUsers = async () => {
     setFocusLabel('');
+    setFocusTotal(0);
     setIsFocusMode(false);
     if (searchKeyword === '') {
       // if keyword is blank, load files instead.
@@ -341,9 +349,18 @@ const UsersTable = () => {
 
   const handleKeywordChange = async (e, { value }) => {
     setFocusLabel('');
+    setFocusTotal(0);
     setIsFocusMode(false);
     setSearchKeyword(value.trim());
   };
+
+  const clearFocusMode = useCallback(() => {
+    setFocusLabel('');
+    setFocusTotal(0);
+    setIsFocusMode(false);
+    setSearchKeyword('');
+    navigate('/admin/user');
+  }, [navigate]);
 
   useEffect(() => {
     if (!initializedSearchRef.current) {
@@ -368,6 +385,9 @@ const UsersTable = () => {
   };
 
   const visibleUserCount = users.filter((user) => !user?.deleted).length;
+  const focusMatchedCount = isFocusMode
+    ? Math.max(Number(focusTotal || 0), visibleUserCount)
+    : 0;
   const totalPages = Math.max(
     Math.ceil((isSearchMode ? visibleUserCount : totalCount) / ITEMS_PER_PAGE),
     1,
@@ -507,6 +527,29 @@ const UsersTable = () => {
           </div>
         }
       />
+
+      {isFocusMode ? (
+        <div className='router-user-focus-summary'>
+          <div className='router-user-focus-summary-main'>
+            <div className='router-user-focus-summary-title'>
+              {focusLabel || t('user.focus.title')}
+            </div>
+            <div className='router-user-focus-summary-text'>
+              {t('user.focus.summary', {
+                count: visibleUserCount,
+                total: focusMatchedCount,
+              })}
+            </div>
+          </div>
+          <AppButton
+            className='router-inline-button'
+            type='button'
+            onClick={clearFocusMode}
+          >
+            {t('user.focus.clear')}
+          </AppButton>
+        </div>
+      ) : null}
 
       <div className='router-table-scroll-x'>
         <AppTable

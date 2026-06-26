@@ -56,6 +56,7 @@ const TREND_METRIC_OPTIONS = [
 
 const USER_GROWTH_GRANULARITY_OPTIONS = ['week', 'month'];
 const USER_GROWTH_LINE_KEYS = ['new_user_count', 'active_user_count', 'topup_user_count'];
+const USER_SEGMENT_FOCUS_LIMIT = 100;
 
 const DASHBOARD_SECTIONS = ['spending', 'channels', 'users', 'models'];
 const DASHBOARD_SECTION_TITLES = {
@@ -279,6 +280,7 @@ const normalizeAdminDashboardPayload = (payload) => {
       request_count: Number(item?.request_count || 0),
       total_tokens: Number(item?.total_tokens || 0),
       spend_amount: Number(item?.spend_amount ?? item?.spend_quota ?? 0),
+      balance_amount: Number(item?.balance_amount || 0),
       share_rate: Number(item?.share_rate || 0),
       last_used_at: Number(item?.last_used_at || 0),
     })),
@@ -1102,6 +1104,95 @@ const AdminDashboard = () => {
     setUsageKeyword('');
   }, []);
 
+  const openUserSegment = useCallback(
+    (segment) => {
+      const rows = Array.isArray(segment?.rows) ? segment.rows : [];
+      const ids = [
+        ...new Set(
+          rows
+            .map((item) => (item?.user_id || '').toString().trim())
+            .filter(Boolean),
+        ),
+      ].slice(0, USER_SEGMENT_FOCUS_LIMIT);
+      if (ids.length === 0) {
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('focus_ids', ids.join(','));
+      params.set('focus_name', segment.label);
+      params.set('focus_total', String(rows.length));
+      navigate(`/admin/user?${params.toString()}`);
+    },
+    [navigate],
+  );
+
+  const userSegments = useMemo(() => {
+    const rows = Array.isArray(dashboard.usage_rank)
+      ? dashboard.usage_rank.filter((item) => (item?.user_id || '').toString().trim() !== '')
+      : [];
+    const activeRows = rows.filter((item) => Number(item.request_count || 0) > 0);
+    const requestTotal = activeRows.reduce(
+      (sum, item) => sum + Number(item.request_count || 0),
+      0,
+    );
+    const tokenTotal = activeRows.reduce(
+      (sum, item) => sum + Number(item.total_tokens || 0),
+      0,
+    );
+    const averageRequests = activeRows.length > 0 ? requestTotal / activeRows.length : 0;
+    const averageTokens = activeRows.length > 0 ? tokenTotal / activeRows.length : 0;
+    const bySpendDesc = (left, right) =>
+      Number(right.spend_amount || 0) - Number(left.spend_amount || 0) ||
+      Number(right.request_count || 0) - Number(left.request_count || 0);
+    const highSpendRows = rows
+      .filter((item) => Number(item.spend_amount || 0) > 0 && Number(item.share_rate || 0) >= 0.1)
+      .sort(bySpendDesc);
+    const activeUserRows = activeRows
+      .filter((item) => Number(item.request_count || 0) > averageRequests)
+      .sort((left, right) => Number(right.request_count || 0) - Number(left.request_count || 0));
+    const longTailRows = rows
+      .filter(
+        (item) =>
+          Number(item.spend_amount || 0) > 0 &&
+          Number(item.share_rate || 0) < 0.03 &&
+          Number(item.total_tokens || 0) <= averageTokens,
+      )
+      .sort((left, right) => Number(left.spend_amount || 0) - Number(right.spend_amount || 0));
+    const balanceRiskRows = activeRows
+      .filter((item) => {
+        const spend = Number(item.spend_amount || 0);
+        const balance = Number(item.balance_amount || 0);
+        return spend > 0 && balance <= spend;
+      })
+      .sort((left, right) => Number(left.balance_amount || 0) - Number(right.balance_amount || 0));
+    return [
+      {
+        key: 'high_spend',
+        label: t('dashboard.admin.users.insights.high_spend'),
+        hint: t('dashboard.admin.users.insights.high_spend_hint'),
+        rows: highSpendRows,
+      },
+      {
+        key: 'active',
+        label: t('dashboard.admin.users.insights.active'),
+        hint: t('dashboard.admin.users.insights.active_hint'),
+        rows: activeUserRows,
+      },
+      {
+        key: 'long_tail',
+        label: t('dashboard.admin.users.insights.long_tail'),
+        hint: t('dashboard.admin.users.insights.long_tail_hint'),
+        rows: longTailRows,
+      },
+      {
+        key: 'balance_risk',
+        label: t('dashboard.admin.users.insights.balance_risk'),
+        hint: t('dashboard.admin.users.insights.balance_risk_hint'),
+        rows: balanceRiskRows,
+      },
+    ];
+  }, [dashboard.usage_rank, t]);
+
   const renderSpendingSection = () => (
     <AppSection className='admin-dashboard-section'>
       <div className='admin-dashboard-subsection-header'>
@@ -1613,6 +1704,55 @@ const AdminDashboard = () => {
             </ResponsiveContainer>
           </div>
         )}
+      </div>
+      <div className='admin-dashboard-user-segments'>
+        <div className='admin-dashboard-user-segments-header'>
+          <div>
+            <div className='admin-dashboard-card-title'>
+              {t('dashboard.admin.users.insights.title')}
+            </div>
+            <div className='admin-dashboard-subsection-description'>
+              {t('dashboard.admin.users.insights.footnote')}
+            </div>
+          </div>
+        </div>
+        <div className='admin-dashboard-user-segment-grid'>
+          {userSegments.map((segment) => {
+            const count = Array.isArray(segment.rows) ? segment.rows.length : 0;
+            const isLimited = count > USER_SEGMENT_FOCUS_LIMIT;
+            return (
+              <div key={segment.key} className='admin-dashboard-user-segment-card'>
+                <div className='admin-dashboard-user-segment-main'>
+                  <div className='admin-dashboard-user-segment-label'>
+                    {segment.label}
+                  </div>
+                  <div className='admin-dashboard-user-segment-count'>
+                    {formatCount(count)}
+                  </div>
+                  <div className='admin-dashboard-user-segment-hint'>
+                    {segment.hint}
+                  </div>
+                  {isLimited ? (
+                    <div className='admin-dashboard-user-segment-limit'>
+                      {t('dashboard.admin.users.insights.focus_limit', {
+                        count: USER_SEGMENT_FOCUS_LIMIT,
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+                <AppButton
+                  className='router-inline-button admin-dashboard-user-segment-action'
+                  type='button'
+                  icon={<AppIcon name='users' />}
+                  disabled={count === 0}
+                  onClick={() => openUserSegment(segment)}
+                >
+                  {t('dashboard.admin.users.insights.view_users')}
+                </AppButton>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className='admin-dashboard-usage-rank'>
         <div className='admin-dashboard-subsection-header admin-dashboard-usage-rank-header'>
