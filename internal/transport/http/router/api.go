@@ -225,6 +225,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminUserRoute.GET("/tasks/:id", task.GetUserTask)
 			adminUserRoute.GET("/", user.GetAllUsers)
 			adminUserRoute.GET("/search", user.SearchUsers)
+			adminUserRoute.POST("/batch/topup/grant", user.BatchGrantUserTopUpPlan)
 			adminUserRoute.GET("/:id", user.GetUser)
 			adminUserRoute.GET("/:id/package/subscription", user.GetUserActivePackageSubscription)
 			adminUserRoute.GET("/:id/redemptions", user.GetUserRecentRedemptions)

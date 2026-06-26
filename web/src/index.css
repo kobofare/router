@@ -3247,6 +3247,47 @@ body,
     line-height: 1.45;
 }
 
+.router-batch-action-result {
+    display: grid;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.router-batch-action-result-summary {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.router-batch-action-failed-list {
+    display: grid;
+    gap: 6px;
+}
+
+.router-batch-action-failed-title {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.router-batch-action-failed-item {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.4fr) minmax(0, 1fr);
+    gap: 8px;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-batch-action-failed-item > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .router-ui-form-row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

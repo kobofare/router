@@ -2029,6 +2029,15 @@
       "summary": "This list shows {{count}} users from {{total}} matched users. You can export the current result directly.",
       "clear": "Clear Filter"
     },
+    "batch": {
+      "grant_topup": "Batch Grant Balance",
+      "confirm_grant": "Confirm Grant",
+      "topup_select_required": "Please select at least one user",
+      "topup_confirm_hint": "The selected top-up plan will be granted to {{count}} selected users. This creates top-up orders and balance ledger entries.",
+      "topup_done": "Batch grant finished: {{success}} succeeded, {{failed}} failed.",
+      "topup_result_summary": "{{total}} users total, {{success}} succeeded, {{failed}} failed.",
+      "failed_users": "Failed Users"
+    },
     "search": "Search users or wallet ID...",
     "table": {
       "id": "ID",

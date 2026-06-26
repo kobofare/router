@@ -2029,6 +2029,15 @@
       "summary": "当前列表展示 {{count}} 个用户，来源命中 {{total}} 个用户，可直接导出当前结果。",
       "clear": "清空筛选"
     },
+    "batch": {
+      "grant_topup": "批量赠送额度",
+      "confirm_grant": "确认赠送",
+      "topup_select_required": "请先选择至少一个用户",
+      "topup_confirm_hint": "将向已选 {{count}} 个用户赠送所选充值额度，执行后会生成充值订单和余额流水。",
+      "topup_done": "批量赠送完成：成功 {{success}}，失败 {{failed}}。",
+      "topup_result_summary": "共 {{total}} 个用户，成功 {{success}}，失败 {{failed}}。",
+      "failed_users": "失败用户"
+    },
     "search": "搜索用户或钱包ID...",
     "table": {
       "id": "ID",

@@ -6,6 +6,7 @@ import {
   downloadTextAsFile,
   isRoot,
   showError,
+  showInfo,
   showSuccess,
   timestamp2string,
 } from '../helpers';
@@ -30,10 +31,14 @@ import {
 } from '../helpers/billing';
 import {
   AppButton,
+  AppField,
   AppFilterHeader,
+  AppFormActions,
   AppIcon,
   AppInput,
+  AppModal,
   AppPagination,
+  AppSelect,
   AppTable,
   AppTableActionButton,
   AppTag,
@@ -86,6 +91,41 @@ const formatUserBalanceValue = (value) => {
   return numericValue.toFixed(2);
 };
 
+const formatPlanNumber = (value) => {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric)) {
+    return '0';
+  }
+  if (Math.abs(numeric - Math.round(numeric)) < 0.000001) {
+    return `${Math.round(numeric)}`;
+  }
+  return numeric.toFixed(6).replace(/\.?0+$/, '');
+};
+
+const toTopupPlanOptions = (rows, t) =>
+  (Array.isArray(rows) ? rows : [])
+    .filter((item) => Boolean(item?.enabled))
+    .map((item) => {
+      const id = (item?.id || '').toString().trim();
+      const amount = formatPlanNumber(item?.amount || 0);
+      const amountCurrency = (item?.amount_currency || '').toString().trim().toUpperCase();
+      const quotaAmount = formatPlanNumber(item?.quota_amount || 0);
+      const quotaCurrency = (item?.quota_currency || '').toString().trim().toUpperCase();
+      const validityDays = Number(item?.validity_days || 0);
+      const labelParts = [`${amount} ${amountCurrency}`, `${quotaAmount} ${quotaCurrency}`];
+      if (validityDays > 0) {
+        labelParts.push(`${validityDays}${t('common.day')}`);
+      } else {
+        labelParts.push(t('common.never'));
+      }
+      return {
+        key: id,
+        value: id,
+        text: labelParts.join(' / '),
+      };
+    })
+    .filter((option) => option.value);
+
 const compareTextValue = (left, right) =>
   String(left || '').localeCompare(String(right || ''));
 
@@ -118,6 +158,15 @@ const UsersTable = () => {
   const [balanceUnit, setBalanceUnit] = useState(() =>
     resolvePreferredDisplayCurrency(buildPublicDisplayCurrencyIndex([]), 'USD'),
   );
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [topupPlanOptions, setTopupPlanOptions] = useState([]);
+  const [topupPlanOptionsLoading, setTopupPlanOptionsLoading] = useState(false);
+  const [batchTopupOpen, setBatchTopupOpen] = useState(false);
+  const [batchTopupForm, setBatchTopupForm] = useState({
+    plan_id: '',
+  });
+  const [batchTopupSubmitting, setBatchTopupSubmitting] = useState(false);
+  const [batchTopupResult, setBatchTopupResult] = useState(null);
 
   const loadUsers = useCallback(
     async (page) => {
@@ -205,6 +254,33 @@ const UsersTable = () => {
     await loadUsers(activePage);
   };
 
+  const loadTopupPlanOptions = useCallback(async () => {
+    if (topupPlanOptions.length > 0) {
+      return;
+    }
+    setTopupPlanOptionsLoading(true);
+    try {
+      const res = await API.get('/api/v1/admin/topup/plans');
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('topup.manage.load_failed'));
+        return;
+      }
+      setTopupPlanOptions(toTopupPlanOptions(data, t));
+    } catch (error) {
+      showError(error?.message || error);
+    } finally {
+      setTopupPlanOptionsLoading(false);
+    }
+  }, [topupPlanOptions.length, t]);
+
+  useEffect(() => {
+    if (!batchTopupOpen) {
+      return;
+    }
+    loadTopupPlanOptions().then();
+  }, [batchTopupOpen, loadTopupPlanOptions]);
+
   const onPaginationChange = (e, { activePage }) => {
     (async () => {
       const nextPage = Number(activePage) > 0 ? Number(activePage) : 1;
@@ -278,6 +354,7 @@ const UsersTable = () => {
       if (action === 'delete') {
         newUsers[realIdx].deleted = true;
         setTotalCount((prev) => Math.max(prev - 1, 0));
+        setSelectedRowKeys((prev) => prev.filter((key) => key !== user.id));
       } else {
         newUsers[realIdx].status = user.status;
         newUsers[realIdx].role = user.role;
@@ -320,6 +397,77 @@ const UsersTable = () => {
     }
     showError(t('user.messages.wallet_copy_failed'));
   };
+
+  const openBatchTopupModal = useCallback(() => {
+    if (selectedRowKeys.length === 0) {
+      showInfo(t('user.batch.topup_select_required'));
+      return;
+    }
+    setBatchTopupResult(null);
+    setBatchTopupOpen(true);
+  }, [selectedRowKeys.length, t]);
+
+  const closeBatchTopupModal = useCallback(() => {
+    if (batchTopupSubmitting) {
+      return;
+    }
+    setBatchTopupOpen(false);
+    setBatchTopupResult(null);
+  }, [batchTopupSubmitting]);
+
+  const submitBatchTopup = useCallback(async () => {
+    const userIDs = selectedRowKeys
+      .map((item) => (item || '').toString().trim())
+      .filter(Boolean);
+    if (userIDs.length === 0) {
+      showInfo(t('user.batch.topup_select_required'));
+      return;
+    }
+    const normalizedPlanID = (batchTopupForm.plan_id || '').toString().trim();
+    if (normalizedPlanID === '') {
+      showInfo(t('user.detail.assign.topup_plan_required'));
+      return;
+    }
+    setBatchTopupSubmitting(true);
+    try {
+      const res = await API.post('/api/v1/admin/user/batch/topup/grant', {
+        user_ids: userIDs,
+        plan_id: normalizedPlanID,
+      });
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('user.messages.operation_failed'));
+        return;
+      }
+      const result = {
+        total: Number(data?.total || userIDs.length),
+        succeeded: Number(data?.succeeded || 0),
+        failed: Number(data?.failed || 0),
+        items: Array.isArray(data?.items) ? data.items : [],
+      };
+      setBatchTopupResult(result);
+      showSuccess(
+        t('user.batch.topup_done', {
+          success: result.succeeded,
+          failed: result.failed,
+        }),
+      );
+      const failedIDs = result.items
+        .filter((item) => !item?.success)
+        .map((item) => (item?.user_id || '').toString().trim())
+        .filter(Boolean);
+      setSelectedRowKeys(failedIDs);
+      if (result.failed === 0) {
+        setBatchTopupForm({ plan_id: '' });
+        setBatchTopupOpen(false);
+      }
+      await refresh();
+    } catch (error) {
+      showError(error?.message || error);
+    } finally {
+      setBatchTopupSubmitting(false);
+    }
+  }, [batchTopupForm.plan_id, refresh, selectedRowKeys, t]);
 
   const searchUsers = async () => {
     setFocusLabel('');
@@ -466,6 +614,10 @@ const UsersTable = () => {
     () => buildDisplayUnitOptions(currencyIndex),
     [currencyIndex],
   );
+  const selectedUserCount = selectedRowKeys.length;
+  const batchTopupFailedItems = (batchTopupResult?.items || []).filter(
+    (item) => !item?.success,
+  );
 
   return (
     <>
@@ -489,6 +641,13 @@ const UsersTable = () => {
               onClick={() => navigate('/admin/user/add')}
             >
               {t('user.buttons.add')}
+            </AppButton>
+            <AppButton
+              className='router-page-button'
+              disabled={selectedUserCount === 0}
+              onClick={openBatchTopupModal}
+            >
+              {t('user.batch.grant_topup')}
             </AppButton>
             <AppButton
               className='router-page-button'
@@ -557,6 +716,20 @@ const UsersTable = () => {
           pagination={false}
           scroll={{ x: USER_LIST_TABLE_MIN_WIDTH }}
           rowKey={(user) => user.id}
+          rowSelection={{
+            selectedRowKeys,
+            preserveSelectedRowKeys: true,
+            onChange: (nextSelectedRowKeys) => {
+              setSelectedRowKeys(
+                nextSelectedRowKeys
+                  .map((item) => (item || '').toString().trim())
+                  .filter(Boolean),
+              );
+            },
+            getCheckboxProps: (record) => ({
+              disabled: record?.deleted === true,
+            }),
+          }}
           onChange={handleTableChange}
           dataSource={users
             .slice(
@@ -784,6 +957,84 @@ const UsersTable = () => {
           totalPages={totalPages}
         />
       </div>
+      <AppModal
+        open={batchTopupOpen}
+        onClose={closeBatchTopupModal}
+        size='small'
+        title={t('user.batch.grant_topup')}
+        footer={
+          <AppFormActions>
+            <AppButton
+              type='button'
+              onClick={closeBatchTopupModal}
+              disabled={batchTopupSubmitting}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              type='button'
+              color='blue'
+              loading={batchTopupSubmitting}
+              onClick={submitBatchTopup}
+            >
+              {t('user.batch.confirm_grant')}
+            </AppButton>
+          </AppFormActions>
+        }
+      >
+        <div className='router-page-stack'>
+          <div className='router-form-hint'>
+            {t('user.batch.topup_confirm_hint', {
+              count: selectedUserCount,
+            })}
+          </div>
+          <AppField label={t('user.detail.assign.topup_plan')} required>
+            <AppSelect
+              className='router-section-input'
+              fluid
+              search
+              clearable
+              loading={topupPlanOptionsLoading}
+              placeholder={t('user.detail.assign.topup_plan_placeholder')}
+              options={topupPlanOptions}
+              value={batchTopupForm.plan_id}
+              onChange={(e, { value }) =>
+                setBatchTopupForm((prev) => ({
+                  ...prev,
+                  plan_id: (value || '').toString(),
+                }))
+              }
+            />
+          </AppField>
+          {batchTopupResult ? (
+            <div className='router-batch-action-result'>
+              <div className='router-batch-action-result-summary'>
+                {t('user.batch.topup_result_summary', {
+                  total: batchTopupResult.total,
+                  success: batchTopupResult.succeeded,
+                  failed: batchTopupResult.failed,
+                })}
+              </div>
+              {batchTopupFailedItems.length > 0 ? (
+                <div className='router-batch-action-failed-list'>
+                  <div className='router-batch-action-failed-title'>
+                    {t('user.batch.failed_users')}
+                  </div>
+                  {batchTopupFailedItems.slice(0, 10).map((item) => (
+                    <div
+                      className='router-batch-action-failed-item'
+                      key={item?.user_id}
+                    >
+                      <span>{item?.username || item?.user_id}</span>
+                      <span>{item?.message || '-'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </AppModal>
     </>
   );
 };

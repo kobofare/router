@@ -28,6 +28,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const batchGrantUserTopUpPlanLimit = 200
+
 type updateSelfPasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
@@ -1353,6 +1355,80 @@ func GrantUserTopUpPlan(c *gin.Context) {
 	})
 }
 
+func BatchGrantUserTopUpPlan(c *gin.Context) {
+	req := batchGrantUserTopUpPlanRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	userIDs, err := normalizeBatchGrantUserIDs(req.UserIDs, batchGrantUserTopUpPlanLimit)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	planID := strings.TrimSpace(req.PlanID)
+	if _, err := model.ResolveTopupPlan(planID); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	grantedBy := strings.TrimSpace(c.GetString(ctxkey.Id))
+	items := make([]batchGrantUserTopUpResult, 0, len(userIDs))
+	succeeded := 0
+	for _, userID := range userIDs {
+		item := batchGrantUserTopUpResult{
+			UserID: userID,
+		}
+		targetUser, err := usersvc.GetByID(userID, false)
+		if err != nil {
+			item.Message = err.Error()
+			items = append(items, item)
+			continue
+		}
+		item.Username = strings.TrimSpace(targetUser.Username)
+		if !requesterCanReadUser(c, targetUser) {
+			item.Message = "无权获取同级或更高等级用户的信息"
+			items = append(items, item)
+			continue
+		}
+		order, err := model.GrantTopupPlanToUserWithDB(
+			model.DB,
+			strings.TrimSpace(targetUser.Id),
+			strings.TrimSpace(targetUser.Username),
+			planID,
+			grantedBy,
+		)
+		if err != nil {
+			item.Message = err.Error()
+			items = append(items, item)
+			continue
+		}
+		item.Success = true
+		item.OrderID = strings.TrimSpace(order.Id)
+		succeeded++
+		items = append(items, item)
+	}
+	response := batchGrantUserTopUpResponse{
+		Total:     len(userIDs),
+		Succeeded: succeeded,
+		Failed:    len(userIDs) - succeeded,
+		Items:     items,
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    response,
+	})
+}
+
 func UpdateUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	var updatedUser model.User
@@ -1978,9 +2054,58 @@ type grantUserTopUpPlanRequest struct {
 	PlanID string `json:"plan_id"`
 }
 
+type batchGrantUserTopUpPlanRequest struct {
+	UserIDs []string `json:"user_ids"`
+	PlanID  string   `json:"plan_id"`
+}
+
+type batchGrantUserTopUpResult struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username,omitempty"`
+	Success  bool   `json:"success"`
+	Message  string `json:"message,omitempty"`
+	OrderID  string `json:"order_id,omitempty"`
+}
+
+type batchGrantUserTopUpResponse struct {
+	Total     int                         `json:"total"`
+	Succeeded int                         `json:"succeeded"`
+	Failed    int                         `json:"failed"`
+	Items     []batchGrantUserTopUpResult `json:"items"`
+}
+
 type previewPackagePurchaseRequest struct {
 	PackageID     string `json:"package_id"`
 	OperationType string `json:"operation_type"`
+}
+
+func normalizeBatchGrantUserIDs(rawUserIDs []string, limit int) ([]string, error) {
+	if len(rawUserIDs) == 0 {
+		return nil, fmt.Errorf("请选择用户")
+	}
+	if limit <= 0 {
+		limit = batchGrantUserTopUpPlanLimit
+	}
+	result := make([]string, 0, len(rawUserIDs))
+	seen := make(map[string]struct{}, len(rawUserIDs))
+	for _, rawUserID := range rawUserIDs {
+		userID := strings.TrimSpace(rawUserID)
+		if userID == "" {
+			continue
+		}
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		if len(result) >= limit {
+			return nil, fmt.Errorf("单次最多选择 %d 个用户", limit)
+		}
+		seen[userID] = struct{}{}
+		result = append(result, userID)
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("请选择用户")
+	}
+	return result, nil
 }
 
 func parseTopupOrderPageParams(c *gin.Context) (int, int, string, error) {

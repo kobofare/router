@@ -46,3 +46,31 @@ func TestParseTopupBalanceLotPageParamsAcceptsExplicitFilters(t *testing.T) {
 		t.Fatalf("positiveOnly explicit true = false, want true")
 	}
 }
+
+func TestNormalizeBatchGrantUserIDsDedupeAndTrim(t *testing.T) {
+	got, err := normalizeBatchGrantUserIDs([]string{" user-1 ", "", "user-2", "user-1"}, 10)
+	if err != nil {
+		t.Fatalf("normalize user ids: %v", err)
+	}
+	want := []string{"user-1", "user-2"}
+	if len(got) != len(want) {
+		t.Fatalf("ids len=%d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ids[%d]=%q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestNormalizeBatchGrantUserIDsRejectsEmpty(t *testing.T) {
+	if _, err := normalizeBatchGrantUserIDs([]string{" ", ""}, 10); err == nil {
+		t.Fatalf("empty ids accepted, want error")
+	}
+}
+
+func TestNormalizeBatchGrantUserIDsRejectsOverLimit(t *testing.T) {
+	if _, err := normalizeBatchGrantUserIDs([]string{"user-1", "user-2", "user-3"}, 2); err == nil {
+		t.Fatalf("over limit ids accepted, want error")
+	}
+}
