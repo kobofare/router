@@ -1467,6 +1467,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
+			Version:     "202606261430_refresh_qwen_new_model_aliases",
+			Description: "upsert qwen official qwen3 max snapshot and coder models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
+			},
+		},
+		{
 			Version:     "202606191230_refresh_provider_image_model_specifications",
 			Description: "refresh official image model specifications for supported providers",
 			Up: func(tx *gorm.DB) error {

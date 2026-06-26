@@ -353,7 +353,7 @@ func TestBuildProviderMigrationSeeds_QwenUsesExplicitEndpointTruthTable(t *testi
 		found := map[string]bool{}
 		for _, detail := range seed.ModelDetails {
 			switch detail.Model {
-			case "qwen3.7-max", "qwen3.6-plus", "qwen3.6-flash", "qwen3.5-plus", "qwen3.5-flash", "qwen3-max":
+			case "qwen3.7-max", "qwen3.6-plus", "qwen3.6-flash", "qwen3.5-plus", "qwen3.5-flash", "qwen3-max", "qwen3-max-2026-01-23", "qwen3-coder-next", "qwen3-coder-plus":
 				if len(detail.SupportedEndpoints) != 2 || detail.SupportedEndpoints[0] != ChannelModelEndpointChat || detail.SupportedEndpoints[1] != ChannelModelEndpointResponses {
 					t.Fatalf("%s supported_endpoints=%#v, want [chat responses]", detail.Model, detail.SupportedEndpoints)
 				}
@@ -372,6 +372,9 @@ func TestBuildProviderMigrationSeeds_QwenUsesExplicitEndpointTruthTable(t *testi
 			"qwen3.5-plus",
 			"qwen3.5-flash",
 			"qwen3-max",
+			"qwen3-max-2026-01-23",
+			"qwen3-coder-next",
+			"qwen3-coder-plus",
 			"qwen-image-2.0",
 			"qwen-image-2.0-pro",
 		} {
@@ -403,12 +406,12 @@ func TestBuildProviderMigrationSeeds_QwenUsesConcreteModelVersions(t *testing.T)
 func TestBuildProviderMigrationSeeds_QwenIncludesRealtimeVoiceModels(t *testing.T) {
 	seeds := mustLoadProviderMigrationSeeds(t)
 	expected := map[string]bool{
-		"qwen3.5-omni-plus-realtime":            false,
-		"qwen3.5-omni-flash-realtime":           false,
-		"qwen3.5-livetranslate-flash-realtime":  false,
-		"qwen-tts-realtime":                     false,
-		"qwen3-tts-flash-realtime":              false,
-		"qwen3-tts-instruct-flash-realtime":     false,
+		"qwen3.5-omni-plus-realtime":           false,
+		"qwen3.5-omni-flash-realtime":          false,
+		"qwen3.5-livetranslate-flash-realtime": false,
+		"qwen-tts-realtime":                    false,
+		"qwen3-tts-flash-realtime":             false,
+		"qwen3-tts-instruct-flash-realtime":    false,
 	}
 	for _, seed := range seeds {
 		if seed.Provider != "qwen" {
@@ -827,14 +830,17 @@ func TestBuildProviderMigrationSeeds_OfficialPricingBackfillForPreviouslyUnprice
 			"step-1x-medium":       {modelType: ProviderModelTypeImage, input: 0.1, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
 		},
 		"qwen": {
-			"qwen3.7-max":        {modelType: ProviderModelTypeText, input: 0.012, output: 0.036, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen3.6-plus":       {modelType: ProviderModelTypeText, input: 0.002, output: 0.012, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen3.6-flash":      {modelType: ProviderModelTypeText, input: 0.0012, output: 0.0072, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen3.5-plus":       {modelType: ProviderModelTypeText, input: 0.0008, output: 0.0048, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen3.5-flash":      {modelType: ProviderModelTypeText, input: 0.0002, output: 0.002, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen3-max":          {modelType: ProviderModelTypeText, input: 0.0025, output: 0.01, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
-			"qwen-image-2.0":     {modelType: ProviderModelTypeImage, input: 0.2, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
-			"qwen-image-2.0-pro": {modelType: ProviderModelTypeImage, input: 0.5, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
+			"qwen3.7-max":          {modelType: ProviderModelTypeText, input: 0.012, output: 0.036, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3.6-plus":         {modelType: ProviderModelTypeText, input: 0.002, output: 0.012, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3.6-flash":        {modelType: ProviderModelTypeText, input: 0.0012, output: 0.0072, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3.5-plus":         {modelType: ProviderModelTypeText, input: 0.0008, output: 0.0048, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3.5-flash":        {modelType: ProviderModelTypeText, input: 0.0002, output: 0.002, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3-max":            {modelType: ProviderModelTypeText, input: 0.0025, output: 0.01, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3-max-2026-01-23": {modelType: ProviderModelTypeText, input: 0.0025, output: 0.01, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3-coder-next":     {modelType: ProviderModelTypeText, input: 0.001, output: 0.004, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen3-coder-plus":     {modelType: ProviderModelTypeText, input: 0.004, output: 0.016, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
+			"qwen-image-2.0":       {modelType: ProviderModelTypeImage, input: 0.2, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
+			"qwen-image-2.0-pro":   {modelType: ProviderModelTypeImage, input: 0.5, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
 		},
 		"minimax": {
 			"speech-2.5-hd-preview": {modelType: ProviderModelTypeAudio, input: 0.1, priceUnit: ProviderPriceUnitPer1KChars, currency: ProviderPriceCurrencyUSD},

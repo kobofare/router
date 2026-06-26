@@ -3969,6 +3969,54 @@
         "updated_at": 1700000000
       },
       {
+        "model": "qwen3-max-2026-01-23",
+        "type": "text",
+        "status": "active",
+        "description": "Qwen3-Max-2026-01-23 是 Qwen3-Max 的官方快照版本，适合复杂任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ],
+        "input_price": 0.0025,
+        "output_price": 0.01,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "qwen3-coder-next",
+        "type": "text",
+        "status": "active",
+        "description": "Qwen3-Coder-Next 是面向代码生成与工程任务的新一代 Qwen 编码模型。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ],
+        "input_price": 0.001,
+        "output_price": 0.004,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "qwen3-coder-plus",
+        "type": "text",
+        "status": "active",
+        "description": "Qwen3-Coder-Plus 是高能力代码模型，适合复杂编码与代理式开发任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ],
+        "input_price": 0.004,
+        "output_price": 0.016,
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
         "model": "qwen3.5-omni-plus-realtime",
         "type": "audio",
         "tags": [

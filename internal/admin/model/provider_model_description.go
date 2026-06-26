@@ -338,6 +338,12 @@ func qwenProviderModelDescription(modelName string) string {
 		return "Qwen3.5-Flash 是上一代低成本通用模型。"
 	case "qwen3-max":
 		return "Qwen3-Max 是高能力通用模型，适合复杂任务。"
+	case "qwen3-max-2026-01-23":
+		return "Qwen3-Max-2026-01-23 是 Qwen3-Max 的官方快照版本，适合复杂任务。"
+	case "qwen3-coder-next":
+		return "Qwen3-Coder-Next 是面向代码生成与工程任务的新一代 Qwen 编码模型。"
+	case "qwen3-coder-plus":
+		return "Qwen3-Coder-Plus 是高能力代码模型，适合复杂编码与代理式开发任务。"
 	case "qwen3.5-omni-plus-realtime":
 		return "Qwen3.5-Omni-Plus-Realtime 是 Qwen 的实时全模态模型，支持 WebSocket 语音、图像和视频实时交互，并支持工具调用。"
 	case "qwen3.5-omni-flash-realtime":
