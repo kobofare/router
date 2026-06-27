@@ -217,7 +217,7 @@
       "page_title": "Pricing Guide",
       "subtitle": "You can buy a package directly, or top up balance first and use the service on demand.",
       "package_mode_title": "Package Plans",
-      "package_hint": "Best for stable usage. You get a daily allowance plus emergency capacity with clearer cost boundaries.",
+      "package_hint": "Best for stable usage. You get a daily allowance plus emergency capacity with clearer cost boundaries. Image models count by generated image count, for example n=4 uses 4 package units.",
       "balance_mode_title": "Balance Usage",
       "balance_hint": "Best for quick trials or elastic usage. Top up first, then pay as you go.",
       "selected": "Selected",

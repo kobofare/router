@@ -54,7 +54,14 @@ func buildBalanceRelayBillingPlan(packageActive bool) relayBillingPlan {
 }
 
 func tryBuildRequestPackageBillingPlan(ctx context.Context, meta *meta.Meta) (relayBillingPlan, bool, *relaymodel.ErrorWithStatusCode) {
-	return tryReserveRequestPackage(ctx, meta)
+	return tryBuildRequestPackageBillingPlanWithAmount(ctx, meta, 1)
+}
+
+func tryBuildRequestPackageBillingPlanWithAmount(ctx context.Context, meta *meta.Meta, requestAmount int64) (relayBillingPlan, bool, *relaymodel.ErrorWithStatusCode) {
+	if requestAmount <= 0 {
+		requestAmount = 1
+	}
+	return tryReserveRequestPackage(ctx, meta, requestAmount)
 }
 
 func hasActivePackageForGroup(userID string, groupID string) (bool, error) {
@@ -93,14 +100,14 @@ func formatRequestPackageDeniedMessage(result model.RequestPackageReserveResult)
 	}
 }
 
-func tryReserveRequestPackage(ctx context.Context, meta *meta.Meta) (relayBillingPlan, bool, *relaymodel.ErrorWithStatusCode) {
+func tryReserveRequestPackage(ctx context.Context, meta *meta.Meta, requestAmount int64) (relayBillingPlan, bool, *relaymodel.ErrorWithStatusCode) {
 	if meta == nil || strings.TrimSpace(meta.UserId) == "" {
 		return relayBillingPlan{}, false, nil
 	}
 	result, err := model.ReserveRequestPackage(model.PackageScopeRequest{
 		UserID:        meta.UserId,
 		GroupID:       meta.Group,
-		RequestAmount: 1,
+		RequestAmount: requestAmount,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "request package reserve failed code=reserve_request_package_failed user_id=%s group=%s err=%q", strings.TrimSpace(meta.UserId), strings.TrimSpace(meta.Group), err.Error())
@@ -125,7 +132,7 @@ func tryReserveRequestPackage(ctx context.Context, meta *meta.Meta) (relayBillin
 }
 
 func reserveRelayQuota(ctx context.Context, meta *meta.Meta, quota int64) (relayBillingPlan, *relaymodel.ErrorWithStatusCode) {
-	if plan, matched, err := tryReserveRequestPackage(ctx, meta); matched || err != nil {
+	if plan, matched, err := tryReserveRequestPackage(ctx, meta, 1); matched || err != nil {
 		return plan, err
 	}
 	groupID := ""
