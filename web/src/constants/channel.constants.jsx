@@ -15,9 +15,9 @@ export const CHANNEL_PROTOCOL_OPTIONS = [
   {key: 'mistral', text: 'Mistral AI', value: 'mistral', color: 'orange'},
   {key: 'novita', text: 'Novita', value: 'novita', color: 'purple'},
   {
-    key: 'doubao',
+    key: 'volcengine',
     text: 'VolcEngine',
-    value: 'doubao',
+    value: 'volcengine',
     color: 'blue',
     description: 'Volcengine Ark',
   },

@@ -132,7 +132,7 @@ const resolveModelTestStreamEnabled = (row) => {
 const normalizeChannelIdentifier = (value) =>
   (value || '').toString().trim().toLowerCase();
 
-const VOLCENGINE_STANDARD_PROTOCOL = 'doubao';
+const VOLCENGINE_STANDARD_PROTOCOL = 'volcengine';
 const VOLCENGINE_REALTIME_PROTOCOL = 'volcengine-realtime';
 
 function isVolcengineDisplayProtocol(protocol) {
@@ -5512,7 +5512,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             title={t('channel.edit.coze_notice')}
           />
         )}
-        {inputs.protocol === 'doubao' && !isVolcengineRealtime && (
+        {inputs.protocol === VOLCENGINE_STANDARD_PROTOCOL &&
+          !isVolcengineRealtime && (
           <AppAlert
             type='info'
             showIcon

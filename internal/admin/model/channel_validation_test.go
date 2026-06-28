@@ -71,3 +71,42 @@ func TestValidateProtocolConfiguration_VolcengineRealtimeAcceptsAppID(t *testing
 		t.Fatalf("expected validation success, got %v", err)
 	}
 }
+
+func TestValidateProtocolConfiguration_VolcengineRealtimeEndpointRequiresAppID(t *testing.T) {
+	channel := &Channel{
+		Protocol: "volcengine",
+		ChannelModels: []ChannelModel{
+			{
+				Model:     "speech-realtime-1",
+				Selected:  true,
+				Type:      ProviderModelTypeAudio,
+				Endpoint:  ChannelModelEndpointRealtime,
+				Endpoints: []string{ChannelModelEndpointRealtime},
+			},
+		},
+		Config: `{"resource_id":"volc.speech.dialog"}`,
+	}
+
+	err := channel.ValidateProtocolConfiguration()
+	if err == nil {
+		t.Fatalf("expected validation error")
+	}
+}
+
+func TestValidateProtocolConfiguration_VolcengineNonRealtimeDoesNotRequireAppID(t *testing.T) {
+	channel := &Channel{
+		Protocol: "volcengine",
+		ChannelModels: []ChannelModel{
+			{
+				Model:    "doubao-seed-2-0-pro-260215",
+				Selected: true,
+				Type:     ProviderModelTypeText,
+				Endpoint: ChannelModelEndpointResponses,
+			},
+		},
+	}
+
+	if err := channel.ValidateProtocolConfiguration(); err != nil {
+		t.Fatalf("expected validation success, got %v", err)
+	}
+}
