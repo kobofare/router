@@ -24,6 +24,28 @@ import {
   normalizeServicePackageType,
 } from '../../helpers/package';
 
+const formatMoney = (amount, currency) =>
+  `${Number(amount || 0).toFixed(2)} ${String(currency || 'USD').toUpperCase()}`;
+
+const formatTimeValue = (value, t) => {
+  const normalized = Number(value || 0);
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return t('common.unlimited');
+  }
+  return timestamp2string(normalized);
+};
+
+const resolvePackageOperationLabel = (operationType, t, i18n) => {
+  const normalized = String(operationType || '').trim();
+  const operationKey = normalized
+    ? `topup.external_topup.package_operation.${normalized}`
+    : '';
+  if (operationKey && i18n.exists(operationKey)) {
+    return t(operationKey);
+  }
+  return normalized || '-';
+};
+
 const createEmptyActivePackage = () => ({
   has_active_subscription: false,
   current_package: null,
@@ -211,7 +233,7 @@ const PackageUsageCard = ({ title, period, timezone, items, footer }) => (
 );
 
 const CurrentPackagePage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const {
     displayCurrency,
@@ -229,6 +251,12 @@ const CurrentPackagePage = () => {
   const [changeTargets, setChangeTargets] = useState([]);
   const [selectedChangePackageId, setSelectedChangePackageId] = useState('');
   const [submittingChange, setSubmittingChange] = useState(false);
+  const [submittingPackagePurchase, setSubmittingPackagePurchase] = useState(false);
+  const [packagePreviewState, setPackagePreviewState] = useState({
+    open: false,
+    packageId: '',
+    preview: null,
+  });
   const [changeOperationType, setChangeOperationType] = useState('');
 
   const renderIntegerAmount = useCallback(
@@ -559,7 +587,7 @@ const CurrentPackagePage = () => {
     [navigate],
   );
 
-  const quickPurchasePackage = useCallback(
+  const openPackagePurchasePreview = useCallback(
     async (packageID, requestedOperationType = '') => {
       const normalizedPackageID = (packageID || '').toString().trim();
       if (normalizedPackageID === '') {
@@ -573,18 +601,52 @@ const CurrentPackagePage = () => {
       if (!preview) {
         return false;
       }
-      const operationType = String(
-        preview?.operation_type || requestedOperationType || '',
-      ).trim();
-      return createTopupOrder({
+      setPackagePreviewState({
+        open: true,
+        packageId: normalizedPackageID,
+        preview,
+      });
+      return true;
+    },
+    [previewPackagePurchase, t],
+  );
+
+  const closePackagePreviewModal = useCallback(() => {
+    if (submittingPackagePurchase) {
+      return;
+    }
+    setPackagePreviewState({
+      open: false,
+      packageId: '',
+      preview: null,
+    });
+  }, [submittingPackagePurchase]);
+
+  const handleConfirmPackagePurchase = useCallback(async () => {
+    const packageID = (packagePreviewState.packageId || '').trim();
+    const operationType = String(
+      packagePreviewState?.preview?.operation_type || '',
+    ).trim();
+    if (packageID === '') {
+      showInfo(t('topup.external_topup.package_select_required'));
+      return;
+    }
+    setSubmittingPackagePurchase(true);
+    try {
+      const created = await createTopupOrder({
         business_type: 'package_purchase',
         operation_type: operationType,
-        package_id: normalizedPackageID,
+        package_id: packageID,
         return_url: buildTopUpReturnURL(),
       });
-    },
-    [createTopupOrder, previewPackagePurchase, t],
-  );
+      if (created) {
+        closePackagePreviewModal();
+        setChangeModalOpen(false);
+      }
+    } finally {
+      setSubmittingPackagePurchase(false);
+    }
+  }, [closePackagePreviewModal, createTopupOrder, packagePreviewState.packageId, packagePreviewState?.preview?.operation_type, t]);
 
   const handleRenew = useCallback(async () => {
     const packageID = (activeSubscription?.package_id || '').toString().trim();
@@ -594,11 +656,11 @@ const CurrentPackagePage = () => {
     }
     setRenewing(true);
     try {
-      await quickPurchasePackage(packageID, 'renew');
+      await openPackagePurchasePreview(packageID, 'renew');
     } finally {
       setRenewing(false);
     }
-  }, [activeSubscription?.package_id, quickPurchasePackage, t]);
+  }, [activeSubscription?.package_id, openPackagePurchasePreview, t]);
 
   const buildPackageOptionText = useCallback((item) => {
     const name = String(item?.name || item?.package_name || item?.id || '-').trim();
@@ -670,21 +732,12 @@ const CurrentPackagePage = () => {
       showInfo(t(messageKey));
       return;
     }
-    if (candidates.length === 1) {
-      setSubmittingChange(true);
-      try {
-        await quickPurchasePackage(candidates[0]?.id, operationType);
-      } finally {
-        setSubmittingChange(false);
-      }
-      return;
-    }
     const defaultTargetID = String(candidates[0]?.id || '').trim();
     setChangeTargets(candidates);
     setSelectedChangePackageId(defaultTargetID);
     setChangeOperationType(operationType);
     setChangeModalOpen(true);
-  }, [loadPackageChangeTargets, quickPurchasePackage, t]);
+  }, [loadPackageChangeTargets, t]);
 
   const handleUpgrade = useCallback(async () => {
     await openPackageChangeModal('upgrade');
@@ -706,24 +759,44 @@ const CurrentPackagePage = () => {
     }
     setSubmittingChange(true);
     try {
-      const created = await quickPurchasePackage(targetPackageID, changeOperationType);
-      if (created) {
+      const opened = await openPackagePurchasePreview(targetPackageID, changeOperationType);
+      if (opened) {
         setChangeModalOpen(false);
       }
     } finally {
       setSubmittingChange(false);
     }
-  }, [changeOperationType, quickPurchasePackage, selectedChangePackageId, t]);
+  }, [changeOperationType, openPackagePurchasePreview, selectedChangePackageId, t]);
 
   const changeOptions = useMemo(
     () =>
       (changeTargets || []).map((item) => ({
         key: String(item?.id || ''),
         value: String(item?.id || ''),
-        text: buildPackageOptionText(item),
+        label: buildPackageOptionText(item),
       })),
     [buildPackageOptionText, changeTargets],
   );
+
+  const selectedChangePackageOption = useMemo(() => {
+    const normalizedPackageID = String(selectedChangePackageId || '').trim();
+    if (normalizedPackageID === '') {
+      return undefined;
+    }
+    const matchedOption = changeOptions.find(
+      (item) => String(item?.value || '').trim() === normalizedPackageID,
+    );
+    if (matchedOption) {
+      return {
+        value: matchedOption.value,
+        label: matchedOption.label || matchedOption.text || matchedOption.value,
+      };
+    }
+    return {
+      value: normalizedPackageID,
+      label: normalizedPackageID,
+    };
+  }, [changeOptions, selectedChangePackageId]);
 
   const changeTitleKey =
     changeOperationType === 'downgrade'
@@ -743,6 +816,9 @@ const CurrentPackagePage = () => {
       : changeOperationType === 'convert'
         ? 'topup.package_status.convert_next_cycle'
         : 'topup.package_status.upgrade_now';
+  const previewOperationType = String(packagePreviewState?.preview?.operation_type || '').trim();
+  const previewOperationLabel = resolvePackageOperationLabel(previewOperationType, t, i18n);
+  const previewConfirmLabel = t('common.confirm');
 
   return (
     <div className='router-topup-balance-layout'>
@@ -924,12 +1000,126 @@ const CurrentPackagePage = () => {
           </div>
           <AppSelect
             className='router-page-dropdown'
+            labelInValue
             options={changeOptions}
-            value={selectedChangePackageId}
-            onChange={(_, data) =>
-              setSelectedChangePackageId(String(data?.value || ''))
-            }
+            value={selectedChangePackageOption}
+            onChange={(_, data) => {
+              const nextValue =
+                typeof data?.value === 'object'
+                  ? (data?.value?.value || '').toString()
+                  : (data?.value || '').toString();
+              setSelectedChangePackageId(nextValue);
+            }}
           />
+        </div>
+      </AppModal>
+
+      <AppModal
+        size='small'
+        open={packagePreviewState.open}
+        onClose={closePackagePreviewModal}
+        closeOnDimmerClick={!submittingPackagePurchase}
+        title={t('topup.external_topup.package_preview_title')}
+        footer={[
+          <AppButton
+            key='cancel'
+            onClick={closePackagePreviewModal}
+            disabled={submittingPackagePurchase}
+          >
+            {t('common.cancel')}
+          </AppButton>,
+          <AppButton
+            key='confirm'
+            color='blue'
+            className='router-section-button'
+            loading={submittingPackagePurchase}
+            disabled={submittingPackagePurchase}
+            onClick={handleConfirmPackagePurchase}
+          >
+            {previewConfirmLabel}
+          </AppButton>,
+        ]}
+      >
+        <div className='router-text-muted router-package-preview-desc'>
+          {t('topup.external_topup.package_preview_desc')}
+        </div>
+        <div className='router-package-preview-grid'>
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_operation')}
+          </div>
+          <div>{previewOperationLabel}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_current_package')}
+          </div>
+          <div>{packagePreviewState?.preview?.current_package_name || '-'}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_target_package')}
+          </div>
+          <div>{packagePreviewState?.preview?.target_package_name || '-'}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_target_package_type')}
+          </div>
+          <div>
+            {getServicePackageTypeLabel(
+              {
+                package_type: packagePreviewState?.preview?.target_package_type,
+                quota_metric: packagePreviewState?.preview?.target_quota_metric,
+              },
+              t,
+            )}
+          </div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_current_expire_at')}
+          </div>
+          <div>{formatTimeValue(packagePreviewState?.preview?.current_expires_at, t)}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_effective_at')}
+          </div>
+          <div>{formatTimeValue(packagePreviewState?.preview?.start_at, t)}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_expires_at')}
+          </div>
+          <div>{formatTimeValue(packagePreviewState?.preview?.expires_at, t)}</div>
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_target_price')}
+          </div>
+          <div>
+            {formatMoney(
+              packagePreviewState?.preview?.target_package_amount,
+              packagePreviewState?.preview?.payable_currency,
+            )}
+          </div>
+
+          {Number(packagePreviewState?.preview?.current_package_credit_amount || 0) > 0 ? (
+            <>
+              <div className='router-text-muted'>
+                {t('topup.external_topup.package_preview_current_package_credit')}
+              </div>
+              <div>
+                {formatMoney(
+                  packagePreviewState?.preview?.current_package_credit_amount,
+                  packagePreviewState?.preview?.payable_currency,
+                )}
+              </div>
+            </>
+          ) : null}
+
+          <div className='router-text-muted'>
+            {t('topup.external_topup.package_preview_payable')}
+          </div>
+          <div>
+            {formatMoney(
+              packagePreviewState?.preview?.payable_amount,
+              packagePreviewState?.preview?.payable_currency,
+            )}
+          </div>
         </div>
       </AppModal>
     </div>
