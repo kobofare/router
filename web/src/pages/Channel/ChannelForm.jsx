@@ -2912,7 +2912,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       return null;
     }
     const keyDisplayValue =
-      detailBasicReadonly || !detailBasicEditing
+      detailBasicReadonly
         ? inputs.key_preview || (channelKeySet ? '********' : '-')
         : inputs.key;
     return (
@@ -2921,9 +2921,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           <AppInput
             className='router-section-input'
             name='key'
-            type={
-              detailBasicReadonly || !detailBasicEditing ? 'text' : 'password'
-            }
+            type={detailBasicReadonly ? 'text' : 'password'}
             required={isCreateMode}
             placeholder={
               channelKeySet && (inputs.key || '').trim() === ''
