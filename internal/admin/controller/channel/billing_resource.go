@@ -308,11 +308,18 @@ func GetChannelBilling(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 		return
 	}
-	latestSnapshot, err := model.GetLatestChannelBillingSnapshotByChannelIDWithDB(model.DB, channelID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logChannelAdminWarn(c, "get_billing", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
-		return
+	// Balance/entitlement reflects the upstream account, which only exists for an
+	// auto-refresh adapter source. Manual channels have no upstream balance (their
+	// manual snapshots are procurement cost records, not balance), so leave the
+	// summary balance empty rather than surfacing a manual snapshot as "balance".
+	var latestSnapshot model.ChannelBillingSnapshot
+	if normalizeChannelBillingSource(profile.BillingSource) != model.ChannelBillingSourceManual {
+		latestSnapshot, err = model.GetLatestChannelBillingSnapshotBySourceWithDB(model.DB, channelID, model.ChannelBillingSnapshotSourceAPI)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logChannelAdminWarn(c, "get_billing", stringField("channel_id", channelID), stringField("reason", err.Error()))
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
