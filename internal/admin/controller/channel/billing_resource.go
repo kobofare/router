@@ -398,6 +398,94 @@ func GetChannelBillingAlerts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": channelBillingListData[model.ChannelBillingAlertEvent]{Items: rows, Total: len(rows)}})
 }
 
+// channelCostQuoteReconcileRow pairs a billing-service cost quote (normalized to
+// YYC) with the model's local procurement readiness, for read-only comparison.
+type channelCostQuoteReconcileRow struct {
+	Model              string  `json:"model"`
+	CapacityUnit       string  `json:"capacity_unit"`
+	ServiceUnitCost    float64 `json:"service_unit_cost"`
+	ServiceCurrency    string  `json:"service_currency"`
+	ServiceUnitCostYYC float64 `json:"service_unit_cost_yyc"`
+	ServiceConfidence  string  `json:"service_confidence"`
+	LocalReadiness     string  `json:"local_readiness"`
+}
+
+type channelCostQuoteReconcileData struct {
+	ChannelID        string                         `json:"channel_id"`
+	ServiceAvailable bool                           `json:"service_available"`
+	Reason           string                         `json:"reason,omitempty"`
+	Rows             []channelCostQuoteReconcileRow `json:"rows"`
+}
+
+// GetChannelCostQuoteReconciliation is the P5 step-1 read-only reconciliation view:
+// it fetches the billing service's normalized cost quotes and shows them next to each
+// model's local procurement readiness. It NEVER changes online charging; it only
+// surfaces "service cost vs local cost" so an operator can validate consistency
+// before cost quotes are wired into the live cost floor.
+func GetChannelCostQuoteReconciliation(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	if channelID == "" {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
+		return
+	}
+	channelRow, profile, err := getEffectiveChannelBillingProfile(channelID)
+	if err != nil {
+		logChannelAdminWarn(c, "cost_quote_reconcile", stringField("channel_id", channelID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	data := channelCostQuoteReconcileData{ChannelID: channelID, Rows: []channelCostQuoteReconcileRow{}}
+	quotes, quoteErr := collectBillingServiceCostQuotes(c.Request.Context(), channelRow, profile, nil)
+	if quoteErr != nil {
+		// Read-only view: a missing/unsupported service is informational, not a failure.
+		data.ServiceAvailable = false
+		data.Reason = quoteErr.Error()
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": data})
+		return
+	}
+	data.ServiceAvailable = true
+	readiness := resolveChannelLocalReadinessByModel(channelID, profile.CostTrackingMode)
+	for _, quote := range quotes.Quotes {
+		modelName := strings.TrimSpace(quote.Model)
+		row := channelCostQuoteReconcileRow{
+			Model:             modelName,
+			CapacityUnit:      strings.TrimSpace(quote.CapacityUnit),
+			ServiceUnitCost:   quote.UnitCost,
+			ServiceCurrency:   strings.TrimSpace(strings.ToUpper(quote.Currency)),
+			ServiceConfidence: strings.TrimSpace(strings.ToLower(quote.Confidence)),
+			LocalReadiness:    readiness[modelName],
+		}
+		if rate, rateErr := model.GetBillingCurrencyChargeRate(row.ServiceCurrency); rateErr == nil && rate > 0 {
+			row.ServiceUnitCostYYC = quote.UnitCost * rate
+		}
+		data.Rows = append(data.Rows, row)
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": data})
+}
+
+// resolveChannelLocalReadinessByModel maps each published model to its local
+// procurement readiness status under the channel's cost tracking mode.
+func resolveChannelLocalReadinessByModel(channelID string, mode string) map[string]string {
+	result := map[string]string{}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return result
+	}
+	rows, err := model.ListChannelModelRowsByChannelIDWithDB(model.DB, normalizedChannelID)
+	if err != nil {
+		return result
+	}
+	batches, err := model.ListAllChannelProcurementBatchesByChannelIDWithDB(model.DB, normalizedChannelID)
+	if err != nil {
+		return result
+	}
+	for _, row := range rows {
+		readiness := model.ResolveChannelModelProcurementReadinessForMode(row, batches, mode)
+		result[strings.TrimSpace(row.Model)] = readiness.Status
+	}
+	return result
+}
+
 func GetChannelProcurementBatches(c *gin.Context) {
 	channelID := strings.TrimSpace(c.Param("id"))
 	if channelID == "" {

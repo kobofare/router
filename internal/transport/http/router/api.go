@@ -352,6 +352,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminChannelRoute.GET("/:id/billing/usage", channel.GetChannelProviderUsage)
 			adminChannelRoute.GET("/:id/billing/usage/state", channel.GetChannelProviderUsageSyncState)
 			adminChannelRoute.GET("/:id/billing/reconciliation", channel.GetChannelProviderUsageReconciliation)
+			adminChannelRoute.GET("/:id/billing/cost-quotes", channel.GetChannelCostQuoteReconciliation)
 			adminChannelRoute.POST("/:id/billing/snapshots", channel.CreateChannelBillingSnapshot)
 			adminChannelRoute.PUT("/:id/billing/snapshots/:snapshot_id", channel.UpdateChannelBillingSnapshot)
 			adminChannelRoute.DELETE("/:id/billing/snapshots/:snapshot_id", channel.DeleteChannelBillingSnapshot)
