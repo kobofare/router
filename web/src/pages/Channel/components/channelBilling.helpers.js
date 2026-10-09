@@ -78,16 +78,18 @@ export const toDateTimeLocalValue = (date) => {
 export const DEFAULT_PURCHASE_KIND = 'subscription';
 export const PURCHASE_KINDS = ['recharge', 'subscription'];
 
-// 某采购类型下单条权益项的默认资源/额度类型。
-export const purchaseKindItemDefaults = (kind) =>
-  kind === 'subscription'
-    ? { resource_type: 'quota', quota_type: 'monthly' }
-    : { resource_type: 'balance', quota_type: 'total' };
+// 采购记录现在是纯成本输入:一笔采购 = 一个容量额度(单位成本 = 实付 / 容量)。
+// 两种采购类型都用非周期的总额度口径,不再按"订阅=按月周期额度"自动乘周期数,
+// 避免隐式放大容量、压低单位成本(见 docs/商业计费/成本与盈利核算标准.md §6)。
+export const purchaseKindItemDefaults = () => ({
+  resource_type: 'quota',
+  quota_type: 'total',
+});
 
 // 切换采购类型时,保留已填的额度/币种,仅改资源与额度类型。
-export const applyPurchaseKindToItem = (item, kind) => ({
+export const applyPurchaseKindToItem = (item) => ({
   ...(item || buildManualQuotaItem()),
-  ...purchaseKindItemDefaults(kind),
+  ...purchaseKindItemDefaults(),
 });
 
 // 编辑态由记录反推采购类型:带有效期或周期额度 → 订阅;否则按充值处理。

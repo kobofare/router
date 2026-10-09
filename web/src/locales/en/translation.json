@@ -985,7 +985,7 @@
         "manual_purchase_hint": "Fill in the purchase payment details first, then record what entitlements were bought.",
         "entitlement_info_title": "Entitlement Information",
         "entitlement_name": "Entitlement Name",
-        "entitlement_items_title": "Entitlement Items",
+        "entitlement_items_title": "Purchased Capacity",
         "entitlement_types": {
           "balance": "Account Balance",
           "credit": "Credit Limit",
@@ -994,7 +994,7 @@
           "monthly": "Monthly Quota",
           "total": "Total Quota"
         },
-        "add_entitlement_item": "Add Entitlement Item",
+        "add_entitlement_item": "Add Capacity Item",
         "manual_snapshot_invalid": "Please provide at least one valid entitlement item",
         "manual_snapshot_success": "Purchase record saved",
         "manual_snapshot_failed": "Failed to save purchase record",
@@ -1007,7 +1007,7 @@
         "delete_purchase_record_failed": "Failed to delete purchase record",
         "manual_resource_type": "Entitlement Type",
         "manual_resource_hints": {
-          "default": "Items jointly constrain current usage. Periodic quotas reset daily, weekly, or monthly, while total quota keeps decreasing. If any applicable item is insufficient, the entitlement group cannot provide that usage.",
+          "default": "Enter the capacity this purchase bought (amount and unit); used to compute unit cost.",
           "balance": "Balance: directly consumable account balance. Fill total, used, and remaining amount.",
           "credit": "Credit: granted or promotional provider credit. It is consumable like balance, but has a different source.",
           "quota": "Quota: consumable usage capacity. Daily, weekly, and monthly quotas are package periodic quota rules; total quota is cumulative and decreases as it is used.",
@@ -1017,7 +1017,7 @@
         },
         "manual_plan_name": "Plan Name",
         "manual_plan_name_placeholder": "e.g. Monthly Plan / Quarterly Plan",
-        "manual_item_title": "Entitlement {{index}}",
+        "manual_item_title": "Capacity {{index}}",
         "manual_quota_type": "Quota Type",
         "manual_quota_label": "Quota Name",
         "manual_quota_amount": "Quota Amount",

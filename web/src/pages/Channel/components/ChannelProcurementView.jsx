@@ -152,7 +152,7 @@ const ChannelProcurementView = ({
     setManualItems((prev) => {
       const list = prev.length > 0 ? prev : [buildManualQuotaItem()];
       return list.map((item, index) =>
-        index === 0 ? applyPurchaseKindToItem(item, kind) : item
+        index === 0 ? applyPurchaseKindToItem(item) : item
       );
     });
   };
@@ -190,7 +190,7 @@ const ChannelProcurementView = ({
     setAdvancedOpen(false);
     setManualMessage('');
     setManualItems([
-      applyPurchaseKindToItem(buildManualQuotaItem(), buildManualPurchaseRecord().purchase_kind),
+      applyPurchaseKindToItem(buildManualQuotaItem()),
     ]);
     setManualModalOpen(true);
   };
@@ -211,7 +211,7 @@ const ChannelProcurementView = ({
     const nextItems =
       items.length > 0
         ? items.map((item) => buildManualQuotaItemFromSnapshotItem(item))
-        : [applyPurchaseKindToItem(buildManualQuotaItem(), nextRecord.purchase_kind)];
+        : [applyPurchaseKindToItem(buildManualQuotaItem())];
     setManualItems(nextItems);
     setAdvancedOpen(
       recordUsesAdvanced(nextRecord, nextItems) ||
