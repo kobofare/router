@@ -4040,7 +4040,9 @@
         "total_cost": "采购成本合计",
         "total_profit": "毛利合计",
         "total_profit_yyc": "毛利合计 (YYC)",
-        "avg_margin": "加权毛利率"
+        "avg_margin": "加权毛利率",
+        "target_margin": "目标毛利",
+        "target_margin_unset": "未设置"
       },
       "distribution": {
         "title": "利润状态分布",

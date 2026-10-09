@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yeying-community/router/common/config"
 	"gorm.io/gorm"
 )
 
@@ -87,6 +88,8 @@ type ProcurementReportSummary struct {
 	GrossMargin                  float64                 `json:"gross_margin"`
 	ProcurementCostYYC           float64                 `json:"procurement_cost_yyc"`
 	GrossProfitYYC               float64                 `json:"gross_profit_yyc"`
+	TargetMargin                 float64                 `json:"target_margin"`
+	RiskBuffer                   float64                 `json:"risk_buffer"`
 	CostFloorTriggeredCount      int64                   `json:"cost_floor_triggered_count"`
 	CostFloorTriggeredAmount     float64                 `json:"cost_floor_triggered_amount"`
 }
@@ -322,6 +325,8 @@ func ListProcurementReportWithDB(db *gorm.DB, query ProcurementReportQuery) (Pro
 	}
 	summary.ProcurementCostYYC = summary.ProcurementCostBaseAmount * cnyChargeRate
 	summary.GrossProfitYYC = summary.GrossProfitBaseAmount * cnyChargeRate
+	summary.TargetMargin = normalizeTargetMargin(config.BillingTargetMargin)
+	summary.RiskBuffer = normalizeRiskBuffer(config.BillingRiskBuffer)
 	summary.Items = rows
 	return summary, nil
 }

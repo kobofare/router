@@ -4040,7 +4040,9 @@
         "total_cost": "Procurement cost",
         "total_profit": "Gross profit",
         "total_profit_yyc": "Gross profit (YYC)",
-        "avg_margin": "Weighted margin"
+        "avg_margin": "Weighted margin",
+        "target_margin": "Target margin",
+        "target_margin_unset": "Unset"
       },
       "distribution": {
         "title": "Profit state distribution",
