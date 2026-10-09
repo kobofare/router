@@ -1358,6 +1358,8 @@
       },
       "model_selector": {
         "summary": "已选择 {{selected}} / {{total}}",
+        "target_margin_hint": "覆盖全局目标毛利(0–95%);留空用全局。有实际成本时成本地板按此抬价。",
+        "target_margin_placeholder": "留空用全局",
         "cards": {
           "enabled": "已启用模型",
           "selectable": "可直接启用",
@@ -1376,6 +1378,7 @@
           "price": "输入｜输出价",
           "input_price": "输入价",
           "output_price": "输出价",
+          "target_margin": "目标毛利",
           "upstream_return": "最近一次上游返回",
           "enable_block_reason": "不能启用原因",
           "selection_status": "选择状态",

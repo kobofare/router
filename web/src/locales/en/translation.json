@@ -1358,6 +1358,8 @@
       },
       "model_selector": {
         "summary": "Selected {{selected}} / {{total}}",
+        "target_margin_hint": "Overrides the global target margin (0–95%); leave blank to use global. The cost floor raises price to this when actual cost is known.",
+        "target_margin_placeholder": "Blank = use global",
         "cards": {
           "enabled": "Enabled Models",
           "selectable": "Ready to Enable",
@@ -1376,6 +1378,7 @@
           "price": "Input|Output Price",
           "input_price": "Input Price",
           "output_price": "Output Price",
+          "target_margin": "Target margin",
           "upstream_return": "Latest Upstream Return",
           "enable_block_reason": "Blocked Reason",
           "selection_status": "Selection Status",

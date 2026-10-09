@@ -1463,6 +1463,11 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 				row.PublishedModel = strings.TrimSpace(existingRow.PublishedModel)
 				row.PublishedAt = existingRow.PublishedAt
 				row.PublishedBy = strings.TrimSpace(existingRow.PublishedBy)
+				// Preserve the operator's per-model target margin override across
+				// upstream re-syncs: re-fetching models must not wipe pricing policy.
+				if row.TargetMargin == nil {
+					row.TargetMargin = existingRow.TargetMargin
+				}
 			} else {
 				row.PublishEnabled = false
 				if strings.TrimSpace(row.PublishedModel) == "" {
@@ -1470,6 +1475,9 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 				}
 				row.PublishedAt = 0
 				row.PublishedBy = ""
+				if row.TargetMargin == nil {
+					row.TargetMargin = existingByModel[row.Model].TargetMargin
+				}
 			}
 		}
 		if !row.Selected {

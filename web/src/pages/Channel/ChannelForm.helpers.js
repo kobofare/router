@@ -290,6 +290,19 @@ const normalizePriceOverrideValue = (value) => {
   return price;
 };
 
+// Per-model target margin override is a fraction (0..0.95); null/empty clears the
+// override so the global policy applies. See 成本与盈利核算标准 §5.
+const normalizeTargetMarginOverride = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const margin = Number(value);
+  if (!Number.isFinite(margin) || margin <= 0) {
+    return null;
+  }
+  return margin > 0.95 ? 0.95 : margin;
+};
+
 const normalizePriceUnitValue = (value) => {
   const normalized = (value || '').toString().trim().toLowerCase();
   return normalized || 'per_1k_tokens';
@@ -1496,6 +1509,7 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     is_stream: resolveModelTestStreamEnabled(row),
     input_price: normalizePriceOverrideValue(row.input_price),
     output_price: normalizePriceOverrideValue(row.output_price),
+    target_margin: normalizeTargetMarginOverride(row.target_margin),
     price_unit: normalizePriceUnitValue(row.price_unit),
     currency: normalizeCurrencyValue(row.currency),
     price_components: normalizeComplexPriceComponents(row.price_components),
