@@ -10,6 +10,7 @@ import {
   AppTooltip,
 } from '../../../router-ui';
 import ConsumptionModal from './ConsumptionModal';
+import CostQuoteReconcileTable from './CostQuoteReconcileTable';
 import ManualSnapshotForm from './ManualSnapshotForm';
 import ProcurementBatchTable from './ProcurementBatchTable';
 import ProcurementCostForm from './ProcurementCostForm';
@@ -57,6 +58,7 @@ const ChannelProcurementView = ({
   onCostTrackingModeChange,
   costTrackingSubmitting = false,
   costMissingModelCount = 0,
+  costQuotes = null,
 }) => {
   const [manualPurchaseRecord, setManualPurchaseRecord] = useState(
     buildManualPurchaseRecord()
@@ -467,6 +469,7 @@ const ChannelProcurementView = ({
           onUpdateStatus={updateProcurementBatchStatus}
         />
       )}
+      {costQuotes ? <CostQuoteReconcileTable t={t} costQuotes={costQuotes} /> : null}
         </>
       ) : null}
       <div>

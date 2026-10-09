@@ -1907,6 +1907,37 @@ const fetchChannelProcurementBatches = async (channelId) => {
   return normalizeChannelProcurementBatches(data?.items);
 };
 
+// Read-only cost-quote reconciliation: billing service's normalized unit cost per
+// model (YYC) vs local procurement readiness. Never affects online charging.
+const fetchChannelCostQuotes = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return { service_available: false, reason: '', rows: [] };
+  }
+  const res = await API.get(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/cost-quotes`
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel cost quotes failed');
+  }
+  return {
+    service_available: data?.service_available === true,
+    reason: (data?.reason || '').toString(),
+    rows: Array.isArray(data?.rows)
+      ? data.rows.map((row) => ({
+          model: (row?.model || '').toString(),
+          capacity_unit: (row?.capacity_unit || '').toString(),
+          service_unit_cost: Number(row?.service_unit_cost || 0),
+          service_currency: (row?.service_currency || '').toString(),
+          service_unit_cost_yyc: Number(row?.service_unit_cost_yyc || 0),
+          service_confidence: (row?.service_confidence || '').toString(),
+          local_readiness: (row?.local_readiness || '').toString(),
+        }))
+      : [],
+  };
+};
+
 const fetchChannelProcurementBatchConsumptions = async (channelId, batchId) => {
   const normalizedChannelId = (channelId || '').toString().trim();
   const normalizedBatchId = (batchId || '').toString().trim();
@@ -2226,6 +2257,7 @@ export {
   fetchChannelEndpoints,
   fetchChannelProcurementBatchConsumptions,
   fetchChannelProcurementBatches,
+  fetchChannelCostQuotes,
   fetchChannelTests,
   fetchTaskById,
   filterBillingCredentialsByFields,
