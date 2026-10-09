@@ -986,14 +986,6 @@
         "entitlement_info_title": "Entitlement Information",
         "entitlement_name": "Entitlement Name",
         "entitlement_items_title": "Purchased Capacity",
-        "entitlement_types": {
-          "balance": "Account Balance",
-          "credit": "Credit Limit",
-          "daily": "Daily Quota",
-          "weekly": "Weekly Quota",
-          "monthly": "Monthly Quota",
-          "total": "Total Quota"
-        },
         "add_entitlement_item": "Add Capacity Item",
         "manual_snapshot_invalid": "Please provide at least one valid entitlement item",
         "manual_snapshot_success": "Purchase record saved",
@@ -1005,15 +997,8 @@
         "delete_purchase_record_confirm": "Delete this purchase record?",
         "delete_purchase_record_success": "Purchase record deleted",
         "delete_purchase_record_failed": "Failed to delete purchase record",
-        "manual_resource_type": "Entitlement Type",
         "manual_resource_hints": {
-          "default": "Enter the capacity this purchase bought (amount and unit); used to compute unit cost.",
-          "balance": "Balance: directly consumable account balance. Fill total, used, and remaining amount.",
-          "credit": "Credit: granted or promotional provider credit. It is consumable like balance, but has a different source.",
-          "quota": "Quota: consumable usage capacity. Daily, weekly, and monthly quotas are package periodic quota rules; total quota is cumulative and decreases as it is used.",
-          "periodic": "Periodic quota: enter the amount available in each period. It resets automatically, and unused quota does not carry over.",
-          "total": "Total quota: cumulative consumable quota. It decreases as it is used and does not reset daily, weekly, or monthly.",
-          "source_ref": "Use the provider original name as source reference for traceability."
+          "default": "Enter the capacity this purchase bought (amount and unit); used to compute unit cost."
         },
         "manual_plan_name": "Plan Name",
         "manual_plan_name_placeholder": "e.g. Monthly Plan / Quarterly Plan",

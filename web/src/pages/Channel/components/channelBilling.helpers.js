@@ -178,29 +178,6 @@ export const ensureUnitOption = (options, value) => {
   return [...items, { value: normalized, label: normalized }];
 };
 
-export const entitlementTypeOptions = (t) => [
-  { value: 'balance', label: t('channel.edit.billing.entitlement_types.balance') },
-  { value: 'credit', label: t('channel.edit.billing.entitlement_types.credit') },
-  { value: 'quota:daily', label: t('channel.edit.billing.entitlement_types.daily') },
-  { value: 'quota:weekly', label: t('channel.edit.billing.entitlement_types.weekly') },
-  { value: 'quota:monthly', label: t('channel.edit.billing.entitlement_types.monthly') },
-  { value: 'quota:total', label: t('channel.edit.billing.entitlement_types.total') },
-];
-
-export const entitlementTypeValue = (item) => {
-  const resourceType = normalizeBillingValue(item?.resource_type) || 'quota';
-  if (resourceType !== 'quota') return resourceType;
-  return `quota:${normalizeBillingValue(item?.quota_type) || 'total'}`;
-};
-
-export const entitlementTypePatch = (value) => {
-  const normalized = (value || 'quota:total').toString();
-  if (normalized.startsWith('quota:')) {
-    return { resource_type: 'quota', quota_type: normalized.slice(6) || 'total' };
-  }
-  return { resource_type: normalized, quota_type: normalized === 'plan' ? 'plan' : 'total' };
-};
-
 export const formatAmountText = (item) => {
   const amount = Number(item?.amount || 0);
   const currency = (item?.currency || '').toString().trim();
@@ -236,30 +213,6 @@ export const isManualPeriodicItem = (item) =>
   isPeriodicQuotaType(item?.quota_type);
 
 export const shouldShowManualAmountFields = (item) => !isManualPlanItem(item);
-
-export const resolveManualResourceHint = (item, t) => {
-  const resourceType = normalizeBillingValue(item?.resource_type);
-  if (resourceType === 'plan') {
-    return t('channel.edit.billing.manual_resource_hints.plan');
-  }
-  if (resourceType === 'credit') {
-    return t('channel.edit.billing.manual_resource_hints.credit');
-  }
-  if (resourceType === 'balance') {
-    return t('channel.edit.billing.manual_resource_hints.balance');
-  }
-  if (resourceType === 'quota') {
-    const quotaType = normalizeBillingValue(item?.quota_type);
-    if (quotaType === 'daily' || quotaType === 'weekly' || quotaType === 'monthly') {
-      return t('channel.edit.billing.manual_resource_hints.periodic');
-    }
-    if (quotaType === 'total') {
-      return t('channel.edit.billing.manual_resource_hints.total');
-    }
-    return t('channel.edit.billing.manual_resource_hints.quota');
-  }
-  return t('channel.edit.billing.manual_resource_hints.default');
-};
 
 export const resolveManualAmountLabel = (item, t) => {
   const resourceType = normalizeBillingValue(item?.resource_type);
