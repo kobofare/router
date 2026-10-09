@@ -4106,6 +4106,7 @@
       },
       "headline": {
         "profit": "本期毛利",
+        "profit_yyc": "本期毛利 (YYC)",
         "margin": "毛利率 {{margin}}",
         "revenue": "计费收入",
         "cost": "采购成本",
@@ -4292,6 +4293,7 @@
         "procurement_cost_hint": "仅统计已配置成本请求",
         "gross_profit": "毛利",
         "gross_profit_hint": "未配置成本请求不参与计算",
+        "gross_profit_yyc": "毛利 (YYC)",
         "gross_margin": "毛利率",
         "gross_margin_hint": "毛利 / 已配置成本请求售价",
         "unconfigured": "未配置成本请求",
@@ -4312,6 +4314,7 @@
         "sell_amount": "售价 CNY",
         "procurement_cost": "采购成本 CNY",
         "gross_profit": "毛利 CNY",
+        "gross_profit_yyc": "毛利 YYC",
         "gross_margin": "毛利率"
       },
       "status": {

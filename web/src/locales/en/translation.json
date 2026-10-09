@@ -4106,6 +4106,7 @@
       },
       "headline": {
         "profit": "Gross profit this period",
+        "profit_yyc": "Gross profit this period (YYC)",
         "margin": "Margin {{margin}}",
         "revenue": "Billed revenue",
         "cost": "Procurement cost",
@@ -4292,6 +4293,7 @@
         "procurement_cost_hint": "Only configured cost requests are counted",
         "gross_profit": "Gross profit",
         "gross_profit_hint": "Unconfigured cost requests are excluded",
+        "gross_profit_yyc": "Gross profit (YYC)",
         "gross_margin": "Gross margin",
         "gross_margin_hint": "Gross profit / configured-cost sell amount",
         "unconfigured": "Unconfigured cost requests",
@@ -4312,6 +4314,7 @@
         "sell_amount": "Sell CNY",
         "procurement_cost": "Cost CNY",
         "gross_profit": "Profit CNY",
+        "gross_profit_yyc": "Profit YYC",
         "gross_margin": "Margin"
       },
       "status": {
