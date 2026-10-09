@@ -14,6 +14,8 @@ import (
 const (
 	ChannelModelsTableName = "channel_models"
 
+	ChannelModelCostRatesTableName = "channel_model_cost_rates"
+
 	ChannelModelPublishStatusSelectable     = "selectable"
 	ChannelModelPublishStatusPendingConfig  = "pending_config"
 	ChannelModelPublishStatusPendingTest    = "pending_test"

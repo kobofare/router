@@ -59,6 +59,7 @@ const ChannelProcurementView = ({
   costTrackingSubmitting = false,
   costMissingModelCount = 0,
   costQuotes = null,
+  onSyncCostQuotes,
 }) => {
   const [manualPurchaseRecord, setManualPurchaseRecord] = useState(
     buildManualPurchaseRecord()
@@ -469,7 +470,14 @@ const ChannelProcurementView = ({
           onUpdateStatus={updateProcurementBatchStatus}
         />
       )}
-      {costQuotes ? <CostQuoteReconcileTable t={t} costQuotes={costQuotes} /> : null}
+      {costQuotes ? (
+        <CostQuoteReconcileTable
+          t={t}
+          costQuotes={costQuotes}
+          onSyncCostQuotes={onSyncCostQuotes}
+          syncSubmitting={billingSubmitting}
+        />
+      ) : null}
         </>
       ) : null}
       <div>

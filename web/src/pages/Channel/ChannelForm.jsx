@@ -76,6 +76,7 @@ import {
   fetchChannelProcurementBatchConsumptions,
   fetchChannelProcurementBatches,
   fetchChannelCostQuotes,
+  syncChannelCostQuotes,
   fetchChannelTests,
   fetchTaskById,
   filterBillingCredentialsByFields,
@@ -4820,6 +4821,23 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                   channelBillingProfile?.cost_missing_model_count || 0
                 }
                 costQuotes={channelCostQuotes}
+                onSyncCostQuotes={async () => {
+                  try {
+                    const result = await syncChannelCostQuotes(channelId);
+                    showSuccess(
+                      t('channel.edit.billing.cost_reconcile_sync_done', {
+                        cached: result.cached,
+                        skipped: result.skipped,
+                      })
+                    );
+                    await refreshChannelProcurementState(channelId);
+                  } catch (error) {
+                    showError(
+                      error?.message ||
+                        t('channel.edit.billing.cost_reconcile_sync_failed')
+                    );
+                  }
+                }}
               />
             )}
           </div>

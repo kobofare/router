@@ -486,12 +486,86 @@ func resolveChannelLocalReadinessByModel(channelID string, mode string) map[stri
 	return result
 }
 
-func GetChannelProcurementBatches(c *gin.Context) {
+// SyncChannelCostQuotes pulls the billing service's cost quotes for a channel and
+// caches the production-grade (actual) ones into channel_model_cost_rates, converting
+// each unit cost to CNY via the currency charge rate. This is the operator-triggered
+// ingestion that lets the online cost floor use service costs (P5 §A.4 step 2). It
+// never changes charging by itself — the floor only reads the cache when enabled.
+func SyncChannelCostQuotes(c *gin.Context) {
 	channelID := strings.TrimSpace(c.Param("id"))
 	if channelID == "" {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
 		return
 	}
+	channelRow, profile, err := getEffectiveChannelBillingProfile(channelID)
+	if err != nil {
+		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	quotes, err := collectBillingServiceCostQuotes(c.Request.Context(), channelRow, profile, nil)
+	if err != nil {
+		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	rows := make([]model.ChannelModelCostRate, 0, len(quotes.Quotes))
+	cached := 0
+	skipped := 0
+	for _, quote := range quotes.Quotes {
+		confidence := strings.TrimSpace(strings.ToLower(quote.Confidence))
+		modelName := strings.TrimSpace(quote.Model)
+		unit := strings.TrimSpace(strings.ToLower(quote.CapacityUnit))
+		// Only production-grade (actual) quotes may back the online floor.
+		if confidence != model.ChannelModelCostRateConfidenceActual || modelName == "" || unit == "" || quote.UnitCost <= 0 {
+			skipped++
+			continue
+		}
+		currency := strings.TrimSpace(strings.ToUpper(quote.Currency))
+		rate, rateErr := model.GetBillingCurrencyChargeRate(currency)
+		if rateErr != nil || rate <= 0 {
+			skipped++
+			continue
+		}
+		asOf := int64(0)
+		if quote.AsOf != nil {
+			asOf = quote.AsOf.Unix()
+		} else {
+			asOf = quotes.FetchedAt.Unix()
+		}
+		validUntil := int64(0)
+		if quote.ValidUntil != nil {
+			validUntil = quote.ValidUntil.Unix()
+		}
+		rows = append(rows, model.ChannelModelCostRate{
+			ChannelId:        channelID,
+			Model:            modelName,
+			CapacityUnit:     unit,
+			UnitCostYyc:      quote.UnitCost * rate,
+			UnitCostOriginal: quote.UnitCost,
+			Currency:         currency,
+			FXRate:           rate,
+			Confidence:       confidence,
+			Source:           model.ChannelModelCostRateSourceService,
+			AsOf:             asOf,
+			ValidUntil:       validUntil,
+		})
+		cached++
+	}
+	if err := model.ReplaceChannelModelCostRatesWithDB(model.DB, channelID, rows); err != nil {
+		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	logChannelAdminInfo(c, "sync_cost_quotes", stringField("channel_id", channelID), intField("cached", cached), intField("skipped", skipped))
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": gin.H{"cached": cached, "skipped": skipped}})
+}
+
+func GetChannelProcurementBatches(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	if channelID == "" {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
+		return	}
 	rows, err := model.ListChannelProcurementBatchesByChannelIDWithDB(model.DB, channelID, 100)
 	if err != nil {
 		logChannelAdminWarn(c, "list_procurement_batches", stringField("channel_id", channelID), stringField("reason", err.Error()))

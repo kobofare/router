@@ -1,11 +1,11 @@
 import React from 'react';
-import { AppAlert, AppDetailSection, AppTag } from '../../../router-ui';
+import { AppAlert, AppButton, AppDetailSection, AppTag } from '../../../router-ui';
 import { formatCreditAmount } from '../../../helpers/render';
 
 // Read-only reconciliation view: billing service's normalized unit cost (in YYC)
 // per model vs the channel's local procurement readiness. Never affects online
 // charging. Pure presentational — parent owns the data shape and refresh.
-const CostQuoteReconcileTable = ({ t, costQuotes }) => {
+const CostQuoteReconcileTable = ({ t, costQuotes, onSyncCostQuotes, syncSubmitting = false }) => {
   const rows = Array.isArray(costQuotes?.rows) ? costQuotes.rows : [];
   const available = costQuotes?.service_available === true;
 
@@ -14,6 +14,20 @@ const CostQuoteReconcileTable = ({ t, costQuotes }) => {
       className='router-billing-management-section'
       title={t('channel.edit.billing.cost_reconcile_title')}
       titleTag='span'
+      headerEnd={
+        available ? (
+          <AppButton
+            type='button'
+            className='router-page-button'
+            color='blue'
+            loading={syncSubmitting}
+            disabled={syncSubmitting}
+            onClick={onSyncCostQuotes}
+          >
+            {t('channel.edit.billing.cost_reconcile_sync')}
+          </AppButton>
+        ) : null
+      }
     >
       <div className='router-billing-subsection-header'>
         <div>

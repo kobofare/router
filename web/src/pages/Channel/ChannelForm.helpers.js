@@ -1938,6 +1938,26 @@ const fetchChannelCostQuotes = async (channelId) => {
   };
 };
 
+// Sync service cost quotes into the local rate cache (admin-only). Returns the
+// counts of newly cached quotes vs skipped ones (non-actual, unparseable currency).
+const syncChannelCostQuotes = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return { cached: 0, skipped: 0 };
+  }
+  const res = await API.post(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/cost-quotes/sync`
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'sync channel cost quotes failed');
+  }
+  return {
+    cached: Number(data?.cached || 0),
+    skipped: Number(data?.skipped || 0),
+  };
+};
+
 const fetchChannelProcurementBatchConsumptions = async (channelId, batchId) => {
   const normalizedChannelId = (channelId || '').toString().trim();
   const normalizedBatchId = (batchId || '').toString().trim();
@@ -2258,6 +2278,7 @@ export {
   fetchChannelProcurementBatchConsumptions,
   fetchChannelProcurementBatches,
   fetchChannelCostQuotes,
+  syncChannelCostQuotes,
   fetchChannelTests,
   fetchTaskById,
   filterBillingCredentialsByFields,
