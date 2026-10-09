@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -497,17 +498,32 @@ func SyncChannelCostQuotes(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
 		return
 	}
-	channelRow, profile, err := getEffectiveChannelBillingProfile(channelID)
+	cached, skipped, err := SyncChannelCostQuotesForChannel(c.Request.Context(), channelID)
 	if err != nil {
 		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 		return
 	}
-	quotes, err := collectBillingServiceCostQuotes(c.Request.Context(), channelRow, profile, nil)
+	logChannelAdminInfo(c, "sync_cost_quotes", stringField("channel_id", channelID), intField("cached", cached), intField("skipped", skipped))
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": gin.H{"cached": cached, "skipped": skipped}})
+}
+
+// SyncChannelCostQuotesForChannel fetches the billing service's cost quotes for a
+// channel and caches the production-grade (actual) ones into channel_model_cost_rates
+// (unit cost normalized to CNY). Shared by the admin endpoint and the scheduler.
+// Returns counts; never mutates charging directly.
+func SyncChannelCostQuotesForChannel(ctx context.Context, channelID string) (int, int, error) {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return 0, 0, fmt.Errorf("渠道 ID 无效")
+	}
+	channelRow, profile, err := getEffectiveChannelBillingProfile(normalizedChannelID)
 	if err != nil {
-		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
-		return
+		return 0, 0, err
+	}
+	quotes, err := collectBillingServiceCostQuotes(ctx, channelRow, profile, nil)
+	if err != nil {
+		return 0, 0, err
 	}
 	rows := make([]model.ChannelModelCostRate, 0, len(quotes.Quotes))
 	cached := 0
@@ -527,18 +543,16 @@ func SyncChannelCostQuotes(c *gin.Context) {
 			skipped++
 			continue
 		}
-		asOf := int64(0)
+		asOf := quotes.FetchedAt.Unix()
 		if quote.AsOf != nil {
 			asOf = quote.AsOf.Unix()
-		} else {
-			asOf = quotes.FetchedAt.Unix()
 		}
 		validUntil := int64(0)
 		if quote.ValidUntil != nil {
 			validUntil = quote.ValidUntil.Unix()
 		}
 		rows = append(rows, model.ChannelModelCostRate{
-			ChannelId:        channelID,
+			ChannelId:        normalizedChannelID,
 			Model:            modelName,
 			CapacityUnit:     unit,
 			UnitCostYyc:      quote.UnitCost * rate,
@@ -552,20 +566,18 @@ func SyncChannelCostQuotes(c *gin.Context) {
 		})
 		cached++
 	}
-	if err := model.ReplaceChannelModelCostRatesWithDB(model.DB, channelID, rows); err != nil {
-		logChannelAdminWarn(c, "sync_cost_quotes", stringField("channel_id", channelID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
-		return
+	if err := model.ReplaceChannelModelCostRatesWithDB(model.DB, normalizedChannelID, rows); err != nil {
+		return 0, 0, err
 	}
-	logChannelAdminInfo(c, "sync_cost_quotes", stringField("channel_id", channelID), intField("cached", cached), intField("skipped", skipped))
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": gin.H{"cached": cached, "skipped": skipped}})
+	return cached, skipped, nil
 }
 
 func GetChannelProcurementBatches(c *gin.Context) {
 	channelID := strings.TrimSpace(c.Param("id"))
 	if channelID == "" {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
-		return	}
+		return
+	}
 	rows, err := model.ListChannelProcurementBatchesByChannelIDWithDB(model.DB, channelID, 100)
 	if err != nil {
 		logChannelAdminWarn(c, "list_procurement_batches", stringField("channel_id", channelID), stringField("reason", err.Error()))
