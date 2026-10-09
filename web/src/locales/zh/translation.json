@@ -4039,6 +4039,7 @@
         "total_revenue": "计费收入合计",
         "total_cost": "采购成本合计",
         "total_profit": "毛利合计",
+        "total_profit_yyc": "毛利合计 (YYC)",
         "avg_margin": "加权毛利率"
       },
       "distribution": {
@@ -4058,6 +4059,7 @@
         "sell": "计费收入 CNY",
         "cost": "采购成本 CNY",
         "profit": "毛利 CNY",
+        "profit_yyc": "毛利 YYC",
         "margin": "毛利率",
         "cost_coverage": "成本覆盖",
         "actions": "操作"

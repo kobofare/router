@@ -4039,6 +4039,7 @@
         "total_revenue": "Billed revenue",
         "total_cost": "Procurement cost",
         "total_profit": "Gross profit",
+        "total_profit_yyc": "Gross profit (YYC)",
         "avg_margin": "Weighted margin"
       },
       "distribution": {
@@ -4058,6 +4059,7 @@
         "sell": "Billed Revenue CNY",
         "cost": "Procurement cost CNY",
         "profit": "Gross profit CNY",
+        "profit_yyc": "Gross profit YYC",
         "margin": "Gross margin",
         "cost_coverage": "Cost coverage",
         "actions": "Actions"
