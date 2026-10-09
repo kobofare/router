@@ -553,10 +553,10 @@ func buildBillingSnapshot(inputQuantity float64, outputQuantity float64, inputPr
 }
 
 func applyPricingDecision(snapshot *BillingSnapshot) {
-	applyPricingDecisionWithProcurementCost(snapshot, MoneyAmount{})
+	applyPricingDecisionWithProcurementCost(snapshot, MoneyAmount{}, CurrentPricingPolicy())
 }
 
-func applyPricingDecisionWithProcurementCost(snapshot *BillingSnapshot, procurementCost MoneyAmount) {
+func applyPricingDecisionWithProcurementCost(snapshot *BillingSnapshot, procurementCost MoneyAmount, policy PricingPolicy) {
 	if snapshot == nil {
 		return
 	}
@@ -570,7 +570,7 @@ func applyPricingDecisionWithProcurementCost(snapshot *BillingSnapshot, procurem
 			Currency: model.BillingCurrencyCodeYYC,
 		},
 		ProcurementCost: procurementCost,
-		Policy:          CurrentPricingPolicy(),
+		Policy:          policy,
 	})
 	snapshot.PricingDecision = &decision
 	if decision.SelectedCharge.Amount > float64(snapshot.ChargeAmount) {
@@ -606,10 +606,13 @@ func ApplyEstimatedProcurementCostFloor(snapshot *BillingSnapshot, channelID str
 		if result.CostSource != model.ProcurementCostSourceActual && result.CostSource != model.ProcurementCostSourceZeroCost {
 			continue
 		}
+		// Per-model target margin (falls back to the global policy) drives the floor.
+		policy := CurrentPricingPolicy()
+		policy.TargetMargin = model.ResolveChannelModelTargetMarginWithDB(model.DB, channelID, modelName)
 		applyPricingDecisionWithProcurementCost(snapshot, MoneyAmount{
 			Amount:   result.TotalCostAmount,
 			Currency: model.BillingCurrencyCodeCNY,
-		})
+		}, policy)
 		return nil
 	}
 	return nil

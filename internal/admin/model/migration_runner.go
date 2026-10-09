@@ -2224,6 +2224,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return nil
 			},
 		},
+		{
+			Version:     "202610111200_channel_model_target_margin",
+			Description: "add per-channel-model target_margin override column for the pricing closed loop",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelModel{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
