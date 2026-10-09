@@ -102,13 +102,38 @@ func DoRequestHelper(a Adaptor, c *gin.Context, meta *meta.Meta, requestBody io.
 		respFields.String("content_type", contentType)
 		respFields.String("body_preview", bodyPreview)
 	}
-	switch {
-	case resp.StatusCode >= http.StatusInternalServerError:
-		logger.RelayErrorf(c.Request.Context(), respFields.Build())
-	case resp.StatusCode >= http.StatusBadRequest:
-		logger.RelayWarnf(c.Request.Context(), respFields.Build())
+	if level := upstreamResponseLogLevel(resp.StatusCode, isHealthProbeRequest(c)); level != "" {
+		if level == "error" {
+			logger.RelayErrorf(c.Request.Context(), respFields.Build())
+		} else {
+			logger.RelayWarnf(c.Request.Context(), respFields.Build())
+		}
 	}
 	return resp, nil
+}
+
+// Automatic health probes are observational signals. Their upstream failures
+// still drive probe backoff and channel health, but they are not user-facing
+// relay failures and must not keep the ERROR log noisy.
+func upstreamResponseLogLevel(statusCode int, healthProbe bool) string {
+	if statusCode < http.StatusBadRequest {
+		return ""
+	}
+	if healthProbe {
+		return "warn"
+	}
+	if statusCode >= http.StatusInternalServerError {
+		return "error"
+	}
+	return "warn"
+}
+
+func isHealthProbeRequest(c *gin.Context) bool {
+	if c == nil || c.Request == nil {
+		return false
+	}
+	value, _ := c.Request.Context().Value(ctxkey.HealthProbe).(bool)
+	return value
 }
 
 func maskHeaders(header http.Header) map[string]string {

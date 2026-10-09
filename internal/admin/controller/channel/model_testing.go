@@ -21,6 +21,7 @@ import (
 
 	"github.com/yeying-community/router/common/client"
 	"github.com/yeying-community/router/common/config"
+	"github.com/yeying-community/router/common/ctxkey"
 	"github.com/yeying-community/router/internal/admin/model"
 	"github.com/yeying-community/router/internal/admin/monitor"
 	channelsvc "github.com/yeying-community/router/internal/admin/service/channel"
@@ -764,6 +765,9 @@ func newChannelRelayRuntimeContext(path string, channel *model.Channel, requestC
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	requestURL := &url.URL{Path: path}
+	if isChannelHealthProbeContext(requestCtx) {
+		requestCtx = context.WithValue(requestCtx, ctxkey.HealthProbe, true)
+	}
 	req := &http.Request{
 		Method: "POST",
 		URL:    requestURL,
