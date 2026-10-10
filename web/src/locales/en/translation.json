@@ -880,7 +880,7 @@
         "endpoints": "Endpoints",
         "tests": "Tests",
         "publish": "Publish",
-        "procurement": "Cost & Procurement",
+        "procurement": "Procurement",
         "billing": "Billing"
       },
       "publish": {
@@ -939,14 +939,14 @@
             "actual": "Actual cost"
           },
           "consequence": {
-            "untracked": "Excluded from the margin report",
-            "free": "Cost counted as 0, margin at full amount",
-            "actual": "Accounted via procurement batches"
+            "untracked": "No margin (cost unknown)",
+            "free": "Margin counted, margin = sell price (cost 0)",
+            "actual": "Margin counted, cost from procurement batches"
           },
           "hint": {
-            "untracked": "Cost is not tracked for this channel; its requests are excluded from the margin report (honestly marked as untracked).",
-            "free": "Upstream is free; cost counted as 0 with auto-managed zero-cost batches, so margin is computed at full amount.",
-            "actual": "Record actual cost via procurement batches; models missing a batch are flagged on the group page to add cost."
+            "untracked": "Does not track this channel's cost: its requests do not appear in the margin report (honestly marked \"untracked\" rather than faking unknown cost as 0). Use it when you don't care about this channel's margin yet.",
+            "free": "Use when upstream is genuinely free: cost is a known 0, requests ARE counted in the margin report, and margin = full sell price (100%). Difference from \"untracked\": free is counted in margin, untracked is not.",
+            "actual": "Record actual cost via procurement batches and count it toward margin; models missing a batch are flagged on the group page to add cost."
           },
           "missing_cost": "{{count}} models missing cost",
           "missing_cost_hint": "These models have no recorded procurement cost, so margin can't be computed yet; add procurement cost or mark zero-cost on the model page."
