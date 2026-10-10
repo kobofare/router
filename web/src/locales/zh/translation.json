@@ -3866,6 +3866,11 @@
         "risk_buffer_hint": "用于覆盖采购成本波动，小数填写，0.1 表示先按成本上浮 10% 再计算保底售价。",
         "target_margin_invalid": "目标毛利率必须大于或等于 0 且小于 0.95",
         "risk_buffer_invalid": "成本缓冲比例必须大于或等于 0",
+        "cost_rate_floor_enabled": "启用服务成本地板",
+        "cost_rate_floor_enabled_hint": "开启后,账务服务导出的实际单位成本会参与线上成本地板;并由定时任务自动同步缓存。关闭=仅用本地采购成本(默认)。建议先用「服务成本对账」验证一致再开。",
+        "cost_rate_floor_ttl": "成本缓存新鲜期(秒)",
+        "cost_rate_floor_ttl_hint": "超过该窗口的服务成本不再用于地板、回退本地采购。默认 900。",
+        "cost_rate_floor_ttl_invalid": "成本缓存新鲜期必须大于或等于 0",
         "buttons": {
           "save": "保存设置"
         }

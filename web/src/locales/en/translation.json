@@ -3866,6 +3866,11 @@
         "risk_buffer_hint": "Used to absorb procurement cost fluctuation. 0.1 means adding a 10% buffer before calculating the floor price.",
         "target_margin_invalid": "Target margin must be greater than or equal to 0 and lower than 0.95",
         "risk_buffer_invalid": "Cost buffer ratio must be greater than or equal to 0",
+        "cost_rate_floor_enabled": "Enable service cost floor",
+        "cost_rate_floor_enabled_hint": "When on, the billing service's actual unit costs feed the online cost floor, kept fresh by a background sync. Off = local procurement cost only (default). Validate consistency with the cost reconciliation view before enabling.",
+        "cost_rate_floor_ttl": "Cost cache freshness (seconds)",
+        "cost_rate_floor_ttl_hint": "Service costs older than this window are ignored and the floor falls back to local procurement. Default 900.",
+        "cost_rate_floor_ttl_invalid": "Cost cache freshness must be greater than or equal to 0",
         "buttons": {
           "save": "Save Settings"
         }
